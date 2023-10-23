@@ -11,7 +11,7 @@ import {
 } from "../../../../common/mobile/lib/controller/collaboration/Comments";
 import ErrorController from "./Error";
 import LongActionsController from "./LongActions";
-import {LocalStorage} from "../../../../common/mobile/utils/LocalStorage";
+import {LocalStorage} from "../../../../common/mobile/utils/LocalStorage.mjs";
 import About from '../../../../common/mobile/lib/view/About';
 import PluginsController from '../../../../common/mobile/lib/controller/Plugins.jsx';
 import { Device } from '../../../../common/mobile/utils/device';
@@ -44,6 +44,7 @@ class MainController extends Component {
         };
 
         this.defaultTitleText = __APP_TITLE_TEXT__;
+        this.stackMacrosRequests = [];
 
         const { t } = this.props;
         this._t = t('Controller.Main', {returnObjects:true});
@@ -54,7 +55,7 @@ class MainController extends Component {
             !window.sdk_scripts && (window.sdk_scripts = ['../../../../sdkjs/common/AllFonts.js',
                                                            '../../../../sdkjs/slide/sdk-all-min.js']);
             let dep_scripts = ['../../../vendor/xregexp/xregexp-all-min.js',
-                                '../../../vendor/sockjs/sockjs.min.js'];
+                                '../../../vendor/socketio/socket.io.min.js'];
             dep_scripts.push(...window.sdk_scripts);
 
             const promise_get_script = (scriptpath) => {
@@ -92,6 +93,9 @@ class MainController extends Component {
                     value = parseInt(value);
                 }
                 this.props.storeApplicationSettings.changeMacrosSettings(value);
+
+                value = localStorage.getItem("pe-mobile-allow-macros-request");
+                this.props.storeApplicationSettings.changeMacrosRequest((value !== null) ? parseInt(value)  : 0);
             };
 
             const loadDocument = data => {
@@ -103,6 +107,7 @@ class MainController extends Component {
                 if (data.doc) {
                     this.permissions = Object.assign(this.permissions, data.doc.permissions);
 
+                    const _options = Object.assign({}, data.doc.options, this.editorConfig.actionLink || {});
                     const _user = new Asc.asc_CUserInfo();
                     const _userOptions = this.props.storeAppOptions.user;
                     _user.put_Id(_userOptions.id);
@@ -112,10 +117,11 @@ class MainController extends Component {
                     docInfo = new Asc.asc_CDocInfo();
                     docInfo.put_Id(data.doc.key);
                     docInfo.put_Url(data.doc.url);
+                    docInfo.put_DirectUrl(data.doc.directUrl);
                     docInfo.put_Title(data.doc.title);
                     docInfo.put_Format(data.doc.fileType);
                     docInfo.put_VKey(data.doc.vkey);
-                    docInfo.put_Options(data.doc.options);
+                    docInfo.put_Options(_options);
                     docInfo.put_UserInfo(_user);
                     docInfo.put_CallbackUrl(this.editorConfig.callbackUrl);
                     docInfo.put_Token(data.doc.token);
@@ -123,6 +129,11 @@ class MainController extends Component {
                     docInfo.put_EncryptedInfo(this.editorConfig.encryptionKeys);
                     docInfo.put_Lang(this.editorConfig.lang);
                     docInfo.put_Mode(this.editorConfig.mode);
+
+                    let coEditMode = !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object') ? 'fast' : // fast by default
+                                    this.editorConfig.mode === 'view' && this.editorConfig.coEditing.change!==false ? 'fast' : // if can change mode in viewer - set fast for using live viewer
+                                    this.editorConfig.coEditing.mode || 'fast';
+                    docInfo.put_CoEditingMode(coEditMode);
 
                     let enable = !this.editorConfig.customization || (this.editorConfig.customization.macros !== false);
                     docInfo.asc_putIsEnabledMacroses(!!enable);
@@ -132,6 +143,7 @@ class MainController extends Component {
 
                 this.api.asc_registerCallback('asc_onGetEditorPermissions', onEditorPermissions);
                 this.api.asc_registerCallback('asc_onLicenseChanged', this.onLicenseChanged.bind(this));
+                this.api.asc_registerCallback('asc_onMacrosPermissionRequest', this.onMacrosPermissionRequest.bind(this));
                 this.api.asc_registerCallback('asc_onRunAutostartMacroses', this.onRunAutostartMacroses.bind(this));
                 this.api.asc_setDocInfo(docInfo);
                 this.api.asc_getEditorPermissions(this.editorConfig.licenseUrl, this.editorConfig.customerId);
@@ -151,8 +163,24 @@ class MainController extends Component {
 
             const onEditorPermissions = params => {
                 const licType = params.asc_getLicenseType();
+                const { t } = this.props;
+                // const _t = t('Controller.Main', { returnObjects:true });
+               
+                if (Asc.c_oLicenseResult.Expired === licType ||
+                    Asc.c_oLicenseResult.Error === licType ||
+                    Asc.c_oLicenseResult.ExpiredTrial === licType ||
+                    Asc.c_oLicenseResult.NotBefore === licType ||
+                    Asc.c_oLicenseResult.ExpiredLimited === licType) {
 
-                this.appOptions.canLicense      = (licType === Asc.c_oLicenseResult.Success || licType === Asc.c_oLicenseResult.SuccessLimit);
+                    f7.dialog.create({
+                        title: Asc.c_oLicenseResult.NotBefore === licType ? t('Controller.Main.titleLicenseNotActive') : t('Controller.Main.titleLicenseExp'),
+                        text: Asc.c_oLicenseResult.NotBefore === licType ? t('Controller.Main.warnLicenseBefore') : t('Controller.Main.warnLicenseExp')
+                    }).open();
+
+                    return;
+                }
+
+                this.appOptions.canLicense = (licType === Asc.c_oLicenseResult.Success || licType === Asc.c_oLicenseResult.SuccessLimit);
 
                 const storeAppOptions = this.props.storeAppOptions;
                 storeAppOptions.setPermissionOptions(this.document, licType, params, this.permissions, EditorUIController.isSupportEditFeature());
@@ -300,12 +328,8 @@ class MainController extends Component {
             this.api.Resize();
         });
 
-        $$(window).on('popup:open sheet:open actions:open', () => {
+        $$(window).on('popup:open sheet:open actions:open searchbar:enable', () => {
             this.api.asc_enableKeyEvents(false);
-        });
-
-        $$(window).on('popup:close sheet:close actions:close', () => {
-            this.api.asc_enableKeyEvents(true);
         });
 
         this.api.asc_registerCallback('asc_onDocumentContentReady', this.onDocumentContentReady.bind(this));
@@ -423,6 +447,16 @@ class MainController extends Component {
         });
 
         this.api.asc_registerCallback('asc_onReplaceAll', this.onApiTextReplaced.bind(this));
+
+        // Presentation Info
+
+        const storePresentationInfo = this.props.storePresentationInfo;
+
+        this.api.asc_registerCallback('asc_onMeta', (meta) => {
+            if(meta) {
+                storePresentationInfo.changeTitle(meta.title);
+            }
+        });
     }
 
     onApiTextReplaced(found, replaced) {
@@ -431,7 +465,7 @@ class MainController extends Component {
         if (found) {
             f7.dialog.alert(null, !(found - replaced > 0) ? t('Controller.Main.textReplaceSuccess').replace(/\{0\}/, `${replaced}`) : t('Controller.Main.textReplaceSkipped').replace(/\{0\}/, `${found - replaced}`));
         } else {
-            f7.dialog.alert(null, t('Controller.Main.textNoTextFound'));
+            f7.dialog.alert(null, t('Controller.Main.textNoMatches'));
         }
     }
 
@@ -458,8 +492,6 @@ class MainController extends Component {
         this.api.asc_setSpellCheck(value);
 
         this.updateWindowTitle(true);
-
-        this.api.SetTextBoxInputMode(LocalStorage.getBool("pe-settings-inputmode"));
 
         if (appOptions.isEdit && this.needToUpdateVersion) {
             Common.Notifications.trigger('api:disconnect');
@@ -495,6 +527,11 @@ class MainController extends Component {
             (licType === Asc.c_oLicenseResult.Connections || licType === Asc.c_oLicenseResult.UsersCount || licType === Asc.c_oLicenseResult.ConnectionsOS || licType === Asc.c_oLicenseResult.UsersCountOS
                 || licType === Asc.c_oLicenseResult.SuccessLimit && (appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0))
             this._state.licenseType = licType;
+
+        if (licType !== undefined && appOptions.canLiveView && (licType===Asc.c_oLicenseResult.ConnectionsLive || licType===Asc.c_oLicenseResult.ConnectionsLiveOS||
+                                                                licType===Asc.c_oLicenseResult.UsersViewCount || licType===Asc.c_oLicenseResult.UsersViewCountOS))
+            this._state.licenseType = licType;
+
         if (this._isDocReady && this._state.licenseType)
             this.applyLicense();
     }
@@ -526,15 +563,32 @@ class MainController extends Component {
             return;
         }
 
-        if (this._state.licenseType) {
+        if (appOptions.config.mode === 'view') {
+            if (appOptions.canLiveView && (this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLive || this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLiveOS ||
+                                            this._state.licenseType===Asc.c_oLicenseResult.UsersViewCount || this._state.licenseType===Asc.c_oLicenseResult.UsersViewCountOS ||
+                                            !appOptions.isAnonymousSupport && !!appOptions.config.user.anonymous)) {
+                appOptions.canLiveView = false;
+                this.api.asc_SetFastCollaborative(false);
+            }
+            Common.Notifications.trigger('toolbar:activatecontrols');
+        } else if (!appOptions.isAnonymousSupport && !!appOptions.config.user.anonymous) {
+            Common.Notifications.trigger('toolbar:activatecontrols');
+            Common.Notifications.trigger('toolbar:deactivateeditcontrols');
+            this.api.asc_coAuthoringDisconnect();
+            Common.Notifications.trigger('api:disconnect');
+            f7.dialog.create({
+                title: _t.notcriticalErrorTitle,
+                text : _t.warnLicenseAnonymous,
+                buttons: [{text: 'OK'}]
+            }).open();
+        } else if (this._state.licenseType) {
             let license = this._state.licenseType;
             let buttons = [{text: 'OK'}];
             if ((appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0 &&
                 (license === Asc.c_oLicenseResult.SuccessLimit ||
-                    license === Asc.c_oLicenseResult.ExpiredLimited ||
                     appOptions.permissionsLicense === Asc.c_oLicenseResult.SuccessLimit)
             ) {
-                license = (license === Asc.c_oLicenseResult.ExpiredLimited) ? _t.warnLicenseLimitedNoAccess : _t.warnLicenseLimitedRenewed;
+                license = _t.warnLicenseLimitedRenewed;
             } else if (license === Asc.c_oLicenseResult.Connections || license === Asc.c_oLicenseResult.UsersCount) {
                 license = (license===Asc.c_oLicenseResult.Connections) ? warnLicenseExceeded : warnLicenseUsersExceeded;
             } else {
@@ -558,6 +612,7 @@ class MainController extends Component {
             } else {
                 Common.Notifications.trigger('toolbar:activatecontrols');
                 Common.Notifications.trigger('toolbar:deactivateeditcontrols');
+                this.api.asc_coAuthoringDisconnect();
                 Common.Notifications.trigger('api:disconnect');
             }
 
@@ -802,6 +857,70 @@ class MainController extends Component {
         }
     }
 
+    onMacrosPermissionRequest (url, callback) {
+        if (url && callback) {
+            this.stackMacrosRequests.push({url: url, callback: callback});
+            if (this.stackMacrosRequests.length>1) {
+                return;
+            }
+        } else if (this.stackMacrosRequests.length>0) {
+            url = this.stackMacrosRequests[0].url;
+            callback = this.stackMacrosRequests[0].callback;
+        } else
+            return;
+
+        const value = this.props.storeApplicationSettings.macrosRequest;
+        if (value>0) {
+            callback && callback(value === 1);
+            this.stackMacrosRequests.shift();
+            this.onMacrosPermissionRequest();
+        } else {
+            const { t } = this.props;
+            const _t = t('Controller.Main', {returnObjects:true});
+            f7.dialog.create({
+                title: _t.notcriticalErrorTitle,
+                text: _t.textRequestMacros.replace('%1', url),
+                cssClass: 'dlg-macros-request',
+                content: `<div class="checkbox-in-modal">
+                      <label class="checkbox">
+                        <input type="checkbox" name="checkbox-show-macros" />
+                        <i class="icon-checkbox"></i>
+                      </label>
+                      <span class="right-text">${_t.textRemember}</span>
+                      </div>`,
+                buttons: [{
+                    text: _t.textYes,
+                    onClick: () => {
+                        const dontshow = $$('input[name="checkbox-show-macros"]').prop('checked');
+                        if (dontshow) {
+                            this.props.storeApplicationSettings.changeMacrosRequest(1);
+                            LocalStorage.setItem("pe-mobile-allow-macros-request", 1);
+                        }
+                        setTimeout(() => {
+                            if (callback) callback(true);
+                            this.stackMacrosRequests.shift();
+                            this.onMacrosPermissionRequest();
+                        }, 1);
+                    }},
+                    {
+                        text: _t.textNo,
+                        onClick: () => {
+                            const dontshow = $$('input[name="checkbox-show-macros"]').prop('checked');
+                            if (dontshow) {
+                                this.props.storeApplicationSettings.changeMacrosRequest(2);
+                                LocalStorage.setItem("pe-mobile-allow-macros-request", 2);
+                            }
+                            setTimeout(() => {
+                                if (callback) callback(false);
+                                this.stackMacrosRequests.shift();
+                                this.onMacrosPermissionRequest();
+                            }, 1);
+                        }
+                    }]
+            }).open();
+        }
+    }
+
     onProcessSaveResult (data) {
         this.api.asc_OnSaveEnd(data.result);
 
@@ -845,7 +964,37 @@ class MainController extends Component {
     }
 
     onRequestClose () {
-        Common.Gateway.requestClose();
+        const { t } = this.props;
+        const _t = t("Toolbar", { returnObjects: true });
+
+        if (this.api.isDocumentModified()) {
+            this.api.asc_stopSaving();
+
+            f7.dialog.create({
+                title: _t.dlgLeaveTitleText,
+                text: _t.dlgLeaveMsgText,
+                verticalButtons: true,
+                buttons : [
+                    {
+                        text: _t.leaveButtonText,
+                        onClick: () => {
+                            this.api.asc_undoAllChanges();
+                            this.api.asc_continueSaving();
+                            Common.Gateway.requestClose();
+                        }
+                    },
+                    {
+                        text: _t.stayButtonText,
+                        bold: true,
+                        onClick: () => {
+                            this.api.asc_continueSaving();
+                        }
+                    }
+                ]
+            }).open();
+        } else {
+            Common.Gateway.requestClose();
+        }
     }
 
     render () {

@@ -3,6 +3,7 @@ Thumbs.db
 .DS_Store
 /deploy
 build/node_modules
+build/plugins/**/node_modules/
 build/sprites/node_modules/
 vendor/framework7-react/
 apps/documenteditor/embed/resources/less/node_modules
@@ -12,8 +13,10 @@ apps/documenteditor/mobile/resources/sass/.sass-cache
 apps/spreadsheeteditor/mobile/resources/sass/.sass-cache
 apps/presentationeditor/mobile/resources/sass/.sass-cache
 apps/**/main/resources/**/iconssmall*.png
+apps/**/main/resources/**/iconssmall*.svg
 apps/**/main/resources/**/iconssmall*.less
 apps/**/main/resources/**/iconsbig*.png
+apps/**/main/resources/**/iconsbig*.svg
 apps/**/main/resources/**/iconsbig*.less
 apps/**/main/resources/**/iconshuge*.png
 apps/**/main/resources/**/iconshuge*.less

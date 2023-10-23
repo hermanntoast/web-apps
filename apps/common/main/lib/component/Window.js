@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *    Window.js
  *
@@ -158,7 +157,8 @@ define([
                 maxheight: undefined,
                 minwidth: 0,
                 minheight: 0,
-                enableKeyEvents: true
+                enableKeyEvents: true,
+                automove: true
         };
 
         var template = '<div class="asc-window<%= modal?" modal":"" %><%= cls?" "+cls:"" %>" id="<%= id %>" style="width:<%= width %>px;">' +
@@ -241,7 +241,7 @@ define([
 
         function _autoSize() {
             if (this.initConfig.height == 'auto') {
-                var height = parseInt(this.$window.find('> .body').css('height'));
+                var height = Math.ceil(parseFloat(this.$window.find('> .body').css('height')));
                 this.initConfig.header && (height += parseInt(this.$window.find('> .header').css('height')));
                 this.$window.height(height);
             }
@@ -265,8 +265,10 @@ define([
             var top  = main_geometry.top + Math.floor((parseInt(main_height) - parseInt(win_height)) / 2);
             var left = Math.floor((parseInt(main_width) - parseInt(win_width)) / 2);
 
-            this.$window.css('left',left);
-            this.$window.css('top',top);
+            this.$window.css({
+                left: left < 0 ? 0 : left,
+                top: top < 0 ? 0 : top
+            });
         }
 
         function _setVisible() {
@@ -355,6 +357,23 @@ define([
             }
         }
 
+        function _onResizeMove(){
+            var main_geometry = _readDocumetGeometry(),
+                main_width = main_geometry.width,
+                main_height = main_geometry.height,
+                win_height = this.getHeight(),
+                win_width = this.getWidth(),
+                top = this.getTop(),
+                left = this.getLeft();
+
+            top = top + win_height > main_height ? main_height - win_height : top;
+            left = left + win_width > main_width ? main_width - win_width : left;
+
+            this.$window.css({
+                left: left < 0 ? 0 : left,
+                top: top < 0 ? 0 : top
+            });
+        }
 
         /* window resize functions */
         function _resizestart(event) {
@@ -456,7 +475,7 @@ define([
             
             var template =  '<div class="info-box">' +
                                 '<% if (typeof iconCls !== "undefined") { %><div class="icon <%= iconCls %>"></div><% } %>' +
-                                '<div class="text" <% if (typeof iconCls == "undefined") { %> style="padding-left:10px;" <% } %>><span><%= msg %></span>' +
+                                '<div class="text" <% if (typeof iconCls == "undefined") { %> style="padding-' + (Common.UI.isRTL() ? 'right' : 'left') + ':10px;"<% } %>><span><%= msg %></span>' +
                                     '<% if (dontshow) { %><div class="dont-show-checkbox"></div><% } %>' +
                                 '</div>' +
                             '</div>' +
@@ -478,20 +497,27 @@ define([
                 var header      = window.getChild('.header');
                 var body        = window.getChild('.body');
                 var icon        = window.getChild('.icon'),
-                    icon_height = (icon.length>0) ? icon.height() : 0;
+                    icon_height = (icon.length>0) ? icon.height() : 0,
+                    icon_width = (icon.length>0) ? $(icon).outerWidth(true) : 0;
                 var check       = window.getChild('.info-box .dont-show-checkbox');
 
                 if (!options.dontshow) body.css('padding-bottom', '10px');
 
                 if (options.maxwidth && options.width=='auto') {
-                    if ((text.position().left + text.width() + parseInt(text_cnt.css('padding-right'))) > options.maxwidth)
+                    var width = !Common.UI.isRTL() ? (text.position().left + text.width() + parseInt(text_cnt.css('padding-right'))) :
+                        (parseInt(text_cnt.css('padding-right')) + icon_width + text.width() + parseInt(text_cnt.css('padding-left')));
+                    if (width > options.maxwidth)
                         options.width = options.maxwidth;
                 }
                 if (options.width=='auto') {
                     text_cnt.height(Math.max(text.height(), icon_height) + ((check.length>0) ? (check.height() + parseInt(check.css('margin-top'))) : 0));
                     body.height(parseInt(text_cnt.css('height')) + parseInt(footer.css('height')));
-                    window.setSize(text.position().left + text.width() + parseInt(text_cnt.css('padding-right')),
-                        parseInt(body.css('height')) + parseInt(header.css('height')));
+                    var span_el = check.find('span');
+                    var width = !Common.UI.isRTL() ?
+                        (Math.max(text.width(), span_el.length>0 ? span_el.position().left + span_el.width() : 0) + text.position().left + parseInt(text_cnt.css('padding-right'))) :
+                        (parseInt(text_cnt.css('padding-right')) + icon_width + parseInt(text_cnt.css('padding-left')) +
+                            (Math.max(text.width(), check.length>0 ? $(check).find('.checkbox-indeterminate').outerWidth(true) : 0)));
+                    window.setSize(width, parseInt(body.css('height')) + parseInt(header.css('height')));
                 } else {
                     text.css('white-space', 'normal');
                     window.setWidth(options.width);
@@ -499,7 +525,7 @@ define([
                     body.height(parseInt(text_cnt.css('height')) + parseInt(footer.css('height')));
                     window.setHeight(parseInt(body.css('height')) + parseInt(header.css('height')));
                 }
-                if (text.height() < icon_height-10)
+                if (text.height() < icon_height/2)
                     text.css({'vertical-align': 'baseline', 'line-height': icon_height+'px'});
             }
 
@@ -605,7 +631,7 @@ define([
                         if (typeof(b) == 'object') {
                             if (b.value !== undefined)
                                 newBtns[b.value] = {text: b.caption, cls: 'custom' + ((b.primary || options.primary==b.value) ? ' primary' : '')};
-                        } else {
+                        } else if (b!==undefined) {
                             newBtns[b] = {text: (b=='custom') ? options.customButtonText : arrBtns[b], cls: (options.primary==b || _.indexOf(options.primary, b)>-1) ? 'primary' : ''};
                             if (b=='custom')
                                 newBtns[b].cls += ' custom';
@@ -657,7 +683,6 @@ define([
                     this.$window.find('.header').on('mousedown', this.binding.dragStart);
                     this.$window.find('.tool.close').on('click', _.bind(doclose, this));
                     this.$window.find('.tool.help').on('click', _.bind(dohelp, this));
-
                     if (!this.initConfig.modal)
                         Common.Gateway.on('processmouse', _.bind(_onProcessMouse, this));
                 } else {
@@ -741,6 +766,10 @@ define([
                 }
 
                 $(document).on('keydown.' + this.cid, this.binding.keydown);
+                if(this.initConfig.automove){
+                    this.binding.windowresize = _.bind(_onResizeMove, this);
+                    $(window).on('resize', this.binding.windowresize);
+                }
 
                 var me = this;
 
@@ -792,6 +821,7 @@ define([
 
             close: function(suppressevent) {
                 $(document).off('keydown.' + this.cid);
+                this.initConfig.automove && $(window).off('resize', this.binding.windowresize);
                 if ( this.initConfig.header ) {
                     this.$window.find('.header').off('mousedown', this.binding.dragStart);
                 }
@@ -837,6 +867,7 @@ define([
 
             hide: function() {
                 $(document).off('keydown.' + this.cid);
+                this.initConfig.automove && $(window).off('resize', this.binding.windowresize);
                 if (this.$window) {
                     if (this.initConfig.modal) {
                         var mask = _getMask(),

@@ -9,13 +9,17 @@
     align-items: center;
 
     svg {
-        margin-right: 8px;
+        .margin-right-8();
+
         .rb-circle {
+            fill: @background-normal-ie;
             fill: @background-normal;
+            stroke: @border-regular-control-ie;
             stroke: @border-regular-control;
         }
 
         .rb-check-mark {
+            fill: @text-normal-ie;
             fill: @text-normal;
         }
     }
@@ -32,6 +36,7 @@
 
     &.disabled, &:disabled {
         svg, span {
+            opacity: @component-disabled-opacity-ie;
             opacity: @component-disabled-opacity;
             pointer-events: none;
         }

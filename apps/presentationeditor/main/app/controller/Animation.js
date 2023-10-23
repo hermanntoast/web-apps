@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  Animation.js
  *
@@ -117,7 +116,7 @@ define([
         onApiCountPages: function (count) {
             if (this._state.no_slides !== (count<=0)) {
                 this._state.no_slides = (count<=0);
-                this.lockToolbar(PE.enumLock.noSlides, this._state.no_slides);
+                this.lockToolbar(Common.enumLock.noSlides, this._state.no_slides);
             }
         },
 
@@ -141,12 +140,12 @@ define([
         onAnimPreviewStarted: function () {
 
             this._state.playPreview = true;
-            this.view.btnPreview.setIconCls('toolbar__icon animation-preview-stop');
+            this.view.btnPreview.setIconCls('toolbar__icon btn-animation-preview-stop');
         },
         onAnimPreviewFinished: function ()
         {
             this._state.playPreview = false;
-            this.view.btnPreview.setIconCls('toolbar__icon animation-preview-start');
+            this.view.btnPreview.setIconCls('toolbar__icon btn-animation-preview-start');
         },
 
         onParameterClick: function (value, toggleGroup) {
@@ -154,6 +153,10 @@ define([
                 if(toggleGroup=='animateeffects') {
                     this.AnimationProperties.asc_putSubtype(value);
                     this.api.asc_SetAnimationProperties(this.AnimationProperties);
+                }
+                else if(toggleGroup=='custompath') {
+                    var groupName = _.findWhere(this.EffectGroups, {value: AscFormat.PRESET_CLASS_PATH}).id;
+                    this.addNewEffect(AscFormat.MOTION_CUSTOM_PATH, AscFormat.PRESET_CLASS_PATH, groupName,true, value);
                 }
                 else {
                     var groupName = _.findWhere(this.EffectGroups, {value: this._state.EffectGroup}).id;
@@ -185,6 +188,10 @@ define([
             var type = record.get('value');
             var group = _.findWhere(this.EffectGroups, {id: record.get('group')}).value;
             this.addNewEffect(type, group, record.get('group'), false);
+            if (group===AscFormat.PRESET_CLASS_PATH && type===AscFormat.MOTION_CUSTOM_PATH) {
+                Common.Utils.lockControls(Common.enumLock.noAnimation, false, {array: [this.view.btnParameters]});
+                Common.Utils.lockControls(Common.enumLock.noAnimationParam, false, {array: [this.view.btnParameters]});
+            }
         },
 
         addNewEffect: function (type, group, groupName, replace, parametr, preview) {
@@ -281,7 +288,8 @@ define([
             }
         },
 
-        onRepeatComboOpen: function(needfocus, combo) {
+        onRepeatComboOpen: function(needfocus, combo, e, params) {
+            if (params && params.fromKeyDown) return;
             _.delay(function() {
                 var input = $('input', combo.cmpEl).select();
                 if (needfocus) input.focus();
@@ -326,7 +334,13 @@ define([
 
                 var group = _.findWhere(this.EffectGroups, {id: record.get('group')});
                 group = group ? group.value : undefined;
-                this.addNewEffect(type, group, record.get('group'),this._state.Effect != AscFormat.ANIM_PRESET_NONE);
+                var prevEffect = this._state.Effect;
+                this._state.Effect = undefined;
+                this.addNewEffect(type, group, record.get('group'),prevEffect != AscFormat.ANIM_PRESET_NONE);
+                if (group===AscFormat.PRESET_CLASS_PATH && type===AscFormat.MOTION_CUSTOM_PATH) {
+                    Common.Utils.lockControls(Common.enumLock.noAnimation, false, {array: [this.view.btnParameters]});
+                    Common.Utils.lockControls(Common.enumLock.noAnimationParam, false, {array: [this.view.btnParameters]});
+                }
             }
         },
 
@@ -537,25 +551,25 @@ define([
 
         setLocked: function() {
             if (this._state.noGraphic != undefined)
-                this.lockToolbar(PE.enumLock.noGraphic, this._state.noGraphic);
+                this.lockToolbar(Common.enumLock.noGraphic, this._state.noGraphic);
             if (this._state.noAnimation != undefined)
-                this.lockToolbar(PE.enumLock.noAnimation, this._state.noAnimation);
+                this.lockToolbar(Common.enumLock.noAnimation, this._state.noAnimation);
             if (this._state.noAnimationParam != undefined)
-                this.lockToolbar(PE.enumLock.noAnimationParam, this._state.noAnimationParam);
+                this.lockToolbar(Common.enumLock.noAnimationParam, this._state.noAnimationParam);
             if (this._state.noTriggerObjects != undefined)
-                this.lockToolbar(PE.enumLock.noTriggerObjects, this._state.noTriggerObjects);
+                this.lockToolbar(Common.enumLock.noTriggerObjects, this._state.noTriggerObjects);
             if (this._state.noMoveAnimationLater != undefined)
-                this.lockToolbar(PE.enumLock.noMoveAnimationLater, this._state.noMoveAnimationLater);
+                this.lockToolbar(Common.enumLock.noMoveAnimationLater, this._state.noMoveAnimationLater);
             if (this._state.noMoveAnimationEarlier != undefined)
-                this.lockToolbar(PE.enumLock.noMoveAnimationEarlier, this._state.noMoveAnimationEarlier);
+                this.lockToolbar(Common.enumLock.noMoveAnimationEarlier, this._state.noMoveAnimationEarlier);
             if (this._state.noAnimationPreview != undefined)
-                this.lockToolbar(PE.enumLock.noAnimationPreview, this._state.noAnimationPreview);
+                this.lockToolbar(Common.enumLock.noAnimationPreview, this._state.noAnimationPreview);
             if (this._state.noAnimationRepeat != undefined)
-                this.lockToolbar(PE.enumLock.noAnimationRepeat, this._state.noAnimationRepeat);
+                this.lockToolbar(Common.enumLock.noAnimationRepeat, this._state.noAnimationRepeat);
             if (this._state.noAnimationDuration != undefined)
-                this.lockToolbar(PE.enumLock.noAnimationDuration, this._state.noAnimationDuration);
+                this.lockToolbar(Common.enumLock.noAnimationDuration, this._state.noAnimationDuration);
             if (this._state.timingLock != undefined)
-                this.lockToolbar(PE.enumLock.timingLock, this._state.timingLock);
+                this.lockToolbar(Common.enumLock.timingLock, this._state.timingLock);
         }
 
     }, PE.Controllers.Animation || {}));

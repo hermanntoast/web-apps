@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  PivotTable.js
  *
@@ -87,6 +86,7 @@ define([
 
             Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
             Common.NotificationCenter.on('api:disconnect', _.bind(this.SetDisabled, this));
+            Common.NotificationCenter.on('more:toggle', _.bind(this.onMoreToggle, this));
         },
 
         setConfig: function (config) {
@@ -180,9 +180,10 @@ define([
             Common.NotificationCenter.trigger('edit:complete', this);
         },
 
-        onRefreshClick: function(btn, opts){
+        onRefreshClick: function(type){
             if (this.api) {
-                this._originalProps.asc_refresh(this.api);
+                if(type == 'current') this._originalProps.asc_refresh(this.api);
+                else if(type == 'all') this.api.asc_refreshAllPivots();
             }
             Common.NotificationCenter.trigger('edit:complete', this);
         },
@@ -354,32 +355,97 @@ define([
             var self = this,
                 styles = this.view.pivotStyles;
             this._isTemplatesChanged = true;
-
             var count = styles.menuPicker.store.length;
+
             if (count>0 && count==Templates.length) {
                 var data = styles.menuPicker.dataViewItems;
+                var findDataViewItem = function(template) {
+                    for(var i = 0; i < data.length; i++) {
+                        if(data[i].model.get('name') && data[i].model.get('name') === template.asc_getName()) return data[i];
+                        else if(data[i].model.get('caption') === template.asc_getDisplayName()) return data[i];
+                    }
+                    return undefined;
+                };
+
                 data && _.each(Templates, function(template, index){
                     var img = template.asc_getImage();
-                    data[index].model.set('imageUrl', img, {silent: true});
-                    $(data[index].el).find('img').attr('src', img);
+                    var dataViewItem = findDataViewItem(template);
+                    dataViewItem && dataViewItem.model.set('imageUrl', img, {silent: true});
+                    dataViewItem && $(dataViewItem.el).find('img').attr('src', img);
                 });
                 styles.fieldPicker.store.reset(styles.fieldPicker.store.models);
             } else {
                 styles.menuPicker.store.reset([]);
-                var arr = [];
-                _.each(Templates, function(template){
-                    arr.push({
+                var templates = [];
+                var groups = [
+                    {id: 'menu-table-group-custom',    caption: self.view.txtGroupPivot_Custom, templates: []},
+                    {id: 'menu-table-group-light',     caption: self.view.txtGroupPivot_Light,  templates: []},
+                    {id: 'menu-table-group-medium',    caption: self.view.txtGroupPivot_Medium, templates: []},
+                    {id: 'menu-table-group-dark',      caption: self.view.txtGroupPivot_Dark,   templates: []},
+                    {id: 'menu-table-group-no-name',   caption: '&nbsp',                        templates: []},
+                ];
+                _.each(Templates, function(template, index){
+                    var tip = template.asc_getDisplayName(),
+                        groupItem = '',
+                        lastWordInTip = null;
+                    
+                    if (template.asc_getType()==0) {
+                        var arr = tip.split(' ');
+                        lastWordInTip = arr.pop();
+                            
+                        if(template.asc_getName() === null){
+                            groupItem = 'menu-table-group-light';
+                        }
+                        else {
+                            if(arr.length > 0){
+                                groupItem = 'menu-table-group-' + arr[arr.length - 1].toLowerCase();
+                            }
+                            if(groups.some(function(item) {return item.id === groupItem;}) == false) {
+                                groupItem = 'menu-table-group-no-name';
+                            }
+                        }
+                        arr = 'txtTable_' + arr.join('');
+                        tip = self.view[arr] ? self.view[arr] + ' ' + lastWordInTip : tip;
+                        lastWordInTip = parseInt(lastWordInTip);
+                    }
+                    else {
+                        groupItem = 'menu-table-group-custom'
+                    }  
+                    groups.filter(function(item){ return item.id == groupItem; })[0].templates.push({
                         id          : Common.UI.getId(),
                         name        : template.asc_getName(),
                         caption     : template.asc_getDisplayName(),
                         type        : template.asc_getType(),
                         imageUrl    : template.asc_getImage(),
+                        group       : groupItem, 
                         allowSelected : true,
                         selected    : false,
-                        tip         : template.asc_getDisplayName()
+                        tip         : tip,
+                        numInGroup  : (lastWordInTip != null && !isNaN(lastWordInTip) ? lastWordInTip : null)
                     });
                 });
-                styles.menuPicker.store.add(arr);
+
+                var sortFunc = function(a, b) {
+                    var aNum = a.numInGroup,
+                        bNum = b.numInGroup;
+                    return aNum - bNum;
+                };
+
+                groups[1].templates.sort(sortFunc);
+                groups[2].templates.sort(sortFunc);
+                groups[3].templates.sort(sortFunc);
+
+                groups = groups.filter(function(item, index){
+                    return item.templates.length > 0
+                });
+                
+                groups.forEach(function(item){
+                    templates = templates.concat(item.templates);
+                    delete item.templates;
+                });
+                
+                styles.groups.reset(groups);
+                styles.menuPicker.store.reset(templates);
             }
         },
 
@@ -397,9 +463,9 @@ define([
 
             var pivotInfo = info.asc_getPivotTableInfo();
 
-            Common.Utils.lockControls(SSE.enumLock.noPivot, !pivotInfo, {array: this.view.lockedControls});
-            Common.Utils.lockControls(SSE.enumLock.pivotLock, pivotInfo && (info.asc_getLockedPivotTable()===true), {array: this.view.lockedControls});
-            Common.Utils.lockControls(SSE.enumLock.editPivot, !!pivotInfo, {array: this.view.btnsAddPivot});
+            Common.Utils.lockControls(Common.enumLock.noPivot, !pivotInfo, {array: this.view.lockedControls});
+            Common.Utils.lockControls(Common.enumLock.pivotLock, pivotInfo && (info.asc_getLockedPivotTable()===true), {array: this.view.lockedControls});
+            Common.Utils.lockControls(Common.enumLock.editPivot, !!pivotInfo, {array: this.view.btnsAddPivot});
 
             if (pivotInfo)
                 this.ChangeSettings(pivotInfo);
@@ -424,6 +490,17 @@ define([
                 resolve();
             })).then(function () {
             });
+        },
+
+        onMoreToggle: function(btn, state, e) {
+            if (this.view && this.view.toolbar && this.view.toolbar.isTabActive('pivot') && state) {
+                var styles = this.view.pivotStyles;
+                if (styles && styles.needFillComboView &&  styles.menuPicker.store.length > 0 && styles.rendered){
+                    var styleRec;
+                    if (this._state.TemplateName) styleRec = styles.menuPicker.store.findWhere({name: this._state.TemplateName});
+                    styles.fillComboView((styleRec) ? styleRec : styles.menuPicker.store.at(0), true);
+                }
+            }
         },
 
         strSheet        : 'Sheet'

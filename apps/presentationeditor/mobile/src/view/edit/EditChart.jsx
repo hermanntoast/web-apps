@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
 import {CustomColorPicker, ThemeColorPalette} from "../../../../../common/mobile/lib/component/ThemeColorPalette.jsx";
 import { f7 } from 'framework7-react';
+import { Swiper, SwiperSlide } from 'swiper/react';
 
 const PageCustomFillColor = props => {
     const { t } = useTranslation();
@@ -153,6 +154,8 @@ const PageChartType = props => {
     const { t } = useTranslation();
     const storeChartSettings = props.storeChartSettings;
     const types = storeChartSettings.types;
+    const countSlides = Math.floor(types.length / 3);
+    const arraySlides = Array(countSlides).fill(countSlides);
     const storeFocusObjects = props.storeFocusObjects;
     const chartProperties = storeFocusObjects.chartObject && storeFocusObjects.chartObject.get_ChartProperties();
     const curType = chartProperties && chartProperties.getType();
@@ -163,23 +166,35 @@ const PageChartType = props => {
 
             <div id={"edit-chart-type"} className="page-content no-padding-top dataview">
                 <div className="chart-types">
-                    {types.map((row, rowIndex) => {
-                        return (
-                            <ul className="row" key={`row-${rowIndex}`}>
-                                {row.map((type, index)=>{
-                                    return(
-                                        <li key={`${rowIndex}-${index}`}
-                                            className={curType === type.type ? ' active' : ''}
-                                            onClick={() => {props.onType(type.type)}}>
-                                            <div className={'thumb'}
-                                                style={{backgroundImage: `url('resources/img/charts/${type.thumb}')`}}>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                        )
-                    })}
+                    {types && types.length ? (
+                        <Swiper>
+                            {arraySlides.map((_, indexSlide) => {
+                                let typesSlide = types.slice(indexSlide * 3, (indexSlide * 3) + 3);
+
+                                return (
+                                    <SwiperSlide key={indexSlide}>
+                                        {typesSlide.map((row, rowIndex) => {
+                                            return (
+                                                <ul className="row" key={`row-${rowIndex}`}>
+                                                    {row.map((type, index) => {
+                                                        return (
+                                                            <li key={`${rowIndex}-${index}`}
+                                                                className={curType === type.type ? ' active' : ''}
+                                                                onClick={() => {props.onType(type.type)}}>
+                                                                <div className={'thumb'}
+                                                                    style={{backgroundImage: `url('resources/img/charts/${type.thumb}')`}}>
+                                                                </div>
+                                                            </li>
+                                                        )
+                                                    })}
+                                                </ul>
+                                            )
+                                        })}
+                                    </SwiperSlide>
+                                )
+                            })}
+                        </Swiper>
+                    ) : null}
                 </div>
             </div>
         </Page>
@@ -271,7 +286,7 @@ const PageChartBorder = props => {
                                    onRangeChanged={(value) => {props.onBorderSize(borderSizeTransform.sizeByIndex(value))}}
                             ></Range>
                         </div>
-                        <div slot='inner-end' style={{minWidth: '60px', textAlign: 'right'}}>
+                        <div className='range-number' slot='inner-end'>
                             {stateTextBorderSize + ' ' + Common.Utils.Metric.getMetricName(Common.Utils.Metric.c_MetricUnits.pt)}
                         </div>
                     </ListItem>
@@ -336,7 +351,7 @@ const PageReorder = props => {
 
     return (
         <Page>
-            <Navbar title={_t.textReorder} backLink={_t.textBack}>
+            <Navbar title={t('View.Edit.textArrange')} backLink={_t.textBack}>
                 {Device.phone &&
                     <NavRight>
                         <Link sheetClose='#edit-sheet'>
@@ -429,7 +444,7 @@ const EditChart = props => {
                     onBorderColor: props.onBorderColor,
                     onBorderSize: props.onBorderSize
                 }}></ListItem>
-                <ListItem title={t('View.Edit.textReorder')} link='/edit-chart-reorder/' routeProps={{
+                <ListItem title={t('View.Edit.textArrange')} link='/edit-chart-reorder/' routeProps={{
                     onReorder: props.onReorder
                 }}></ListItem>
                  <ListItem title={t('View.Edit.textAlign')} link="/edit-chart-align/" routeProps={{

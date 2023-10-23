@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  HyperlinkSettingsDialog.js
  *
@@ -58,6 +57,7 @@ define([
             width: 350,
             style: 'min-width: 230px;',
             cls: 'modal-dlg',
+            id: 'window-hyperlink',
             buttons: ['ok', 'cancel']
         },
 
@@ -69,8 +69,8 @@ define([
             this.template = [
                 '<div class="box" style="height: 319px;">',
                     '<div class="input-row" style="margin-bottom: 10px;">',
-                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-external" style="border-top-right-radius: 0;border-bottom-right-radius: 0;">', this.textExternal,'</button>',
-                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-internal" style="border-top-left-radius: 0;border-bottom-left-radius: 0;border-left-width: 0;margin-left: -1px;">', this.textInternal,'</button>',
+                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-external">', this.textExternal,'</button>',
+                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-internal">', this.textInternal,'</button>',
                     '</div>',
                     '<div id="id-external-link">',
                         '<div class="input-row">',
@@ -98,6 +98,7 @@ define([
             this.options.tpl = _.template(this.template)(this.options);
             this.api = this.options.api;
             this._originalProps = null;
+            this.urlType = AscCommon.c_oAscUrlType.Invalid;
 
             Common.UI.Window.prototype.initialize.call(this, this.options);
         },
@@ -135,9 +136,8 @@ define([
                     var trimmed = $.trim(value);
                     if (trimmed.length>2083) return me.txtSizeLimit;
 
-                    var urltype = me.api.asc_getUrlType(trimmed);
-                    me.isEmail = (urltype==2);
-                    return (urltype>0) ? true : me.txtNotUrl;
+                    me.urlType = me.api.asc_getUrlType(trimmed);
+                    return (me.urlType!==AscCommon.c_oAscUrlType.Invalid) ? true : me.txtNotUrl;
                 }
             });
             me.inputUrl._input.on('input', function (e) {
@@ -377,8 +377,8 @@ define([
             if (type==c_oHyperlinkType.WebLink) {//WebLink
                 var url     = $.trim(me.inputUrl.getValue());
 
-                if (! /(((^https?)|(^ftp)):\/\/)|(^mailto:)/i.test(url) )
-                    url = ( (me.isEmail) ? 'mailto:' : 'http://' ) + url;
+                if (me.urlType!==AscCommon.c_oAscUrlType.Unsafe && ! /(((^https?)|(^ftp)):\/\/)|(^mailto:)/i.test(url) )
+                    url = ( (me.urlType==AscCommon.c_oAscUrlType.Email) ? 'mailto:' : 'http://' ) + url;
 
                 url = url.replace(new RegExp("%20",'g')," ");
                 props.put_Value(url);

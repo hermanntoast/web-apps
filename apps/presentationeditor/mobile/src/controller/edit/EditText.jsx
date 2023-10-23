@@ -8,6 +8,26 @@ import { EditText } from '../../view/edit/EditText';
 class EditTextController extends Component {
     constructor (props) {
         super(props);
+
+        this.onApiImageLoaded = this.onApiImageLoaded.bind(this);
+    }
+
+    componentDidMount() {
+        const api = Common.EditorApi.get();
+        api.asc_registerCallback('asc_onBulletImageLoaded', this.onApiImageLoaded);
+    }
+
+    componentWillUnmount() {
+        const api = Common.EditorApi.get();
+        api.asc_unregisterCallback('asc_onBulletImageLoaded', this.onApiImageLoaded);
+    }
+
+    closeModal() {
+        if ( Device.phone ) {
+            f7.sheet.close('#edit-sheet', true);
+        } else {
+            f7.popover.close('#edit-popover');
+        }
     }
 
     toggleBold(value) {
@@ -204,9 +224,9 @@ class EditTextController extends Component {
         const api = Common.EditorApi.get();
         
         if ('superscript' === type) {
-            api.put_TextPrBaseline(value ? 1 : 0);
+            api.put_TextPrBaseline(value ? Asc.vertalign_SuperScript : Asc.vertalign_Baseline);
         } else {
-            api.put_TextPrBaseline(value ? 2 : 0);
+            api.put_TextPrBaseline(value ? Asc.vertalign_SubScript : Asc.vertalign_Baseline);
         }   
     }
 
@@ -233,6 +253,53 @@ class EditTextController extends Component {
     onNumber(type) {
         const api = Common.EditorApi.get();
         api.put_ListType(1, parseInt(type));
+    }
+
+    getIconsBulletsAndNumbers(arrayElements, type) {
+        const api = Common.EditorApi.get();
+        const arr = [];
+
+        arrayElements.forEach( item => {
+            arr.push({
+                numberingInfo: {bullet: item.numberingInfo==='undefined' ? undefined : JSON.parse(item.numberingInfo)},
+                divId: item.id
+            });
+        });
+        if (api) api.SetDrawImagePreviewBulletForMenu(arr, type);
+    }
+
+    onApiImageLoaded(bullet) {
+        const api = Common.EditorApi.get();
+        const selectedElements = api.getSelectedElements();
+        const imageProp = {id: bullet.asc_getImageId(), redraw: true};
+
+        let selectItem = null;
+
+        if(selectedElements) {
+            for (var i = 0; i< selectedElements.length; i++) {
+                if (Asc.c_oAscTypeSelectElement.Paragraph == selectedElements[i].get_ObjectType()) {
+                    selectItem = selectedElements[i].get_ObjectValue();
+                    break;
+                }
+            }
+        }
+
+        bullet.asc_fillBulletImage(imageProp.id);
+        selectItem.asc_putBullet(bullet);
+        api.paraApply(selectItem);
+        this.closeModal();
+    }
+
+    onImageSelect() {
+        (new Asc.asc_CBullet()).asc_showFileDialog();
+    }
+
+    onInsertByUrl(value) {
+        var checkUrl = value.replace(/ /g, '');
+        
+        if(checkUrl) {
+            (new Asc.asc_CBullet()).asc_putImageUrl(checkUrl);
+        }
     }
 
     onLineSpacing(value) {
@@ -263,6 +330,9 @@ class EditTextController extends Component {
                 changeLetterSpacing={this.changeLetterSpacing}
                 onBullet={this.onBullet}
                 onNumber={this.onNumber}
+                getIconsBulletsAndNumbers={this.getIconsBulletsAndNumbers}
+                onImageSelect={this.onImageSelect}
+                onInsertByUrl={this.onInsertByUrl}
                 onLineSpacing={this.onLineSpacing}
             />
         )

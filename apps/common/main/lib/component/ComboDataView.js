@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  ComboDataView.js
  *
@@ -56,6 +55,7 @@ define([
             itemWidth           : 80,
             itemHeight          : 40,
             menuMaxHeight       : 300,
+            autoWidth           : false,
             enableKeyEvents     : false,
             beforeOpenHandler   : null,
             additionalMenuItems  : null,
@@ -87,11 +87,13 @@ define([
             this.menuMaxHeight = this.options.menuMaxHeight;
             this.beforeOpenHandler = this.options.beforeOpenHandler;
             this.showLast    = this.options.showLast;
+            this.wrapWidth   = 0;
             this.rootWidth   = 0;
             this.rootHeight  = 0;
             this.rendered    = false;
             this.needFillComboView = false;
-            this.minWidth = this.options.minWidth;
+            this.minWidth    = this.options.minWidth;
+            this.autoWidth   = this.initAutoWidth = (Common.Utils.isIE10 || Common.Utils.isIE11) ? false : this.options.autoWidth;
             this.delayRenderTips = this.options.delayRenderTips || false;
             this.itemTemplate   = this.options.itemTemplate || _.template([
                 '<div class="style" id="<%= id %>">',
@@ -112,7 +114,7 @@ define([
             this.openButton = new Common.UI.Button({
                 cls: 'open-menu',
                 menu: new Common.UI.Menu({
-                    menuAlign: 'tl-tl',
+                    menuAlign: Common.UI.isRTL() ? 'tr-tr' : 'tl-tl',
                     offset: [0, 3],
                     items: [
                         {template: _.template('<div class="menu-picker-container"></div>')}
@@ -208,10 +210,12 @@ define([
                 me.fieldPicker.el.addEventListener('contextmenu', _.bind(me.onPickerComboContextMenu, me), false);
                 me.menuPicker.el.addEventListener('contextmenu', _.bind(me.onPickerComboContextMenu, me), false);
 
+                Common.NotificationCenter.on('more:toggle', _.bind(this.onMoreToggle, this));
+
                 me.onResize();
 
                 me.rendered = true;
-
+                
                 me.trigger('render:after', me);
             }
             if (this.disabled) {
@@ -221,8 +225,26 @@ define([
             return this;
         },
 
+        onMoreToggle: function(btn, state) {
+            if(state) {
+                this.checkSize();
+            }
+        },
+
         checkSize: function() {
             if (this.cmpEl && this.cmpEl.is(':visible')) {
+                if(this.autoWidth && this.menuPicker.store.length > 0) {
+                    var wrapWidth = this.$el.width();
+                    if(wrapWidth != this.wrapWidth || this.needFillComboView){
+                        this.wrapWidth = wrapWidth;
+                        this.autoChangeWidth();
+
+                        var picker = this.menuPicker;
+                        var record = picker.getSelectedRec();
+                        this.fillComboView(record || picker.store.at(0), !!record, true);                   
+                    }
+                }
+                
                 var me = this,
                     width  = this.cmpEl.width(),
                     height = this.cmpEl.height();
@@ -265,7 +287,46 @@ define([
             if (!this.isSuspendEvents)
                 this.trigger('resize', this);
         },
+    
+        autoChangeWidth: function() {
+            if(this.menuPicker.dataViewItems[0]){
+                var wrapEl = this.$el;
+                var wrapWidth = wrapEl.width();
 
+                var itemEl = this.menuPicker.dataViewItems[0].$el;
+                var itemWidth = this.itemWidth + parseFloat(itemEl.css('padding-left')) + parseFloat(itemEl.css('padding-right')) + 2 * parseFloat(itemEl.css('border-width'));
+                var itemMargins = parseFloat(itemEl.css('margin-left')) + parseFloat(itemEl.css('margin-right'));
+
+                var fieldPickerEl = this.fieldPicker.$el;
+                var fieldPickerPadding = parseFloat(fieldPickerEl.css(Common.UI.isRTL() ? 'padding-left' : 'padding-right'));
+                var fieldPickerBorder = parseFloat(fieldPickerEl.css('border-width'));
+                var dataviewPaddings = parseFloat(this.fieldPicker.$el.find('.dataview').css('padding-left')) + parseFloat(this.fieldPicker.$el.find('.dataview').css('padding-right'));
+
+                var cmbDataViewEl = this.cmpEl;
+                var cmbDataViewPaddings = parseFloat(cmbDataViewEl.css('padding-left')) + parseFloat(cmbDataViewEl.css('padding-right'));
+
+                var itemsCount =  Math.floor((wrapWidth - fieldPickerPadding - dataviewPaddings - 2 * fieldPickerBorder - cmbDataViewPaddings) / (itemWidth + itemMargins));
+                if(itemsCount > this.store.length) 
+                    itemsCount = this.store.length;
+
+                var widthCalc = Math.ceil((itemsCount * (itemWidth + itemMargins) + fieldPickerPadding + dataviewPaddings + 2 * fieldPickerBorder + cmbDataViewPaddings) * 10) / 10;
+                
+                var maxWidth = parseFloat(cmbDataViewEl.css('max-width'));
+                if(widthCalc > maxWidth)
+                    widthCalc = maxWidth;
+                    
+                cmbDataViewEl.css('width', widthCalc);
+
+                if(this.initAutoWidth) {
+                    this.initAutoWidth = false;
+                    cmbDataViewEl.css('position', 'absolute');
+                    cmbDataViewEl.css('top', '50%');
+                    cmbDataViewEl.css('bottom', '50%');
+                    cmbDataViewEl.css('margin', 'auto 0');
+                }
+            }
+        },
+        
         onBeforeShowMenu: function(e) {
             var me = this;
 

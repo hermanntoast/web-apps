@@ -2,6 +2,7 @@
 @import '../../../../common/mobile/resources/less/_mixins.less';
 @import '../../../../common/mobile/resources/less/colors-table.less';
 @import '../../../../common/mobile/resources/less/colors-table-dark.less';
+@import './app.rtl.less';
 
 @brandColor: var(--brand-word);
 
@@ -68,19 +69,30 @@
     }
 }
 
+.page.page-with-subnavbar {
+    .page-content, &.page-with-logo .page-content {
+        --f7-page-subnavbar-offset: 0;
+        padding-top: 0;
+    }
+}
+
+.page.editor > .page-content {
+    --f7-page-navbar-offset: 0;
+}
+
 // Review
 .page-review {
     --f7-toolbar-link-color: @brandColor;
+    
     .toolbar {
         background-color: @background-secondary;
         box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
         position: absolute;
-        #btn-reject-change {
-            margin-left: 20px;
-        }
+
         #btn-goto-change {
             margin-left: 10px;
         }
+
         .next-prev {
             .link {
                 width: 44px;
@@ -131,19 +143,20 @@
    }
 }
 
+// Swiper
 .swiper-container {
-    height: 100%;
+    // height: 100%;
     .swiper-pagination-bullet-active{
         background: @black;
     }
-    .multilevels {
-        li:not(:first-child){ 
-            border:none;
-            .item-content {
-                min-height: 70px;
-            }
-        }
-    }
+    // .multilevels {
+    //     li:not(:first-child){ 
+    //         border:none;
+    //         .item-content {
+    //             min-height: 70px;
+    //         }
+    //     }
+    // }
 }
 
 // Skeleton table
@@ -160,16 +173,97 @@
     height: 50px;
 }
 
-// Picker 
+// Table of Contents
 
-.row-picker {
-    .col-50 {
-        color: @text-secondary;
+.item-contents {
+    padding: 0 16px;
+}
+
+.style-toc {
+    &__image {
+        margin: 0 15px;
+        max-height: 150px;
+        overflow: hidden;
+        &_active {
+            border: 1.5px solid @brandColor;
+        }
+    }
+}
+
+.block > .block-title:first-child, .list > .block-title:first-child {
+    margin-top: var(--f7-block-margin-vertical);
+    margin-left: calc(var(--f7-block-padding-horizontal) + var(--f7-safe-area-left)); 
+    margin-right: calc(var(--f7-block-padding-horizontal) + var(--f7-safe-area-right));
+}
+
+// Navigation 
+
+.empty-screens {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100%;
+    &__icon {
+        margin-bottom: 48px;
+    }
+    &__text {
+        margin: 0 32px;
+        text-align: center;
+        color: @text-normal;
+    }
+}
+
+.swipe-container {
+    display: flex;
+    justify-content: center;
+    height: 40px;
+    background-color: @background-primary;
+    .icon-swipe {
+        margin-top: 8px;
+        width: 40px;
+        height: 4px;
+        background: @background-menu-divider;
+        border-radius: 2px;
+    }
+}
+
+.sheet-modal.navigation-sheet {
+    box-shadow: 0px -2px 20px rgba(0, 0, 0, 0.2);
+    .sheet-modal-inner {
+        background: @background-tertiary;
+        overflow-y: auto;
+    }
+    .swipe-container {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+    &.sheet-modal-bottom:before, &.sheet-modal:not(.sheet-modal-top):before {
+        display: none;
+    }
+}
+
+.list.navigation-list {
+    margin-top: 72px;
+    .item-title {
+        color: @text-normal;
+    }
+}
+
+.navigation-sheet {
+    &__title {
+        position: fixed;
+        left: 0;
+        width: 100%;
+        z-index: 100;
+        top: 40px;
+        z-index: 1000;
     }
 }
 
 // Calendar
-
 .calendar {
     background-color: @background-secondary;
     .toolbar {
@@ -191,9 +285,12 @@
         color: @text-normal;
         font-size: 16px;
     }
-    .calendar-day-selected .calendar-day-number {
+    .calendar-day-selected .calendar-day-number, .calendar-day-today.calendar-day-selected .calendar-day-number {
         border: 1px solid transparent;
         background-color: @brandColor;
+        color: @fill-white;
+    }
+    .calendar-day-selected.calendar-day-weekend .calendar-day-number {
         color: @fill-white;
     }
     .calendar-day-today .calendar-day-number {
@@ -201,7 +298,7 @@
         background-color: transparent;
     }
     .calendar-day-weekend .calendar-day-number {
-       color: #D25252;
+        color: @text-secondary;
     }
     .calendar-day-number {
         color: @text-normal;
@@ -245,3 +342,43 @@
         border-top: 1px solid var(--background-menu-divider);
     }
 }
+
+.create-style-link {
+    .item-link .item-inner:before {
+        display: none;
+    }
+    .item-title {
+        color: @brandColor;
+    }
+}
+
+// FAB
+.fab {
+    z-index: 10000;
+    a {
+        background-color: @background-primary;
+        border-radius: 50%;
+
+        &:focus, &:focus-within, &:active, &.active-state {
+            background-color: @background-primary;
+        }
+    }
+}
+
+// Snackbar and FAB animation
+.snackbar-enter, .fab-enter {
+    opacity: 0;
+}
+.snackbar-enter-active, .fab-enter-active {
+    opacity: 1;
+    transition: opacity 300ms;
+}
+.snackbar-exit, .fab-exit {
+    opacity: 1;
+}
+.snackbar-exit-active, .fab-exit-active {
+    opacity: 0;
+    transition: opacity 300ms;
+}
+
+

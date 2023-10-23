@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  ImageSettings.js
  *
@@ -181,7 +180,18 @@ define([
             this.btnOriginalSize.on('click', _.bind(this.setOriginalSize, this));
 
             this.btnEditObject.on('click', _.bind(function(btn){
-                if (this.api) this.api.asc_startEditCurrentOleObject();
+                if (this.api) {
+                    var oleobj = this.api.asc_canEditTableOleObject(true);
+                    if (oleobj) {
+                        var oleEditor = DE.getController('Common.Controllers.ExternalOleEditor').getView('Common.Views.ExternalOleEditor');
+                        if (oleEditor) {
+                            oleEditor.setEditMode(true);
+                            oleEditor.show();
+                            oleEditor.setOleData(Asc.asc_putBinaryDataToFrameFromTableOleObject(oleobj));
+                        }
+                    } else
+                        this.api.asc_startEditCurrentOleObject();
+                }
                 this.fireEvent('editcomplete', this);
             }, this));
             this.btnFitMargins.on('click', _.bind(this.setFitMargins, this));
@@ -346,13 +356,14 @@ define([
 
                 var shapePicker = new Common.UI.DataViewShape({
                     el: $('#id-img-change-shape-menu'),
-                    itemTemplate: _.template('<div class="item-shape" id="<%= id %>"><svg width="20" height="20" class=\"icon\"><use xlink:href=\"#svg-icon-<%= data.shapeType %>\"></use></svg></div>'),
+                    itemTemplate: _.template('<div class="item-shape" id="<%= id %>"><svg width="20" height="20" class=\"icon uni-scale\"><use xlink:href=\"#svg-icon-<%= data.shapeType %>\"></use></svg></div>'),
                     groups: me.application.getCollection('ShapeGroups'),
                     parentMenu: me.btnChangeShape.menu,
                     restoreHeight: 652,
                     textRecentlyUsed: me.textRecentlyUsed,
                     recentShapes: recents ? JSON.parse(recents) : null,
-                    hideTextRect: true
+                    hideTextRect: true,
+                    hideLines: true
                 });
                 shapePicker.on('item:click', function(picker, item, record, e) {
                     if (me.api) {
@@ -389,12 +400,10 @@ define([
                 var fromgroup = props.get_FromGroup() || this._locked;
                 var control_props = this.api.asc_IsContentControl() ? this.api.asc_GetContentControlProperties() : null,
                     isPictureControl = !!control_props && (control_props.get_SpecificType()==Asc.c_oAscContentControlSpecificType.Picture) && !control_props.get_FormPr() || this._locked;
-                if (this._state.CanBeFlow!==value || this._state.FromGroup!==fromgroup || this._state.isPictureControl!==isPictureControl) {
-                    this.cmbWrapType.setDisabled(!value || fromgroup || isPictureControl);
-                    this._state.CanBeFlow=value;
-                    this._state.FromGroup=fromgroup;
-                    this._state.isPictureControl=isPictureControl;
-                }
+                this.cmbWrapType.setDisabled(!value || fromgroup || isPictureControl);
+                this._state.CanBeFlow=value;
+                this._state.FromGroup=fromgroup;
+                this._state.isPictureControl=isPictureControl;
 
                 value = props.get_Width();
                 if ( Math.abs(this._state.Width-value)>0.001 ) {
@@ -415,16 +424,16 @@ define([
                 if (this._state.isOleObject!==value) {
                     this.btnSelectImage.setVisible(!value);
                     this.btnEditObject.setVisible(value);
-                    this.btnRotate270.setDisabled(value);
-                    this.btnRotate90.setDisabled(value);
-                    this.btnFlipV.setDisabled(value);
-                    this.btnFlipH.setDisabled(value);
                     this._state.isOleObject=value;
                 }
+                this.btnRotate270.setDisabled(value || this._locked);
+                this.btnRotate90.setDisabled(value || this._locked);
+                this.btnFlipV.setDisabled(value || this._locked);
+                this.btnFlipH.setDisabled(value || this._locked);
 
                 if (this._state.isOleObject) {
                     var plugin = DE.getCollection('Common.Collections.Plugins').findWhere({guid: pluginGuid});
-                    this.btnEditObject.setDisabled(plugin===null || plugin ===undefined || this._locked);
+                    this.btnEditObject.setDisabled(!this.api.asc_canEditTableOleObject() && (plugin===null || plugin ===undefined) || this._locked);
                 } else {
                     this.btnSelectImage.setDisabled(pluginGuid===null || this._locked);
                 }

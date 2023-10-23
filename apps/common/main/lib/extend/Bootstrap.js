@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  Bootstrap.js
  *
@@ -128,8 +127,9 @@ function patchDropDownKeyDown(e) {
                  var mnu = $('> [role=menu]', li),
                     $subitems = mnu.find('> li:not(.divider):not(.disabled):visible > a'),
                     $dataviews = mnu.find('> li:not(.divider):not(.disabled):visible .dataview'),
+                    $palette = mnu.find('> li:not(.divider):not(.disabled):visible .theme-colorpalette.focused'),
                     $internal_menu = mnu.find('> li:not(.divider):not(.disabled):visible ul.internal-menu');
-                if ($subitems.length>0 && $dataviews.length<1 && $internal_menu.length<1)
+                if ($subitems.length>0 && $dataviews.length<1 && $internal_menu.length<1 && $palette.length<1)
                     ($subitems.index($subitems.filter(':focus'))<0) && $subitems.eq(0).focus();
             }, 250);
         }

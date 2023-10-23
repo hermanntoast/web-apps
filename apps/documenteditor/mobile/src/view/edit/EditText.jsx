@@ -1,11 +1,11 @@
 import React, {Fragment, useEffect, useState } from 'react';
 import {observer, inject} from "mobx-react";
-import {f7, Swiper, View, SwiperSlide, List, ListItem, Icon, Row, Button, Page, Navbar, NavRight, Segmented, BlockTitle, Link} from 'framework7-react';
+import { f7, View, List, ListItem, Icon, Button, Page, Navbar, NavRight, Segmented, BlockTitle, Link } from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
 import { ThemeColorPalette, CustomColorPicker } from '../../../../../common/mobile/lib/component/ThemeColorPalette.jsx';
 import HighlightColorPalette from '../../../../../common/mobile/lib/component/HighlightColorPalette.jsx';
-import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage';
+import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage.mjs';
 
 const PageFonts = props => {
     const isAndroid = Device.android;
@@ -185,126 +185,83 @@ const PageAdditionalFormatting = props => {
     )
 };
 
-const PageBullets = observer(props => {
-    const { t } = useTranslation();
-    const bulletArrays = [
-        [
-            {type: -1, thumb: ''},
-            {type: 1, thumb: 'bullet-01.png'},
-            {type: 2, thumb: 'bullet-02.png'},
-            {type: 3, thumb: 'bullet-03.png'}
-        ],
-        [
-            {type: 4, thumb: 'bullet-04.png'},
-            {type: 5, thumb: 'bullet-05.png'},
-            {type: 6, thumb: 'bullet-06.png'},
-            {type: 7, thumb: 'bullet-07.png'}
-        ]
-    ];
+const PageBullets = observer( props => {
     const storeTextSettings = props.storeTextSettings;
+    const bulletArrays = storeTextSettings.getBulletsList();
     const typeBullets = storeTextSettings.typeBullets;
+
+    useEffect(() => {
+        props.updateBulletsNumbers(0);
+        props.getIconsBulletsAndNumbers(bulletArrays, 0);
+    }, []);
     
     return(
         <View className='bullets dataview'>
-            {bulletArrays.map((bullets, index) => (
-                    <List className="row" style={{listStyle: 'none'}} key={'bullets-' + index}>
-                        {bullets.map((bullet) => (
-                            <ListItem key={'bullet-' + bullet.type} data-type={bullet.type} className={(bullet.type === typeBullets) && 
-                                (storeTextSettings.listType === 0 || storeTextSettings.listType === -1) ? 'active' : ''}
-                                onClick={() => {
-                                    storeTextSettings.resetBullets(bullet.type);
-                                    props.onBullet(bullet.type);
-                                }}>
-                                {bullet.thumb.length < 1 ?
-                                    <Icon className="thumb" style={{position: 'relative'}}>
-                                        <label>{t('Edit.textNone')}</label>
-                                    </Icon> :
-                                    <Icon className="thumb" style={{backgroundImage: `url('resources/img/bullets/${bullet.thumb}')`}}></Icon>
-                                }
-                            </ListItem>
-                        ))}
-                    </List>
-            ))}
+            <List className="row" style={{listStyle: 'none'}}>
+                {bulletArrays.map( bullet => (
+                    <ListItem key={'bullet-' + bullet.subtype} data-type={bullet.subtype} className={(bullet.subtype === typeBullets) ? 'active' : ''}
+                        onClick={() => {
+                            props.onBullet(bullet.numberingInfo);
+                        }}>
+                        <div id={bullet.id} className='item-marker'></div>
+                    </ListItem>
+                ))}
+            </List>
         </View>
     )
 });
 
-const PageNumbers = observer(props => {
-    const { t } = useTranslation();
-    const numberArrays = [
-        [
-            {type: -1, thumb: ''},
-            {type: 4, thumb: 'number-01.png'},
-            {type: 5, thumb: 'number-02.png'},
-            {type: 6, thumb: 'number-03.png'}
-        ],
-        [
-            {type: 1, thumb: 'number-04.png'},
-            {type: 2, thumb: 'number-05.png'},
-            {type: 3, thumb: 'number-06.png'},
-            {type: 7, thumb: 'number-07.png'}
-        ]
-    ];
-
+const PageNumbers = observer( props => {
     const storeTextSettings = props.storeTextSettings;
+    const numberArrays = storeTextSettings.getNumbersList();
     const typeNumbers = storeTextSettings.typeNumbers;
+
+    useEffect(() => {
+        props.updateBulletsNumbers(1);
+        props.getIconsBulletsAndNumbers(numberArrays, 1);
+    }, []);
     
-    return(
+    return (
         <View className='numbers dataview'>
-            {numberArrays.map((numbers, index) => (
-                <List className="row" style={{listStyle: 'none'}} key={'numbers-' + index}>
-                    {numbers.map((number) => (
-                        <ListItem key={'number-' + number.type} data-type={number.type} className={(number.type === typeNumbers) && 
-                            (storeTextSettings.listType === 1 || storeTextSettings.listType === -1) ? 'active' : ''}
-                            onClick={() => {
-                                storeTextSettings.resetNumbers(number.type);
-                                props.onNumber(number.type);
-                            }}>
-                            {number.thumb.length < 1 ?
-                                <Icon className="thumb" style={{position: 'relative'}}>
-                                    <label>{t('Edit.textNone')}</label>
-                                </Icon> :
-                                <Icon className="thumb" style={{backgroundImage: `url('resources/img/numbers/${number.thumb}')`}}></Icon>
-                            }
-                        </ListItem>
-                    ))}
-                </List>
-            ))}
+            <List className="row" style={{listStyle: 'none'}}>
+                {numberArrays.map( number => (
+                    <ListItem key={'number-' + number.subtype} data-type={number.subtype} className={(number.subtype === typeNumbers) ? 'active' : ''}
+                        onClick={() => {
+                            props.onNumber(number.numberingInfo);
+                        }}>
+                        <div id={number.id} className='item-number'></div>
+                    </ListItem>
+                ))}
+            </List>
         </View>
-    )
+    );
 });
 
-const PageMultiLevel = observer(props => {
-    const { t } = useTranslation();
-    
-    const arrayMultiLevel = [
-        {type: -1, thumb: ''},
-        {type: 1, thumb: 'multi-bracket.png'},
-        {type: 2, thumb: 'multi-dot.png'},
-        {type: 3, thumb: 'multi-bullets.png'},
-    ];
-
+const PageMultiLevel = observer( props => {
     const storeTextSettings = props.storeTextSettings;
+    const arrayMultiLevel = storeTextSettings.getMultiLevelList();
     const typeMultiLevel = storeTextSettings.typeMultiLevel;
+
+    useEffect(() => {
+        props.updateBulletsNumbers(2);
+        props.getIconsBulletsAndNumbers(arrayMultiLevel, 2);
+    }, []);
 
     return(
         <View className='multilevels dataview'>
-                <List className="row" style={{listStyle: 'none'}}>
-                    {arrayMultiLevel.map((item) => (
-                        <ListItem 
-                        key={'multi-level-' + item.type} 
-                        data-type={item.type} 
-                        className={item.type === typeMultiLevel && storeTextSettings.listType === -1  ? 'active' : ''}
-                        onClick={() => props.onMultiLevelList(item.type)}>
-                            {item.thumb.length < 1 ?
-                                <Icon className="thumb" style={{position: 'relative'}}>
-                                    <label>{t('Edit.textNone')}</label>
-                                </Icon> :
-                                <Icon className="thumb" style={{backgroundImage: `url('resources/img/multilevels/${item.thumb}')`}}></Icon>
-                            }
-                        </ListItem>
-                    ))}
-                </List>
+            <List className="row" style={{listStyle: 'none'}}>
+                {arrayMultiLevel.map((item) => (
+                    <ListItem
+                    key={'multi-level-' + item.subtype} 
+                    data-type={item.subtype} 
+                    className={item.subtype === typeMultiLevel ? 'active' : ''}
+                    onClick={() => props.onMultiLevelList(item.numberingInfo)}>
+                        <div id={item.id} className='item-multilevellist'>
+
+                        </div>
+                    </ListItem>
+                ))}
+            </List>
         </View>
     )
         
@@ -325,20 +282,38 @@ const PageBulletsAndNumbers = props => {
                     </NavRight>
                 }
             </Navbar>
-            <Swiper pagination>
-                <SwiperSlide> 
-                    <PageNumbers storeTextSettings={storeTextSettings} onNumber={props.onNumber} />
-                </SwiperSlide> 
-                <SwiperSlide>
-                    <PageBullets storeTextSettings={storeTextSettings} onBullet={props.onBullet} />
-                </SwiperSlide>
-                <SwiperSlide> 
-                    <PageMultiLevel storeTextSettings={storeTextSettings} onMultiLevelList={props.onMultiLevelList} />
-                </SwiperSlide>
-            </Swiper>
+            <div className="swiper-container swiper-init" data-pagination='{"el": ".swiper-pagination"}'>
+                <div className="swiper-wrapper">
+                    <div className="swiper-slide">
+                        <PageNumbers 
+                            storeTextSettings={storeTextSettings} 
+                            onNumber={props.onNumber} 
+                            getIconsBulletsAndNumbers={props.getIconsBulletsAndNumbers}
+                            updateBulletsNumbers={props.updateBulletsNumbers}
+                        />
+                    </div>
+                    <div className="swiper-slide">
+                        <PageBullets 
+                            storeTextSettings={storeTextSettings} 
+                            onBullet={props.onBullet} 
+                            getIconsBulletsAndNumbers={props.getIconsBulletsAndNumbers}
+                            updateBulletsNumbers={props.updateBulletsNumbers}
+                        />
+                    </div>
+                    <div className="swiper-slide">
+                        <PageMultiLevel 
+                            storeTextSettings={storeTextSettings} 
+                            onMultiLevelList={props.onMultiLevelList} 
+                            getIconsBulletsAndNumbers={props.getIconsBulletsAndNumbers}
+                            updateBulletsNumbers={props.updateBulletsNumbers}
+                        />
+                    </div>
+                </div>
+                <div className="swiper-pagination"></div>
+            </div>
         </Page>
     )
-}
+};
 
 const PageLineSpacing = props => {
     const { t } = useTranslation();
@@ -507,6 +482,11 @@ const EditText = props => {
     const isAndroid = Device.android;
     const { t } = useTranslation();
     const storeTextSettings = props.storeTextSettings;
+    const storeFocusObjects = props.storeFocusObjects;
+    const shapeObject = storeFocusObjects.shapeObject;
+    const shapePr = shapeObject && shapeObject.get_ShapeProperties();
+    const inSmartArt = shapePr && shapePr.asc_getFromSmartArt();
+    const inSmartArtInternal = shapePr && shapePr.asc_getFromSmartArtInternal();
     const fontName = storeTextSettings.fontName || t('Edit.textFonts');
     const fontSize = storeTextSettings.fontSize;
     const fontColor = storeTextSettings.textColor;
@@ -518,6 +498,10 @@ const EditText = props => {
     const isStrikethrough = storeTextSettings.isStrikethrough;
     const paragraphAlign = storeTextSettings.paragraphAlign;
 
+    useEffect(() => {
+        props.updateListType();
+    }, [])
+   
     let previewList;
     switch(storeTextSettings.listType) {
         case -1: 
@@ -547,12 +531,12 @@ const EditText = props => {
                     changeFontFamily: props.changeFontFamily
                 }}/>
                 <ListItem className='buttons'>
-                    <Row>
+                    <div className='row'>
                         <a className={'button' + (isBold ? ' active' : '')} onClick={() => { props.toggleBold(!isBold)}}><b>B</b></a>
                         <a className={'button' + (isItalic ? ' active' : '')} onClick={() => {props.toggleItalic(!isItalic)}}><i>I</i></a>
                         <a className={'button' + (isUnderline ? ' active' : '')} onClick={() => {props.toggleUnderline(!isUnderline)}} style={{textDecoration: "underline"}}>U</a>
                         <a className={'button' + (isStrikethrough ? ' active' : '')} onClick={() => {props.toggleStrikethrough(!isStrikethrough)}} style={{textDecoration: "line-through"}}>S</a>
-                    </Row>
+                    </div>
                 </ListItem>
                 <ListItem title={t("Edit.textFontColor")} link="/edit-text-font-color/" routeProps={{
                     onTextColorAuto: props.onTextColorAuto,
@@ -581,7 +565,7 @@ const EditText = props => {
             </List>
             <List>
                 <ListItem className='buttons'>
-                    <Row>
+                    <div className="row">
                         <a className={'button' + (paragraphAlign === 'left' ? ' active' : '')} onClick={() => {props.onParagraphAlign('left')}}>
                             <Icon slot="media" icon="icon-text-align-left"></Icon>
                         </a>
@@ -594,26 +578,36 @@ const EditText = props => {
                         <a className={'button' + (paragraphAlign === 'just' ? ' active' : '')} onClick={() => {props.onParagraphAlign('just')}}>
                             <Icon slot="media" icon="icon-text-align-just"></Icon>
                         </a>
-                    </Row>
+                    </div>
                 </ListItem>
-                <ListItem className='buttons'>
-                    <Row>
-                        <a className='button item-link' onClick={() => {props.onParagraphMove(true)}}>
-                            <Icon slot="media" icon="icon-de-indent"></Icon>
-                        </a>
-                        <a className='button item-link' onClick={() => {props.onParagraphMove(false)}}>
-                            <Icon slot="media" icon="icon-in-indent"></Icon>
-                        </a>
-                    </Row>
-                </ListItem>
-                <ListItem title={t('Edit.textBulletsAndNumbers')} link='/edit-bullets-and-numbers/' routeProps={{
-                    onBullet: props.onBullet,
-                    onNumber: props.onNumber,
-                    onMultiLevelList: props.onMultiLevelList
-                }}>
-                    <div className="preview">{previewList}</div>
-                    {!isAndroid && <Icon slot="media" icon="icon-bullets"></Icon>}
-                </ListItem>
+                {!inSmartArtInternal &&
+                    <ListItem className='buttons'>
+                        <div className="row">
+                            <a className='button item-link' onClick={() => {
+                                props.onParagraphMove(true)
+                            }}>
+                                <Icon slot="media" icon="icon-de-indent"></Icon>
+                            </a>
+                            <a className='button item-link' onClick={() => {
+                                props.onParagraphMove(false)
+                            }}>
+                                <Icon slot="media" icon="icon-in-indent"></Icon>
+                            </a>
+                        </div>
+                    </ListItem>
+                }
+                {!inSmartArt && !inSmartArtInternal &&
+                    <ListItem title={t('Edit.textBulletsAndNumbers')} link='/edit-bullets-and-numbers/' routeProps={{
+                        onBullet: props.onBullet,
+                        onNumber: props.onNumber,
+                        onMultiLevelList: props.onMultiLevelList,
+                        getIconsBulletsAndNumbers: props.getIconsBulletsAndNumbers,
+                        updateBulletsNumbers: props.updateBulletsNumbers
+                    }}>
+                        <div className="preview">{previewList}</div>
+                        {!isAndroid && <Icon slot="media" icon="icon-bullets"></Icon>}
+                    </ListItem>
+                }
                 <ListItem title={t("Edit.textLineSpacing")} link='/edit-text-line-spacing/' routeProps={{
                     onLineSpacing: props.onLineSpacing
                 }}>

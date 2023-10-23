@@ -3,6 +3,7 @@
     "textAbout": "In riguardo a",
     "textAddress": "Indirizzo",
     "textBack": "Indietro",
+    "textEditor": "Presentation Editor",
     "textEmail": "Email",
     "textPoweredBy": "Sviluppato da",
     "textTel": "Tel.",
@@ -31,7 +32,8 @@
       "textReopen": "Riaprire",
       "textResolve": "Risolvere",
       "textTryUndoRedo": "Le funzioni Annulla/Ripeti sono disattivate nella modalità rapida di modifica collaborativa.",
-      "textUsers": "Utenti"
+      "textUsers": "Utenti",
+      "textSharingSettings": "Sharing Settings"
     },
     "HighlightColorPalette": {
       "textNoFill": "Nessun riempimento"
@@ -40,6 +42,20 @@
       "textCustomColors": "Colori personalizzati",
       "textStandartColors": "Colori standard",
       "textThemeColors": "Colori del tema"
+    },
+    "VersionHistory": {
+      "notcriticalErrorTitle": "Warning",
+      "textAnonymous": "Anonymous",
+      "textBack": "Back",
+      "textCancel": "Cancel",
+      "textCurrent": "Current",
+      "textOk": "Ok",
+      "textRestore": "Restore",
+      "textVersion": "Version",
+      "textVersionHistory": "Version History",
+      "textWarningRestoreVersion": "Current file will be saved in version history.",
+      "titleWarningRestoreVersion": "Restore this version?",
+      "txtErrorLoadHistory": "Loading history failed"
     }
   },
   "ContextMenu": {
@@ -58,7 +74,10 @@
     "textColumns": "Colonne",
     "textCopyCutPasteActions": "Funzioni di Copiare, Tagliare e Incollare",
     "textDoNotShowAgain": "Non mostrare di nuovo",
-    "textRows": "Righe"
+    "textOk": "Ok",
+    "textRows": "Righe",
+    "txtWarnUrl": "Fare clic su questo collegamento può danneggiare il tuo dispositivo e i tuoi dati.<br>Sei sicuro che vuoi continuare?",
+    "menuEditLink": "Edit Link"
   },
   "Controller": {
     "Main": {
@@ -107,12 +126,12 @@
       "textHasMacros": "Il file contiene delle macro automatiche.<br>Vuoi eseguirle?",
       "textNo": "No",
       "textNoLicenseTitle": "È stato raggiunto il limite della licenza",
-      "textNoTextFound": "Testo non trovato",
       "textOpenFile": "Inserisci la password per aprire il file",
       "textPaidFeature": "Funzionalità a pagamento",
       "textRemember": "Ricordare la mia scelta",
       "textReplaceSkipped": "La sostituzione è stata effettuata. {0} casi sono stati saltati.",
       "textReplaceSuccess": "La ricerca è stata effettuata. Casi sostituiti: {0}",
+      "textRequestMacros": "Una macro effettua una richiesta all'URL. Vuoi consentire la richiesta al %1?",
       "textYes": "Sì",
       "titleLicenseExp": "La licenza è scaduta",
       "titleServerVersion": "L'editor è stato aggiornato",
@@ -126,7 +145,11 @@
       "warnLicenseUsersExceeded": "Hai raggiunto il limite degli utenti per gli editor %1. Ti preghiamo di contattare il tuo amministratore per maggior informazioni.",
       "warnNoLicense": "Hai raggiunto il limite delle connessioni simultanee agli editor %1. Questo documento sarà aperto solo in modalità di visualizzazione.  Ti preghiamo di contattare il team di vendite di %1 per i termini di aggiornamento personali.",
       "warnNoLicenseUsers": "Hai raggiunto il limite degli utenti per gli editor %1. Ti preghiamo di contattare il team di vendite di %1 per i termini di aggiornamento personali.",
-      "warnProcessRightsChange": "Non hai il permesso di modificare il file."
+      "warnProcessRightsChange": "Non hai il permesso di modificare il file.",
+      "textNoMatches": "No Matches",
+      "titleLicenseNotActive": "License not active",
+      "warnLicenseAnonymous": "Access denied for anonymous users.<br>This document will be opened for viewing only.",
+      "warnLicenseBefore": "License not active.<br>Please contact your administrator."
     }
   },
   "Error": {
@@ -151,7 +174,7 @@
     "errorSessionIdle": "Il documento non è stato modificato per molto tempo. Ti preghiamo di ricaricare la pagina.",
     "errorSessionToken": "La connessione al server è stata interrotta. Ti preghiamo di ricaricare la pagina.",
     "errorStockChart": "Ordine delle righe incorretto. Per creare un grafico azionario, inserisci i dati sul foglio nel seguente ordine:<br> prezzo di apertura, prezzo massimo, prezzo minimo, prezzo di chiusura.",
-    "errorUpdateVersionOnDisconnect": "La connessione a Internet è stata ripristinata e la versione del file è stata cambiata.<br>Prima di poter continuare a lavorare, scarica il file o copia il suo contenuto per assicurarti che non vada perso nulla, e poi ricarica questa pagina.",
+    "errorUpdateVersionOnDisconnect": "La connessione a Internet è stata ripristinata e la versione del file è stata cambiata.<br>Prima di poter continuare a lavorare, scarica il file o copiane il contenuto per assicurarti che nulla vada perso, quindi ricarica questa pagina.",
     "errorUserDrop": "Impossibile accedere al file in questo momento.",
     "errorUsersExceed": "È stato superato il numero di utenti consentito dal piano tariffario",
     "errorViewerDisconnect": "La connessione è stata persa. È ancora possibile visualizzare il documento, <br> ma non sarà possibile scaricarlo o stamparlo fino a quando la connessione non sarà ripristinata e la pagina sarà ricaricata.",
@@ -165,7 +188,19 @@
     "unknownErrorText": "Errore sconosciuto.",
     "uploadImageExtMessage": "Formato d'immagine sconosciuto.",
     "uploadImageFileCountMessage": "Nessuna immagine caricata.",
-    "uploadImageSizeMessage": "L'immagine è troppo grande. La dimensione massima è 25 MB."
+    "uploadImageSizeMessage": "L'immagine è troppo grande. La dimensione massima è 25 MB.",
+    "errorComboSeries": "To create a combination chart, select at least two series of data.",
+    "errorDirectUrl": "Please verify the link to the document.<br>This link must be a direct link to the file for downloading.",
+    "errorEmailClient": "No email client could be found",
+    "errorForceSave": "An error occurred while saving the file. Please use the 'Download as' option to save the file to your computer hard drive or try again later.",
+    "errorInconsistentExt": "An error has occurred while opening the file.<br>The file content does not match the file extension.",
+    "errorInconsistentExtDocx": "An error has occurred while opening the file.<br>The file content corresponds to text documents (e.g. docx), but the file has the inconsistent extension: %1.",
+    "errorInconsistentExtPdf": "An error has occurred while opening the file.<br>The file content corresponds to one of the following formats: pdf/djvu/xps/oxps, but the file has the inconsistent extension: %1.",
+    "errorInconsistentExtPptx": "An error has occurred while opening the file.<br>The file content corresponds to presentations (e.g. pptx), but the file has the inconsistent extension: %1.",
+    "errorInconsistentExtXlsx": "An error has occurred while opening the file.<br>The file content corresponds to spreadsheets (e.g. xlsx), but the file has the inconsistent extension: %1.",
+    "errorSetPassword": "Password could not be set.",
+    "errorToken": "The document security token is not correctly formed.<br>Please contact your Document Server administrator.",
+    "errorTokenExpire": "The document security token has expired.<br>Please contact your Document Server administrator."
   },
   "LongActions": {
     "applyChangesTextText": "Caricamento di dati...",
@@ -196,13 +231,17 @@
     "txtEditingMode": "Impostare la modalità di modifica...",
     "uploadImageTextText": "Caricamento dell'immagine...",
     "uploadImageTitleText": "Caricamento dell'immagine",
-    "waitText": "Si prega di attendere"
+    "waitText": "Si prega di attendere",
+    "confirmMaxChangesSize": "The size of actions exceeds the limitation set for your server.<br>Press \"Undo\" to cancel your last action or press \"Continue\" to keep action locally (you need to download the file or copy its content to make sure nothing is lost).",
+    "textContinue": "Continue",
+    "textUndo": "Undo"
   },
   "Toolbar": {
     "dlgLeaveMsgText": "Ci sono i cambiamenti non salvati in questo documento. Fai clic su \"Rimanere su questa pagina\" per attendere il salvataggio automatico. Fai clic su \"Lasciare questa pagina\" per eliminare tutti i cambiamenti non salvati.",
     "dlgLeaveTitleText": "Stai lasciando l'applicazione",
     "leaveButtonText": "Lasciare questa pagina",
-    "stayButtonText": "Rimanere su questa pagina"
+    "stayButtonText": "Rimanere su questa pagina",
+    "textCloseHistory": "Close History"
   },
   "View": {
     "Add": {
@@ -241,7 +280,11 @@
       "textSlideNumber": "Numero di diapositiva",
       "textTable": "Tabella",
       "textTableSize": "Dimensione di tabella",
-      "txtNotUrl": "Questo campo deve essere un URL nel formato \"http://www.example.com\""
+      "txtNotUrl": "Questo campo deve essere un URL nel formato \"http://www.example.com\"",
+      "textDone": "Done",
+      "textPasteImageUrl": "Paste an image URL",
+      "textRecommended": "Recommended",
+      "textRequired": "Required"
     },
     "Edit": {
       "notcriticalErrorTitle": "Avvertimento",
@@ -276,6 +319,7 @@
       "textBulletsAndNumbers": "Puntato e numerato",
       "textCaseSensitive": "Maiuscole/minuscole",
       "textCellMargins": "Margini di cella",
+      "textChangeShape": "Cambia forma",
       "textChart": "Grafico",
       "textClock": "Orologio",
       "textClockwise": "In senso orario",
@@ -335,7 +379,6 @@
       "textNextSlide": "Diapositiva successiva",
       "textNone": "Nessuno",
       "textNoStyles": "Nessuno stile per questo tipo di grafico.",
-      "textNoTextFound": "Testo non trovato",
       "textNotUrl": "Questo campo deve essere un URL nel formato \"http://www.example.com\"",
       "textNumbers": "Numeri",
       "textOk": "OK",
@@ -347,11 +390,8 @@
       "textPt": "pt",
       "textPush": "Spinta",
       "textRemoveChart": "Eliminare il grafico",
-      "textRemoveImage": "Eliminare l'immagine",
-      "textRemoveLink": "Eliminare il link",
       "textRemoveShape": "Eliminare la forma",
       "textRemoveTable": "Eliminare la tabella",
-      "textReorder": "Riordinare",
       "textReplace": "Sostituire",
       "textReplaceAll": "Sostituire tutto",
       "textReplaceImage": "Sostituire l'immagine",
@@ -392,11 +432,24 @@
       "textZoom": "Zoom",
       "textZoomIn": "Ingrandire",
       "textZoomOut": "Rimpicciolire",
-      "textZoomRotate": "Zoom e rotazione"
+      "textZoomRotate": "Zoom e rotazione",
+      "textArrange": "Arrange",
+      "textCancel": "Cancel",
+      "textDeleteImage": "Delete Image",
+      "textDeleteLink": "Delete Link",
+      "textInsertImage": "Insert Image",
+      "textMorph": "Morph",
+      "textMorphLetters": "Letters",
+      "textMorphObjects": "Objects",
+      "textMorphWords": "Words",
+      "textNoMatches": "No Matches",
+      "textRecommended": "Recommended",
+      "textRequired": "Required"
     },
     "Settings": {
       "mniSlideStandard": "Standard (4:3)",
       "mniSlideWide": "Schermo panoramico (16:9)",
+      "notcriticalErrorTitle": "Avviso",
       "textAbout": "In riguardo a",
       "textAddress": "indirizzo: ",
       "textApplication": "Applicazione",
@@ -419,6 +472,7 @@
       "textEmail": "email: ",
       "textEnableAll": "Attivare tutto",
       "textEnableAllMacrosWithoutNotification": "Attivare tutte le macro senza notifica",
+      "textFeedback": "Feedback & Supporto",
       "textFind": "Trovare",
       "textFindAndReplace": "Trovare e sostituire",
       "textFindAndReplaceAll": "Trovare e sostituire tutto",
@@ -430,7 +484,7 @@
       "textLoading": "Caricamento...",
       "textLocation": "Posizione",
       "textMacrosSettings": "Impostazioni macro",
-      "textNoTextFound": "Testo non trovato",
+      "textOk": "OK",
       "textOwner": "Proprietario",
       "textPoint": "Punto",
       "textPoweredBy": "Sviluppato da",
@@ -440,6 +494,8 @@
       "textPrint": "Stampare",
       "textReplace": "Sostituire",
       "textReplaceAll": "Sostituire tutto",
+      "textRestartApplication": "Riavvia l'applicazione per rendere effettive le modifiche",
+      "textRTL": "Da destra a sinistra",
       "textSearch": "Cercare",
       "textSettings": "Impostazioni",
       "textShowNotification": "Mostrare notifica",
@@ -472,7 +528,9 @@
       "txtScheme6": "Concorso",
       "txtScheme7": "Equità",
       "txtScheme8": "Flusso",
-      "txtScheme9": "Fonderia"
+      "txtScheme9": "Fonderia",
+      "textNoMatches": "No Matches",
+      "textVersionHistory": "Version History"
     }
   }
 }

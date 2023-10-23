@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  InputField.js
  *
@@ -81,7 +80,7 @@ define([
             template: _.template([
                 '<div class="input-field" style="<%= style %>">',
                     '<input ',
-                        'type="text" ',
+                        'type="<%= type %>" ',
                         'name="<%= name %>" ',
                         'spellcheck="<%= spellcheck %>" ',
                         'class="form-control <%= cls %>" ',
@@ -156,7 +155,7 @@ define([
                 if (!me.rendered) {
                     var el = this.cmpEl;
 
-                    this._input = this.cmpEl.find('input').addBack().filter('input');
+                    this._input = this.cmpEl.find('input').addBack().filter('input').first();
 
                     if (this.editable) {
                         this._input.on('blur',   _.bind(this.onInputChanged, this));
@@ -164,8 +163,6 @@ define([
                         this._input.on('keydown',    _.bind(this.onKeyDown, this));
                         this._input.on('keyup',    _.bind(this.onKeyUp, this));
                         if (this.validateOnChange) this._input.on('input', _.bind(this.onInputChanging, this));
-                        if (this.type=='password') this._input.on('input', _.bind(this.checkPasswordType, this));
-
                         if (this.maxLength) this._input.attr('maxlength', this.maxLength);
                     }
 
@@ -188,15 +185,6 @@ define([
                     me.setValue(me.value);
 
                 return this;
-            },
-
-            checkPasswordType: function(){
-                if(this.type == 'text') return;
-                if (this._input.val() !== '') {
-                    (this._input.attr('type') !== 'password') && this._input.attr('type', 'password');
-                } else {
-                    this._input.attr('type', 'text');
-                }
             },
 
             _doChange: function(e, extra) {
@@ -302,9 +290,11 @@ define([
                 disabled = !!disabled;
                 this.disabled = disabled;
                 $(this.el).toggleClass('disabled', disabled);
-                disabled
-                    ? this._input.attr('disabled', true)
-                    : this._input.removeAttr('disabled');
+                if (this.rendered) {
+                    disabled
+                        ? this._input.attr('disabled', true)
+                        : this._input.removeAttr('disabled');
+                }
             },
 
             isDisabled: function() {
@@ -317,8 +307,6 @@ define([
                 if (this.rendered){
                     this._input.val(value);
                 }
-
-                (this.type=='password') && this.checkPasswordType();
             },
 
             getValue: function() {
@@ -431,23 +419,25 @@ define([
                 validateOnBlur: true,
                 disabled: false,
                 editable: true,
-                iconCls: 'btn-select-range',
+                iconCls: 'toolbar__icon btn-select-range',
                 btnHint: ''
             },
 
             template: _.template([
                 '<div class="input-field input-field-btn" style="<%= style %>">',
                     '<input ',
-                        'type="text" ',
+                        'type=<%= type %> ',
                         'name="<%= name %>" ',
                         'spellcheck="<%= spellcheck %>" ',
                         'class="form-control <%= cls %>" ',
                         'placeholder="<%= placeHolder %>" ',
                         'value="<%= value %>"',
+                        'data-hint="<%= dataHint %>"',
+                        'data-hint-offset="<%= dataHintOffset %>"',
+                        'data-hint-direction="<%= dataHintDirection %>"',
                     '>',
                     '<span class="input-error"></span>',
                     '<div class="select-button">' +
-                        '<button type="button" class="btn btn-toolbar"><i class="icon toolbar__icon <%= iconCls %>"></i></button>' +
                     '</div>',
                 '</div>'
             ].join('')),
@@ -465,8 +455,10 @@ define([
                         name        : this.name,
                         placeHolder : this.placeHolder,
                         spellcheck  : this.spellcheck,
-                        iconCls     : this.options.iconCls,
-                        scope       : me
+                        scope       : me,
+                        dataHint    : this.options.dataHint,
+                        dataHintOffset: this.options.dataHintOffset,
+                        dataHintDirection: this.options.dataHintDirection
                     }));
 
                     if (parentEl) {
@@ -483,10 +475,12 @@ define([
                     var el = this.cmpEl;
 
                     this._button = new Common.UI.Button({
-                        el: this.cmpEl.find('button'),
+                        cls: 'btn-toolbar',
                         iconCls: this.options.iconCls,
-                        hint: this.options.btnHint || ''
+                        hint: this.options.btnHint || '',
+                        menu: this.options.menu
                     });
+                    this._button.render(this.cmpEl.find('.select-button'));
                     this._button.on('click', _.bind(this.onButtonClick, this));
 
                     this._input = this.cmpEl.find('input').addBack().filter('input');
@@ -556,6 +550,7 @@ define([
                 style: '',
                 value: '',
                 name: '',
+                type: 'password',
                 validation: null,
                 allowBlank: true,
                 placeHolder: '',
@@ -566,7 +561,8 @@ define([
                 validateOnBlur: true,
                 disabled: false,
                 editable: true,
-                iconCls: 'btn-sheet-view',
+                showCls: 'toolbar__icon btn-sheet-view',
+                hideCls: 'toolbar__icon btn-hide-password',
                 btnHint: '',
                 repeatInput: null,
                 showPwdOnClick: true
@@ -575,6 +571,7 @@ define([
             initialize : function(options) {
                 options = options || {};
                 options.btnHint = options.btnHint || this.textHintShowPwd;
+                options.iconCls = options.showCls || this.options.showCls;
 
                 Common.UI.InputFieldBtn.prototype.initialize.call(this, options);
 
@@ -586,7 +583,6 @@ define([
                 Common.UI.InputFieldBtn.prototype.render.call(this, parentEl);
 
                 this._btnElm = this._button.$el;
-                this._input.on('input', _.bind(this.checkPasswordType, this));
                 if(this.options.showPwdOnClick)
                     this._button.on('click', _.bind(this.passwordClick, this));
                 else
@@ -617,7 +613,7 @@ define([
 
             passwordShow: function (e) {
                 if (this.disabled) return;
-                this._button.setIconCls('hide-password');
+                this._button.setIconCls(this.options.hideCls);
                 this.type = 'text';
 
                 this._input.attr('type', this.type);
@@ -636,13 +632,13 @@ define([
             },
 
             passwordHide: function (e) {
-                this._button.setIconCls('btn-sheet-view');
+                this._button.setIconCls(this.options.showCls);
                 this.type = 'password';
 
-                (this._input.val() !== '') && this._input.attr('type', this.type);
+                this._input.attr('type', this.type);
                 if(this.repeatInput) {
                     this.repeatInput.type = this.type;
-                    (this.repeatInput._input.val() !== '') && this.repeatInput._input.attr('type', this.type);
+                    this.repeatInput._input.attr('type', this.type);
                 }
 
                 if(this.options.showPwdOnClick) {
@@ -665,4 +661,153 @@ define([
             textHintHidePwd: 'Hide password'
         }
     })(), Common.UI.InputFieldBtnPassword || {}));
+
+    Common.UI.InputFieldBtnCalendar = Common.UI.InputFieldBtn.extend((function (){
+        return {
+            options: {
+                id: null,
+                cls: '',
+                style: '',
+                value: '',
+                type: 'text',
+                name: '',
+                validation: null,
+                allowBlank: true,
+                placeHolder: '',
+                blankError: null,
+                spellcheck: false,
+                maskExp: '',
+                validateOnChange: false,
+                validateOnBlur: true,
+                disabled: false,
+                editable: true,
+                iconCls: 'toolbar__icon btn-date',
+                btnHint: '',
+                menu: true
+            },
+
+            initialize : function(options) {
+                options = options || {};
+                options.btnHint = options.btnHint || this.textDate;
+
+                Common.UI.InputFieldBtn.prototype.initialize.call(this, options);
+            },
+
+            render: function (parentEl) {
+                var me = this;
+                Common.UI.InputFieldBtn.prototype.render.call(this, parentEl);
+
+                var id = 'id-' + Common.UI.getId() + 'input-field-datetime',
+                    menu = new Common.UI.Menu({
+                        menuAlign: 'tr-br',
+                        style: 'border: none; padding: 0;',
+                        items: [
+                            {template: _.template('<div id="' + id + '" style=""></div>'), stopPropagation: true}
+                        ]
+                    });
+                $('button', this._button.cmpEl).addClass('no-caret');
+                this._button.setMenu(menu);
+                this._button.menu.on('show:after', function(menu) {
+                    if (!me.cmpCalendar) {
+                        me.cmpCalendar = new Common.UI.Calendar({
+                            el: me.cmpEl.find('#' + id),
+                            enableKeyEvents: true,
+                            firstday: 1
+                        });
+                        me.cmpCalendar.on('date:click', function (cmp, date) {
+                            me.trigger('date:click', me, date);
+                            menu.hide();
+                        });
+                        menu.alignPosition();
+                    }
+                    me.cmpCalendar.focus();
+                })
+            },
+
+            setDate: function(date) {
+                if (this.cmpCalendar && date && date instanceof Date && !isNaN(date))
+                    this.cmpCalendar && this.cmpCalendar.setDate(date);
+            },
+
+            textDate: 'Select date'
+        }
+    })());
+
+    Common.UI.InputFieldFixed = Common.UI.InputField.extend((function() {
+        return {
+            options : {
+                id          : null,
+                cls         : '',
+                style       : '',
+                value       : '',
+                fixedValue  : '',
+                type        : 'text',
+                name        : '',
+                validation  : null,
+                allowBlank  : true,
+                placeHolder : '',
+                blankError  : null,
+                spellcheck  : false,
+                maskExp     : '',
+                validateOnChange: false,
+                validateOnBlur: true,
+                disabled: false,
+                editable: true,
+                btnHint: ''
+            },
+
+            template: _.template([
+                '<div class="input-field input-field-fixed" style="<%= style %>">',
+                    '<input ',
+                    'type=<%= type %> ',
+                    'name="<%= name %>" ',
+                    'spellcheck="<%= spellcheck %>" ',
+                    'class="form-control <%= cls %>" ',
+                    'placeholder="<%= placeHolder %>" ',
+                    'value="<%= value %>"',
+                    'data-hint="<%= dataHint %>"',
+                    'data-hint-offset="<%= dataHintOffset %>"',
+                    'data-hint-direction="<%= dataHintDirection %>"',
+                    '>',
+                '<span class="input-error"></span>',
+                '<input class="fixed-text form-control" type="text" readonly="readonly">' +
+                '</div>'
+            ].join('')),
+
+            initialize : function(options) {
+                this.fixedValue = options.fixedValue;
+
+                Common.UI.InputField.prototype.initialize.call(this, options);
+            },
+
+            render : function(parentEl) {
+                Common.UI.InputField.prototype.render.call(this, parentEl);
+
+                if (this.fixedValue)
+                    this.setFixedValue(this.fixedValue);
+
+                return this;
+            },
+
+            setFixedValue: function(value) {
+                this.fixedValue = value;
+
+                if (this.rendered){
+                    this.cmpEl.find('input.fixed-text').addBack().filter('input.fixed-text').val(value);
+                }
+            },
+
+            setDisabled: function(disabled) {
+                disabled = !!disabled;
+                this.disabled = disabled;
+                $(this.el).toggleClass('disabled', disabled);
+                if (this.rendered) {
+                    var inputs = this.cmpEl.find('input').addBack().filter('input')
+                    disabled
+                        ? inputs.attr('disabled', true)
+                        : inputs.removeAttr('disabled');
+                }
+            },
+        }
+    })());
 });

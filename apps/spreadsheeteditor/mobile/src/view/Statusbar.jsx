@@ -1,8 +1,9 @@
 import React, { Fragment, useEffect, useState } from 'react';
-import {f7, View, Link, Icon, Navbar, Popover, List, ListGroup, ListItem, ListButton, Actions, ActionsGroup, ActionsButton, Sheet, Page } from 'framework7-react';
+import {f7, View, Link, Icon, Popover, Navbar, NavRight, List, ListGroup, ListItem, ListButton, Actions, ActionsGroup, ActionsButton, Sheet, Page } from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 import { Device } from '../../../../common/mobile/utils/device';
 import { inject, observer } from 'mobx-react';
+import { ThemeColorPalette, CustomColorPicker } from '../../../../common/mobile/lib/component/ThemeColorPalette.jsx';
 
 const viewStyle = {
     height: 30
@@ -36,10 +37,11 @@ const PageListMove = props => {
     )
 };
 
-const PageAllList = (props) => {
+const PageAllList = observer((props) => {
     const { t } = useTranslation();
     const { sheets, onTabListClick } = props;
     const allSheets = sheets.sheets;
+    const heightView = Device.android ? allSheets.length * 48 : allSheets.length * 44;
 
     useEffect(() => {
         const tabs = $$('.sheet-tabs .tab');
@@ -58,23 +60,110 @@ const PageAllList = (props) => {
     }, [sheets.activeWorksheet]);
 
     return (
-        <View style={{height: '240px'}}>
+        <View style={{maxHeight: '240px', height: heightView > 240 ? '240px' : `${heightView}px`}}>
             <Page>
                 <List>
-                    { allSheets.map( (model,sheetIndex) => 
-                        <ListItem className='item-list' key={model.name} title={model.name} checkbox checked={model.active} onClick={() => onTabListClick(sheetIndex)}>
-                            {model.hidden ?     
-                                <div slot='after'>
-                                    {t('Statusbar.textHidden')}
-                                </div>
-                            : null}
-                        </ListItem>)
-                    }
+                    {allSheets.map((model, sheetIndex) =>
+                        <ListItem className={`item-list ${model.active ? 'active' : null}`} key={model.name} title={model.name} checkbox checked={model.active} onClick={() => onTabListClick(sheetIndex)}>
+                            <div slot='after'>
+                                {model.hidden ? 
+                                    t('Statusbar.textHidden')
+                                :
+                                    <div className='marker-color-sheet' style={{
+                                        background: model.color ? '#' + Common.Utils.ThemeColor.getHexColor(model.color.get_r(), model.color.get_g(), model.color.get_b()) : 'transparent'}}></div>
+                                }
+                            </div>
+                        </ListItem>
+                    )}
                 </List>
             </Page>
         </View>
     )
-};
+});
+
+const PageCustomTabColor = inject("storePalette")(observer (props => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+
+    const onAddNewColor = (colors, color) => {
+        props.storePalette.changeCustomColors(colors);
+        props.onSetWorkSheetColor(color);
+        props.sheets.changeTabColor(color);
+        props.f7router.back();
+    };
+
+    return (
+        <Page>
+            <Navbar title={_t.textCustomColor} backLink={_t.textBack}>
+                {Device.phone &&
+                    <NavRight>
+                        <Link icon='icon-expand-down' sheetClose ></Link>
+                    </NavRight>
+                }
+            </Navbar>
+            <CustomColorPicker currentColor={props.sheets.colorTab} onAddNewColor={onAddNewColor}/>
+        </Page>
+    )
+}));
+
+const PageTabColor = inject("storePalette")(observer(props =>  {
+    const { t } = useTranslation();
+    const {sheets, allSheets = sheets.sheets} = props;
+    const storePalette = props.storePalette;
+    const customColors = storePalette.customColors;
+    const activeIndex = sheets.activeWorksheet;
+
+    useEffect(() => {
+        if (allSheets.length !== 0) {
+            let color = sheets.at(activeIndex).color;
+            if(color !== null) {
+                sheets.changeTabColor('' + Common.Utils.ThemeColor.getHexColor(color.get_r(), color.get_g(), color.get_b()));
+            } else {
+                sheets.changeTabColor('transparent');
+            }
+        }
+    }, [activeIndex]);
+
+    const changeColor = (color, effectId, effectValue) => {
+        if (color !== 'empty') {
+            if (effectId !== undefined ) {
+                sheets.changeTabColor(color);
+                props.onSetWorkSheetColor(color);
+            } else {
+                sheets.changeTabColor(color);
+                props.onSetWorkSheetColor(color);
+            }
+            
+        Device.isPhone ? f7.sheet.close('.tab-color-sheet') : f7.popover.close('#idx-tab-color-popover');
+
+        } else {
+            f7.views.tabColorView.router.navigate('/sheet-tab-custom-color/', {props:{onSetWorkSheetColor: props.onSetWorkSheetColor, sheets}});
+        }
+    };
+
+    return (
+        <Page>
+            <Navbar title={t('Statusbar.textTabColor')}>
+            {Device.phone &&
+                <NavRight>
+                    <Link sheetClose>
+                        <Icon icon='icon-expand-down'/>
+                    </Link>
+                </NavRight>
+            }
+           </Navbar>
+
+           { allSheets.length !== 0 && 
+           <ThemeColorPalette changeColor={changeColor} curColor={sheets.colorTab} customColors={customColors} transparent={true}/> }
+           <List>
+                <ListItem title={t('View.Edit.textAddCustomColor')} link="/sheet-tab-custom-color/" routeProps={{
+                    onSetWorkSheetColor: props.onSetWorkSheetColor,
+                    sheets,
+                }}></ListItem>
+            </List>
+        </Page>
+    )
+}));
 
 const PopoverAllList = (props) => {
     const {sheets, onTabListClick} = props;
@@ -91,19 +180,41 @@ const PopoverAllList = (props) => {
     )
 };
 
-const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(props => {
+const StatusbarView = inject('storeAppOptions', 'storeWorksheets', 'users')(observer(props => {
     const { t } = useTranslation();
     const _t = t('Statusbar', {returnObjects: true});
     const isAndroid = Device.android;
     const isPhone = Device.isPhone;
-    const {sheets, storeAppOptions, users} = props;
-    const allSheets = sheets.sheets;
-    const hiddenSheets = sheets.hiddenWorksheets();
-    const isWorkbookLocked = sheets.isWorkbookLocked;
-    const isProtectedWorkbook = sheets.isProtectedWorkbook;
+    const {storeWorksheets, storeAppOptions, users} = props;
+    const allSheets = storeWorksheets.sheets;
+    const hiddenSheets = storeWorksheets.hiddenWorksheets();
+    const isWorkbookLocked = storeWorksheets.isWorkbookLocked;
+    const isProtectedWorkbook = storeWorksheets.isProtectedWorkbook;
     const isEdit = storeAppOptions.isEdit;
     const isDisconnected = users.isDisconnected;
-    const isDisabledEditSheet = sheets.isDisabledEditSheet;
+    const isDisabledEditSheet = storeWorksheets.isDisabledEditSheet;
+
+    const setSheetColor = sheet => {
+        if(sheet) {
+            let color;
+
+            if (sheet.color) {
+                color = '#' + Common.Utils.ThemeColor.getHexColor(sheet.color.get_r(), sheet.color.get_g(), sheet.color.get_b());
+            } else {
+                color = '';
+            }
+
+            if(color) {
+                if(!sheet.active) {
+                    color = '0px 3px 0 ' + Common.Utils.RGBColor(color).toRGBA(0.7) + ' inset';
+                } else {
+                    color = '0px 3px 0 ' + color + ' inset';
+                }
+            }
+
+            return color;
+        }
+    };
 
     return (
         <Fragment>
@@ -120,10 +231,10 @@ const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(prop
                 }
                 <div className="statusbar--box-tabs">
                     <ul className="sheet-tabs bottom">
-                        {allSheets.map((model,i) => 
+                        {allSheets.map((model, i) => 
                             model.hidden ? null : 
                                 <li className={`tab${model.active ? ' active' : ''} ${model.locked ? 'locked' : ''}`} key={i} onClick={(e) => props.onTabClick(i, e.target)}>
-                                    <a>{model.name}</a>
+                                    <a style={{boxShadow: setSheetColor(model)}} className={`tab-color-${model.index}`}>{model.name}</a>
                                 </li>
                             
                         )}
@@ -150,6 +261,7 @@ const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(prop
                             <ListButton title={_t.textRename} onClick={() => props.onTabMenu('ren')} />
                             <ListButton title={_t.textHide} onClick={() => props.onTabMenu('hide')} />
                             <ListButton title={_t.textMove} onClick={() => props.onTabMenu('move')} />
+                            <ListButton title={_t.textTabColor} onClick={() => props.onTabMenu('tab-color')} />
                             {hiddenSheets.length ? (
                                 <ListButton title={_t.textUnhide} onClick={() => props.onTabMenu('unhide')} />
                             ) : null}
@@ -163,6 +275,7 @@ const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(prop
                         <ActionsButton onClick={() => props.onTabMenu('ren')}>{_t.textRename}</ActionsButton>
                         <ActionsButton onClick={() => props.onTabMenu('hide')}>{_t.textHide}</ActionsButton>
                         <ActionsButton onClick={() => props.onTabMenu('move')}>{_t.textMove}</ActionsButton>
+                        <ActionsButton onClick={() => props.onTabMenu('tab-color')}>{_t.textTabColor}</ActionsButton>
                         {hiddenSheets.length ? (
                             <ActionsButton onClick={() => props.onTabMenu('unhide')}>{_t.textUnhide}</ActionsButton>
                         ) : null}
@@ -173,18 +286,36 @@ const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(prop
                 </Actions>
             ) : null}
             {
-                <PopoverAllList sheets={sheets} onTabListClick={props.onTabListClick}/>
+                <PopoverAllList sheets={storeWorksheets} onTabListClick={props.onTabListClick}/>
             }
             {isPhone ? 
                 <Sheet style={{height: '48%'}} className='move-sheet' swipeToClose={true}>
                     <div className='swipe-container'>
                         <Icon icon='icon-swipe'/>
                     </div>
-                    <PageListMove sheets={sheets} onMenuMoveClick={props.onMenuMoveClick}/>
+                    <PageListMove sheets={storeWorksheets} onMenuMoveClick={props.onMenuMoveClick}/>
                 </Sheet>
                 :
                 <Popover id="idx-move-sheet-popover" closeByOutsideClick={false}>
-                    <PageListMove sheets={sheets} onMenuMoveClick={props.onMenuMoveClick}/>
+                    <PageListMove sheets={storeWorksheets} onMenuMoveClick={props.onMenuMoveClick}/>
+                </Popover>
+            }
+            { isPhone ?
+                <Sheet style={{height: '50%'}} className='tab-color-sheet' backdrop={false} 
+                onSheetClose={() =>
+                    {
+                        f7.navbar.show('.main-navbar');
+                        $$('.statusbar').css('top', '0%');
+                    }}>
+                        <View routes={routes} name='tabColorView'>
+                            <PageTabColor sheets={storeWorksheets} onSetWorkSheetColor={props.onSetWorkSheetColor}/>
+                        </View>
+                </Sheet>
+                : 
+                <Popover id="idx-tab-color-popover" backdrop={false}>
+                    <View style={{height: '450px'}} routes={routes} name='tabColorView'> 
+                        <PageTabColor sheets={storeWorksheets} onSetWorkSheetColor={props.onSetWorkSheetColor}/>
+                    </View>
                 </Popover>
             }
             {hiddenSheets.length ? (
@@ -207,5 +338,12 @@ const StatusbarView = inject('storeAppOptions', 'sheets', 'users')(observer(prop
         </Fragment>
     )
 }));
+
+const routes = [
+    {
+        path: '/sheet-tab-custom-color/',
+        component: PageCustomTabColor
+    },
+];
 
 export {StatusbarView};

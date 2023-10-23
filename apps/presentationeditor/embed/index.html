@@ -23,7 +23,7 @@
             overflow: hidden;
             border: none;
             background-color: #f4f4f4;
-            z-index: 10000;
+            z-index: 1000;
         }
 
         .loadmask > .brendpanel {
@@ -137,6 +137,10 @@
             0%   { opacity:1; }
             50%  { opacity:0.3; }
             100% { opacity:1; }
+        }
+
+        .loadmask.none-animation > .placeholder .slide-container {
+            animation: none;
         }
     </style>
 
@@ -267,7 +271,7 @@
                       <p id="id-critical-error-message"></p>
                   </div>
                   <div class="modal-footer">
-                      <button id="id-critical-error-close" class="btn btn-sm btn-primary" data-dismiss="modal" aria-hidden="true">Close</button>
+                      <button id="id-critical-error-close" class="btn btn-sm" data-dismiss="modal" aria-hidden="true">Close</button>
                   </div>
               </div>
           </div>
@@ -279,7 +283,7 @@
       <script type="text/javascript" src="../../../vendor/jquery/jquery.min.js"></script>
       <script type="text/javascript" src="../../../vendor/jquery.browser/dist/jquery.browser.min.js"></script>
       <script type="text/javascript" src="../../../vendor/bootstrap/dist/js/bootstrap.js"></script>
-      <script type="text/javascript" src="../../../vendor/sockjs/sockjs.min.js"></script>
+      <script type="text/javascript" src="../../../vendor/socketio/socket.io.min.js"></script>
       <script type="text/javascript" src="../../../vendor/xregexp/xregexp-all-min.js"></script>
 
       <script src="../../../vendor/requirejs/require.js"></script>
@@ -305,6 +309,8 @@
       <script type="text/javascript" src="../../common/embed/lib/view/LoadMask.js"></script>
       <script type="text/javascript" src="../../common/embed/lib/view/modals.js"></script>
       <script type="text/javascript" src="../../common/embed/lib/controller/modals.js"></script>
+      <script type="text/javascript" src="../../common/embed/lib/view/SearchBar.js"></script>
+      <script type="text/javascript" src="js/SearchBar.js"></script>
       <script type="text/javascript" src="js/ApplicationView.js"></script>
       <script type="text/javascript" src="js/ApplicationController.js"></script>
       <script type="text/javascript" src="js/application.js"></script>

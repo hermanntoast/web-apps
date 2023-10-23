@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 if (Common === undefined) {
     var Common = {};
 }
@@ -40,7 +39,8 @@ Common.Locale = new(function() {
     var loadcallback,
         apply = false,
         defLang = '{{DEFAULT_LANG}}',
-        currentLang = defLang;
+        currentLang = defLang,
+        _4letterLangs = ['pt-pt', 'zh-tw'];
 
     var _applyLocalization = function(callback) {
         try {
@@ -87,6 +87,10 @@ Common.Locale = new(function() {
         return currentLang;
     };
 
+    var _getDefaultLanguage = function() {
+        return defLang;
+    };
+
     var _getLoadedLanguage = function() {
         return loadedLang;
     };
@@ -100,11 +104,16 @@ Common.Locale = new(function() {
 
     var _requireLang = function (l) {
         typeof l != 'string' && (l = null);
-        var lang = (l || _getUrlParameterByName('lang') || defLang).split(/[\-_]/)[0];
+        var lang = (l || _getUrlParameterByName('lang') || defLang);
+        var idx4Letters = _4letterLangs.indexOf(lang.replace('_', '-').toLowerCase()); // try to load 4 letters language
+        lang = (idx4Letters<0) ? lang.split(/[\-_]/)[0] : _4letterLangs[idx4Letters];
         currentLang = lang;
         fetch('locale/' + lang + '.json')
             .then(function(response) {
                 if (!response.ok) {
+                    if (idx4Letters>=0) { // try to load 2-letters language
+                        throw new Error('4letters error');
+                    }
                     currentLang = defLang;
                     if (lang != defLang)
                         /* load default lang if fetch failed */
@@ -128,6 +137,12 @@ Common.Locale = new(function() {
                 l10n = json || {};
                 apply && _applyLocalization();
             }).catch(function(e) {
+                if ( /4letters/.test(e) ) {
+                    return setTimeout(function(){
+                        _requireLang(lang.split(/[\-_]/)[0]);
+                    }, 0);
+                }
+
                 if ( !/loaded/.test(e) && currentLang != defLang && defLang && defLang.length < 3 ) {
                     return setTimeout(function(){
                         _requireLang(defLang)
@@ -155,10 +170,16 @@ Common.Locale = new(function() {
         } else require(polyfills, _requireLang);
     } else _requireLang();
 
+    const _isCurrentRtl = function () {
+        return false;
+    };
+
     return {
         apply: _applyLocalization,
         get: _get,
-        getCurrentLanguage: _getCurrentLanguage
+        getCurrentLanguage: _getCurrentLanguage,
+        isCurrentLanguageRtl: _isCurrentRtl,
+        getDefaultLanguage: _getDefaultLanguage
     };
     
 })();

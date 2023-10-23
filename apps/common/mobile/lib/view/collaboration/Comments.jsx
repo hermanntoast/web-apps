@@ -1,4 +1,4 @@
-import React, {useState, useEffect, Fragment} from 'react';
+import React, {useState, useEffect, Fragment, useRef} from 'react';
 import {observer, inject} from "mobx-react";
 import { f7, Popup, Sheet, Popover, Page, Toolbar, Navbar, NavLeft, NavRight, NavTitle, Link, Input, Icon, List, ListItem, Actions, ActionsGroup, ActionsButton } from 'framework7-react';
 import { useTranslation } from 'react-i18next';
@@ -21,12 +21,18 @@ const sliceQuote = (text) => {
 const AddCommentPopup = inject("storeComments")(observer(props => {
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
-    useEffect(() => {
-        f7.popup.open('.add-comment-popup');
-        if(!Device.android) f7.input.focus('.input-comment');
-    });
     const userInfo = props.userInfo;
     const [stateText, setText] = useState('');
+    let refInputComment = useRef(null);
+
+    useEffect(() => {
+        f7.popup.open('.add-comment-popup', false);
+
+        if(refInputComment) {
+            refInputComment.focus();
+        }
+    }, []);
+
     return (
         <Popup className="add-comment-popup">
             <Navbar>
@@ -60,7 +66,7 @@ const AddCommentPopup = inject("storeComments")(observer(props => {
                     <div className='name'>{userInfo.name}</div>
                 </div>
                 <div className='wrap-textarea'>
-                    <Input className="input-comment" autofocus type='textarea' placeholder={_t.textAddComment} value={stateText} onChange={(event) => {setText(event.target.value);}}></Input>
+                    <textarea autoFocus placeholder={_t.textAddComment} value={stateText} onChange={(event) => {setText(event.target.value);}} ref={el => refInputComment = el}></textarea>
                 </div>
             </div>
         </Popup>
@@ -72,6 +78,8 @@ const AddCommentDialog = inject("storeComments")(observer(props => {
     const _t = t('Common.Collaboration', {returnObjects: true});
     const userInfo = props.userInfo;
     const templateInitials = `<div class="initials" style="background-color: ${userInfo.color};">${userInfo.initials}</div>`;
+    let refContainerDialog = useRef(null);
+
     useEffect(() => {
         f7.dialog.create({
             destroyOnClose: true,
@@ -127,9 +135,15 @@ const AddCommentDialog = inject("storeComments")(observer(props => {
                 }
             }
         }).open();
-    });
+
+        if(refContainerDialog) {
+            const inputComment = refContainerDialog.querySelector('#comment-text');
+            inputComment.focus();
+        }
+    }, []);
+
     return (
-        <div id='add-comment-dialog' className="add-comment-dialog"></div>
+        <div id='add-comment-dialog' ref={el => refContainerDialog = el} className="add-comment-dialog"></div>
     );
 }));
 
@@ -189,10 +203,17 @@ const ReplyActions = ({comment, reply, onCommentMenuClick, opened, openActionRep
 const EditCommentPopup = inject("storeComments")(observer(({storeComments, comment, onEditComment}) => {
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
-    useEffect(() => {
-        f7.popup.open('.edit-comment-popup');
-    });
     const [stateText, setText] = useState(comment.comment);
+    let refInputEditComment = useRef(null);
+
+    useEffect(() => {
+        f7.popup.open('.edit-comment-popup', false);
+
+        if(refInputEditComment) {
+            refInputEditComment.focus();
+        }
+    }, []);
+   
     return (
         <Popup className="edit-comment-popup">
             <Navbar>
@@ -230,7 +251,7 @@ const EditCommentPopup = inject("storeComments")(observer(({storeComments, comme
                     </div>
                 </div>
                 <div className='wrap-textarea'>
-                    <Input type='textarea' placeholder={_t.textEditComment} autofocus value={stateText} onChange={(event) => {setText(event.target.value);}}></Input>
+                    <textarea placeholder={_t.textEditComment} autoFocus value={stateText} onChange={(event) => {setText(event.target.value);}} ref={el => refInputEditComment = el}></textarea>
                 </div>
             </div>
         </Popup>
@@ -241,6 +262,8 @@ const EditCommentDialog = inject("storeComments")(observer(({storeComments, comm
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
     const templateInitials = `<div class="initials" style="background-color: ${comment.userColor};">${comment.userInitials}</div>`;
+    let refContainerDialog = useRef(null);
+
     useEffect(() => {
         f7.dialog.create({
             destroyOnClose: true,
@@ -303,9 +326,15 @@ const EditCommentDialog = inject("storeComments")(observer(({storeComments, comm
                 }
             }
         }).open();
-    });
+
+        if(refContainerDialog) {
+            const inputComment = refContainerDialog.querySelector('#comment-text');
+            inputComment.focus();
+        }
+    }, []);
+
     return (
-        <div id='edit-comment-dialog' className="edit-comment-dialog"></div>
+        <div id='edit-comment-dialog' ref={el => refContainerDialog = el} className="edit-comment-dialog"></div>
     );
 }));
 
@@ -320,10 +349,17 @@ const EditComment = ({comment, onEditComment}) => {
 const AddReplyPopup = inject("storeComments")(observer(({storeComments, userInfo, comment, onAddReply}) => {
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
-    useEffect(() => {
-        f7.popup.open('.add-reply-popup');
-    });
     const [stateText, setText] = useState('');
+    let refInputReplyComment = useRef(null);
+
+    useEffect(() => {
+        f7.popup.open('.add-reply-popup', false);
+
+        if(refInputReplyComment) {
+            refInputReplyComment.focus();
+        }
+    }, []);
+
     return (
         <Popup className="add-reply-popup">
             <Navbar>
@@ -357,7 +393,7 @@ const AddReplyPopup = inject("storeComments")(observer(({storeComments, userInfo
                     <div className='name'>{userInfo.name}</div>
                 </div>
                 <div className='wrap-textarea'>
-                    <Input type='textarea' placeholder={_t.textAddReply} autofocus value={stateText} onChange={(event) => {setText(event.target.value);}}></Input>
+                    <textarea placeholder={_t.textAddReply} autoFocus value={stateText} onChange={(event) => {setText(event.target.value);}} ref={el => refInputReplyComment = el}></textarea>
                 </div>
             </div>
         </Popup>
@@ -368,6 +404,8 @@ const AddReplyDialog = inject("storeComments")(observer(({storeComments, userInf
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
     const templateInitials = `<div class="initials" style="background-color: ${userInfo.color};">${userInfo.initials}</div>`;
+    let refContainerDialog = useRef(null);
+
     useEffect(() => {
         f7.dialog.create({
             destroyOnClose: true,
@@ -428,9 +466,15 @@ const AddReplyDialog = inject("storeComments")(observer(({storeComments, userInf
                 }
             }
         }).open();
-    });
+
+        if(refContainerDialog) {
+            const inputReplyComment = refContainerDialog.querySelector('#reply-text');
+            inputReplyComment.focus();
+        }
+    }, []);
+
     return (
-        <div id='add-reply-dialog' className="add-reply-dialog"></div>
+        <div id='add-reply-dialog' ref={el => refContainerDialog = el} className="add-reply-dialog"></div>
     );
 }));
 
@@ -445,10 +489,17 @@ const AddReply = ({userInfo, comment, onAddReply}) => {
 const EditReplyPopup = inject("storeComments")(observer(({storeComments, comment, reply, onEditReply}) => {
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
-    useEffect(() => {
-        f7.popup.open('.edit-reply-popup');
-    });
     const [stateText, setText] = useState(reply.reply);
+    let relInputReplyComment = useRef(null);
+
+    useEffect(() => {
+        f7.popup.open('.edit-reply-popup', false);
+
+        if(relInputReplyComment) {
+            relInputReplyComment.focus();
+        }
+    }, []);
+
     return (
         <Popup className="edit-reply-popup">
             <Navbar>
@@ -486,7 +537,7 @@ const EditReplyPopup = inject("storeComments")(observer(({storeComments, comment
                     </div>
                 </div>
                 <div className='wrap-textarea'>
-                    <Input type='textarea' placeholder={_t.textEditReply} autofocus value={stateText} onChange={(event) => {setText(event.target.value);}}></Input>
+                    <textarea placeholder={_t.textEditReply} autoFocus value={stateText} onChange={(event) => {setText(event.target.value);}} ref={el => relInputReplyComment = el}></textarea>
                 </div>
             </div>
         </Popup>
@@ -497,6 +548,8 @@ const EditReplyDialog = inject("storeComments")(observer(({storeComments, commen
     const { t } = useTranslation();
     const _t = t('Common.Collaboration', {returnObjects: true});
     const templateInitials = `<div class="initials" style="background-color: ${reply.userColor};">${reply.userInitials}</div>`;
+    let refContainerDialog = useRef(null);
+
     useEffect(() => {
         f7.dialog.create({
             destroyOnClose: true,
@@ -559,9 +612,15 @@ const EditReplyDialog = inject("storeComments")(observer(({storeComments, commen
                 }
             }
         }).open();
-    });
+
+        if(refContainerDialog) {
+            const inputReplyComment = refContainerDialog.querySelector('#reply-text');
+            inputReplyComment.focus();
+        }
+    }, []);
+
     return (
-        <div id='edit-reply-dialog' className="edit-reply-dialog"></div>
+        <div id='edit-reply-dialog' ref={el => refContainerDialog = el} className="edit-reply-dialog"></div>
     );
 }));
 
@@ -616,7 +675,7 @@ const pickLink = (message) => {
 
     arrayComment = arrayComment.sort(function(item1,item2){ return item1.start - item2.start; });
     
-    let str_res = (arrayComment.length>0) ? <label>{Common.Utils.String.htmlEncode(message.substring(0, arrayComment[0].start))}{arrayComment[0].str}</label> : <label>{message}</label>;
+    let str_res = (arrayComment.length>0) ? <label>{message.substring(0, arrayComment[0].start)}{arrayComment[0].str}</label> : <label>{message}</label>;
 
     for (var i=1; i<arrayComment.length; i++) {
         str_res = <label>{str_res}{Common.Utils.String.htmlEncode(message.substring(arrayComment[i-1].end, arrayComment[i].start))}{arrayComment[i].str}</label>;
@@ -636,11 +695,15 @@ const ViewComments = inject("storeComments", "storeAppOptions", "storeReview")(o
     const _t = t('Common.Collaboration', {returnObjects: true});
     const isAndroid = Device.android;
     const displayMode = storeReview.displayMode;
-
+    const isViewer = storeAppOptions.isViewer;
+    const canEditComments = storeAppOptions.canEditComments;
     const viewMode = !storeAppOptions.canComments;
     const comments = storeComments.groupCollectionFilter || storeComments.collectionComments;
     const isEdit = storeAppOptions.isEdit || storeAppOptions.isRestrictedEdit;
     const sortComments = comments.length > 0 ? [...comments].sort((a, b) => a.time > b.time ? -1 : 1) : null;
+    const isProtected = storeAppOptions.isProtected;
+    const typeProtection = storeAppOptions.typeProtection;
+    const isAvailableCommenting = !isProtected || typeProtection === Asc.c_oAscEDocProtect.TrackedChanges || typeProtection === Asc.c_oAscEDocProtect.Comments;
 
     const [clickComment, setComment] = useState();
     const [commentActionsOpened, openActionComment] = useState(false);
@@ -677,8 +740,8 @@ const ViewComments = inject("storeComments", "storeAppOptions", "storeReview")(o
                                     </div>
                                     {isEdit && !viewMode &&
                                         <div className='right'>
-                                            {(comment.editable && displayMode === 'markup' && !wsProps?.Objects) && <div className='comment-resolve' onClick={() => {onResolveComment(comment);}}><Icon icon={comment.resolved ? 'icon-resolve-comment check' : 'icon-resolve-comment'} /></div> }
-                                            {(displayMode === 'markup' && !wsProps?.Objects) &&
+                                            {(comment.editable && displayMode === 'markup' && !wsProps?.Objects && (!isViewer || canEditComments) && isAvailableCommenting) && <div className='comment-resolve' onClick={() => {onResolveComment(comment);}}><Icon icon={comment.resolved ? 'icon-resolve-comment check' : 'icon-resolve-comment'} /></div> }
+                                            {(displayMode === 'markup' && !wsProps?.Objects && (!isViewer || canEditComments) && isAvailableCommenting) &&
                                                 <div className='comment-menu'
                                                     onClick={() => {setComment(comment); openActionComment(true);}}>
                                                     <Icon icon='icon-menu-comment'/>
@@ -708,7 +771,7 @@ const ViewComments = inject("storeComments", "storeAppOptions", "storeReview")(o
                                                                             <div className='reply-date'>{reply.date}</div>
                                                                         </div>
                                                                     </div>
-                                                                    {isEdit && !viewMode && reply.editable &&
+                                                                    {isEdit && !viewMode && reply.editable && (!isViewer || canEditComments) && isAvailableCommenting &&
                                                                         <div className='right'>
                                                                             <div className='reply-menu'
                                                                                  onClick={() => {setComment(comment); setReply(reply); openActionReply(true);}}
@@ -747,10 +810,14 @@ const CommentList = inject("storeComments", "storeAppOptions", "storeReview")(ob
     const _t = t('Common.Collaboration', {returnObjects: true});
     const isAndroid = Device.android;
     const displayMode = storeReview.displayMode;
-
+    const isViewer = storeAppOptions.isViewer;
+    const canEditComments = storeAppOptions.canEditComments;
     const viewMode = !storeAppOptions.canComments;
     const isEdit = storeAppOptions.isEdit || storeAppOptions.isRestrictedEdit;
     const comments = storeComments.showComments;
+    const isProtected = storeAppOptions.isProtected;
+    const typeProtection = storeAppOptions.typeProtection;
+    const isAvailableCommenting = !isProtected || typeProtection === Asc.c_oAscEDocProtect.TrackedChanges || typeProtection === Asc.c_oAscEDocProtect.Comments;
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const comment = comments[currentIndex];
@@ -786,13 +853,15 @@ const CommentList = inject("storeComments", "storeAppOptions", "storeReview")(ob
     return (
         <Fragment>
             <Toolbar position='bottom'>
-                {isEdit && !viewMode && 
-                    <Link className={`btn-add-reply${wsProps?.Objects ? ' disabled' : ''}`} href='#' onClick={() => {onCommentMenuClick('addReply', comment);}}>{_t.textAddReply}</Link>
+                {isEdit && !viewMode &&
+                    <Link className={`btn-add-reply${((wsProps?.Objects || isViewer) && !canEditComments || !isAvailableCommenting) ? ' disabled' : ''}`} href='#' onClick={() => {onCommentMenuClick('addReply', comment);}}>{_t.textAddReply}</Link>
                 }
-                <div className='comment-navigation row'>
-                    <Link href='#' onClick={onViewPrevComment}><Icon slot='media' icon='icon-prev'/></Link>
-                    <Link href='#' onClick={onViewNextComment}><Icon slot='media' icon='icon-next'/></Link>
-                </div>
+                {comments.length > 1 &&
+                    <div className='comment-navigation row'>
+                        <Link href='#' onClick={onViewPrevComment}><Icon slot='media' icon='icon-prev'/></Link>
+                        <Link href='#' onClick={onViewNextComment}><Icon slot='media' icon='icon-next'/></Link>
+                    </div>
+                }
             </Toolbar>
             <div className='pages'>
                 <Page className='page-current-comment'>
@@ -807,58 +876,58 @@ const CommentList = inject("storeComments", "storeAppOptions", "storeReview")(ob
                                     </div>
                                 </div>
                                 {isEdit && !viewMode &&
-                                <div className='right'>
-                                    {(comment.editable && displayMode === 'markup' && !wsProps?.Objects) && <div className='comment-resolve' onClick={() => {onResolveComment(comment);}}><Icon icon={comment.resolved ? 'icon-resolve-comment check' : 'icon-resolve-comment'}/></div>}
-                                    {(displayMode === 'markup' && !wsProps?.Objects) &&
-                                        <div className='comment-menu'
-                                            onClick={() => {openActionComment(true);}}>
-                                            <Icon icon='icon-menu-comment'/>
-                                        </div>
-                                    }
-                                </div>
+                                    <div className='right'>
+                                        {(comment.editable && displayMode === 'markup' && !wsProps?.Objects && (!isViewer || canEditComments) && isAvailableCommenting) && <div className='comment-resolve' onClick={() => {onResolveComment(comment);}}><Icon icon={comment.resolved ? 'icon-resolve-comment check' : 'icon-resolve-comment'}/></div>}
+                                        {(displayMode === 'markup' && !wsProps?.Objects && (!isViewer || canEditComments) && isAvailableCommenting) &&
+                                            <div className='comment-menu'
+                                                onClick={() => {openActionComment(true);}}>
+                                                <Icon icon='icon-menu-comment'/>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
                             <div slot='footer'>
                                 {comment.quote && <div className='comment-quote'>{sliceQuote(comment.quote)}</div>}
                                 <div className='comment-text'><pre>{pickLink(comment.comment)}</pre></div>
                                 {comment.replies.length > 0 &&
-                                <ul className='reply-list'>
-                                    {comment.replies.map((reply, indexReply) => {
-                                        return (
-                                            <li key={`reply-${indexReply}`}
-                                                className='reply-item'
-                                            >
-                                                <div className='item-content'>
-                                                    <div className='item-inner'>
-                                                        <div className='item-title'>
-                                                            <div slot='header' className='reply-header'>
-                                                                <div className='left'>
-                                                                    {isAndroid && <div className='initials' style={{backgroundColor: `${reply.userColor ? reply.userColor : '#cfcfcf'}`}}>{reply.userInitials}</div>}
-                                                                    <div>
-                                                                        <div className='user-name'>{reply.parsedName}</div>
-                                                                        <div className='reply-date'>{reply.date}</div>
+                                    <ul className='reply-list'>
+                                        {comment.replies.map((reply, indexReply) => {
+                                            return (
+                                                <li key={`reply-${indexReply}`}
+                                                    className='reply-item'
+                                                >
+                                                    <div className='item-content'>
+                                                        <div className='item-inner'>
+                                                            <div className='item-title'>
+                                                                <div slot='header' className='reply-header'>
+                                                                    <div className='left'>
+                                                                        {isAndroid && <div className='initials' style={{backgroundColor: `${reply.userColor ? reply.userColor : '#cfcfcf'}`}}>{reply.userInitials}</div>}
+                                                                        <div>
+                                                                            <div className='user-name'>{reply.parsedName}</div>
+                                                                            <div className='reply-date'>{reply.date}</div>
+                                                                        </div>
                                                                     </div>
+                                                                    {isEdit && !viewMode && reply.editable && (!isViewer || canEditComments) && isAvailableCommenting &&
+                                                                        <div className='right'>
+                                                                            <div className='reply-menu'
+                                                                                onClick={() => {setReply(reply); openActionReply(true);}}
+                                                                            >
+                                                                                <Icon icon='icon-menu-comment'/>
+                                                                            </div>
+                                                                        </div>
+                                                                    }
                                                                 </div>
-                                                                {isEdit && !viewMode && reply.editable &&
-                                                                <div className='right'>
-                                                                    <div className='reply-menu'
-                                                                        onClick={() => {setReply(reply); openActionReply(true);}}
-                                                                    >
-                                                                        <Icon icon='icon-menu-comment'/>
-                                                                    </div>
+                                                                <div slot='footer'>
+                                                                    <div className='reply-text'><pre>{pickLink(reply.reply)}</pre></div>
                                                                 </div>
-                                                                }
-                                                            </div>
-                                                            <div slot='footer'>
-                                                                <div className='reply-text'><pre>{pickLink(reply.reply)}</pre></div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
+                                                </li>
+                                            )
+                                        })}
+                                    </ul>
                                 }
                             </div>
                         </ListItem>

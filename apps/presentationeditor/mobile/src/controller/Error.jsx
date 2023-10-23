@@ -3,7 +3,7 @@ import { inject } from 'mobx-react';
 import { f7 } from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 
-const ErrorController = inject('storeAppOptions')(({storeAppOptions, LoadingDocument}) => {
+const ErrorController = inject('storeAppOptions','storePresentationInfo')(({storeAppOptions, storePresentationInfo, LoadingDocument}) => {
     const { t } = useTranslation();
     const _t = t("Error", { returnObjects: true });
 
@@ -41,8 +41,7 @@ const ErrorController = inject('storeAppOptions')(({storeAppOptions, LoadingDocu
             closable: false
         };
 
-        switch (id)
-        {
+        switch (id) {
             case Asc.c_oAscError.ID.Unknown:
                 config.msg = _t.unknownErrorText;
                 break;
@@ -88,11 +87,11 @@ const ErrorController = inject('storeAppOptions')(({storeAppOptions, LoadingDocu
                 break;
 
             case Asc.c_oAscError.ID.VKeyEncrypt:
-                config.msg = _t.errorKeyEncrypt;
+                config.msg = _t.errorToken;
                 break;
 
             case Asc.c_oAscError.ID.KeyExpire:
-                config.msg = _t.errorKeyExpire;
+                config.msg = _t.errorTokenExpire;
                 break;
 
             case Asc.c_oAscError.ID.UserCountExceed:
@@ -157,8 +156,17 @@ const ErrorController = inject('storeAppOptions')(({storeAppOptions, LoadingDocu
                 config.msg = _t.errorAccessDeny;
                 break;
 
+            case Asc.c_oAscError.ID.ForceSaveButton:
+            case Asc.c_oAscError.ID.ForceSaveTimeout:
+                config.msg = t('Error.errorForceSave');
+                break;
+
             case Asc.c_oAscError.ID.EditingError:
                 config.msg = _t.errorEditingDownloadas;
+                break;
+
+            case Asc.c_oAscError.ID.MailToClientMissing:
+                config.msg = t('Error.errorEmailClient');
                 break;
 
             case Asc.c_oAscError.ID.ConvertationOpenLimitError:
@@ -169,8 +177,34 @@ const ErrorController = inject('storeAppOptions')(({storeAppOptions, LoadingDocu
                 config.msg = _t.errorUpdateVersionOnDisconnect;
                 break;
 
+            case Asc.c_oAscError.ID.ComboSeriesError:
+                config.msg = t('Error.errorComboSeries');
+                break;
+            
+            case Asc.c_oAscError.ID.Password:
+                config.msg = t('Error.errorSetPassword');
+                break;
+
             case Asc.c_oAscError.ID.LoadingFontError:
                 config.msg = _t.errorLoadingFont;
+                break;
+
+            case Asc.c_oAscError.ID.DirectUrl:
+                config.msg = _t.errorDirectUrl;
+                break;
+
+            case Asc.c_oAscError.ID.ConvertationOpenFormat:
+                let docExt = storePresentationInfo.dataDoc ? storePresentationInfo.dataDoc.fileType || '' : '';
+                if (errData === 'pdf')
+                    config.msg = _t.errorInconsistentExtPdf.replace('%1', docExt);
+                else if  (errData === 'docx')
+                    config.msg = _t.errorInconsistentExtDocx.replace('%1', docExt);
+                else if  (errData === 'xlsx')
+                    config.msg = _t.errorInconsistentExtXlsx.replace('%1', docExt);
+                else if  (errData === 'pptx')
+                    config.msg = _t.errorInconsistentExtPptx.replace('%1', docExt);
+                else
+                    config.msg = _t.errorInconsistentExt;
                 break;
 
             default:

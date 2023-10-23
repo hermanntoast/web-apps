@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  About.js
  *
@@ -58,6 +57,7 @@ define([
             !(/\s$/.test(this.txtAddress)) && (this.txtAddress += " ");
             !(/\s$/.test(this.txtMail)) && (this.txtMail += " ");
             !(/\s$/.test(this.txtTel)) && (this.txtTel += " ");
+            !(/\s$/.test(this.txtVersion)) && (this.txtVersion += " ");
 
             this.template = _.template([
                 '<table id="id-about-licensor-logo" cols="1" style="width: 100%; margin-top: 20px;">',
@@ -128,6 +128,12 @@ define([
                     '</tr>',
                     '<tr>',
                         '<td align="center" class="padding-small">',
+                            '<label class="asc-about-desc-name">' + this.txtTel + '</label>',
+                            '<label class="asc-about-desc" id="id-about-company-tel"></label>',
+                        '</td>',
+                    '</tr>',
+                    '<tr>',
+                        '<td align="center" class="padding-small">',
                             '<a href="" target="_blank" id="id-about-company-url"></a>',
                         '</td>',
                     '</tr>',
@@ -177,6 +183,7 @@ define([
                 this.lblCompanyMail = _$l.findById('#id-about-company-mail');
                 this.lblCompanyUrl = _$l.findById('#id-about-company-url');
                 this.lblCompanyLic = _$l.findById('#id-about-company-lic');
+                this.lblCompanyTel = _$l.findById('#id-about-company-tel');
 
                 this.$el.html(_$l);
                 this.$el.addClass('about-dlg');
@@ -223,6 +230,11 @@ define([
                     (value = customer.mail) && value.length ?
                         this.lblCompanyMail.attr('href', "mailto:"+value).text(value) :
                         this.lblCompanyMail.parents('tr').addClass('hidden');
+
+                    value = customer.phone;
+                    value && value.length ?
+                        this.lblCompanyTel.text(value) :
+                        this.lblCompanyTel.parents('tr').addClass('hidden');
 
                     if ((value = customer.www) && value.length) {
                         var http = !/^https?:\/{2}/i.test(value) ? "http:\/\/" : '';

@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  * User: Julia.Radzhabova
  * Date: 14.12.17
@@ -57,10 +56,7 @@ define([
                 'Navigation': {
                     'show': function() {
                         if (!this.canUseViwerNavigation) {
-                            var obj = me.api.asc_ShowDocumentOutline();
-                            if (!me._navigationObject)
-                                me._navigationObject = obj;
-                            me.updateNavigation();
+                            me.api.asc_ShowDocumentOutline();
                         } else {
                             if (me.panelNavigation && me.panelNavigation.viewNavigationList && me.panelNavigation.viewNavigationList.scroller)
                                 me.panelNavigation.viewNavigationList.scroller.update({alwaysVisibleY: true});
@@ -118,6 +114,10 @@ define([
             panelNavigation.viewNavigationList.on('item:add', _.bind(this.onItemAdd, this));
             panelNavigation.navigationMenu.on('item:click',           _.bind(this.onMenuItemClick, this));
             panelNavigation.navigationMenu.items[11].menu.on('item:click', _.bind(this.onMenuLevelsItemClick, this));
+            panelNavigation.btnSettingsMenu.on('item:click',           _.bind(this.onMenuSettingsItemClick, this));
+            panelNavigation.btnSettingsMenu.items[2].menu.on('item:click', _.bind(this.onMenuLevelsItemClick, this));
+            panelNavigation.btnSettingsMenu.items[4].menu.on('item:click', _.bind(this.onMenuFontSizeClick, this));
+            panelNavigation.btnClose.on('click', _.bind(this.onClickClosePanel, this));
 
             var viewport = this.getApplication().getController('Viewport').getView('Viewport');
             viewport.hlayout.on('layout:resizedrag',  function () {
@@ -127,7 +127,15 @@ define([
         },
 
         updateNavigation: function() {
+            if (!this._navigationObject)
+                this._navigationObject = this.api.asc_GetDocumentOutlineManager();
+
             if (!this._navigationObject) return;
+
+            if (this.timerUpdateId) {
+                clearTimeout(this.timerUpdateId);
+                this.timerUpdateId = 0;
+            }
 
             var count = this._navigationObject.get_ElementsCount(),
                 prev_level = -1,
@@ -159,14 +167,53 @@ define([
                 arr[0].set('name', this.txtBeginning);
                 arr[0].set('tip', this.txtGotoBeginning);
             }
-            this.getApplication().getCollection('Navigation').reset(arr);
-            this.onChangeOutlinePosition(this._navigationObject.get_CurrentPosition());
+
+            var me = this;
+            var store = this.getApplication().getCollection('Navigation');
+            store.reset(arr.splice(0, 50));
+
+            this._currentPos = this._navigationObject.get_CurrentPosition();
+
+            function addToPanel() {
+                if (arr.length<1) {
+                    if (me.timerUpdateId) {
+                        clearTimeout(me.timerUpdateId);
+                        me.timerUpdateId = 0;
+                    }
+                    me.panelNavigation.viewNavigationList.scroller && me.panelNavigation.viewNavigationList.scroller.update({alwaysVisibleY: true});
+                    if (me._currentPos>-1 && me._currentPos<store.length)
+                        me.onChangeOutlinePosition(me._currentPos);
+                    me._currentPos = -1;
+                    return;
+                }
+                me.timerUpdateId = setTimeout(function () {
+                    var added = arr.splice(0, 100);
+                    added.forEach(function(item) {
+                        var idx = item.get('index');
+                        item.set('name', me._navigationObject.get_Text(idx));
+                        item.set('isEmptyItem', me._navigationObject.isEmptyItem(idx));
+                    });
+                    store.add(added);
+                    if (me._currentPos>-1 && me._currentPos<store.length) {
+                        me.onChangeOutlinePosition(me._currentPos);
+                        me._currentPos = -1;
+                    }
+                    addToPanel();
+                }, 1);
+            }
+            addToPanel();
         },
 
         updateChangeNavigation: function(index) {
+            if (!this._navigationObject)
+                this._navigationObject = this.api.asc_GetDocumentOutlineManager();
+
             if (!this._navigationObject) return;
 
-            var item = this.getApplication().getCollection('Navigation').at(index);
+            var navList = this.getApplication().getCollection('Navigation');
+            if (navList.length<=index) return;
+
+            var item = navList.at(index);
             if (item.get('level') !== this._navigationObject.get_Level(index) ||
                 index==0 && item.get('isNotHeader') !== this._navigationObject.isFirstItemNotHeader()) {
                 this.updateNavigation();
@@ -178,7 +225,10 @@ define([
         },
 
         onChangeOutlinePosition: function(index) {
-            this.panelNavigation.viewNavigationList.scrollToRecord(this.panelNavigation.viewNavigationList.selectByIndex(index));
+            if (index<this.panelNavigation.viewNavigationList.store.length)
+                this.panelNavigation.viewNavigationList.scrollToRecord(this.panelNavigation.viewNavigationList.selectByIndex(index));
+            else
+                this._currentPos = index;
         },
 
         onItemContextMenu: function(picker, item, record, e){
@@ -245,7 +295,6 @@ define([
 
         onMenuItemClick: function (menu, item) {
             if (!this._navigationObject && !this._viewerNavigationObject) return;
-
             var index = parseInt(menu.cmpEl.attr('data-value'));
             if (item.value == 'promote') {
                 this._navigationObject.promote(index);
@@ -265,9 +314,30 @@ define([
                 this.panelNavigation.viewNavigationList.collapseAll();
             }
         },
+        onClickClosePanel: function() {
+            Common.NotificationCenter.trigger('leftmenu:change', 'hide');
+        },
+
+        onMenuSettingsItemClick: function (menu, item){
+            switch (item.value){
+                case 'expand':
+                    this.panelNavigation.viewNavigationList.expandAll();
+                    break;
+                case 'collapse':
+                    this.panelNavigation.viewNavigationList.collapseAll();
+                    break;
+                case 'wrap':
+                    this.panelNavigation.changeWrapHeadings();
+                    break;
+            }
+        },
 
         onMenuLevelsItemClick: function (menu, item) {
             this.panelNavigation.viewNavigationList.expandToLevel(item.value-1);
+        },
+
+        onMenuFontSizeClick: function (menu, item){
+            this.panelNavigation.changeFontSize(item.value);
         },
 
         SetDisabled: function(state) {

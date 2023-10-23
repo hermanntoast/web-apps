@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2021
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -43,7 +42,9 @@ define([
     'common/main/lib/view/Protection',
     'spreadsheeteditor/main/app/view/WBProtection',
     'spreadsheeteditor/main/app/view/ProtectDialog',
-    'spreadsheeteditor/main/app/view/ProtectRangesDlg'
+    'spreadsheeteditor/main/app/view/ProtectRangesDlg',
+    'spreadsheeteditor/main/app/view/ProtectedRangesManagerDlg',
+    'spreadsheeteditor/main/app/view/ProtectedRangesEditDlg'
 ], function () {
     'use strict';
 
@@ -60,10 +61,11 @@ define([
 
             this.addListeners({
                 'WBProtection': {
-                    'protect:workbook':      _.bind(this.onWorkbookClick, this),
-                    'protect:sheet':     _.bind(this.onSheetClick, this),
-                    'protect:ranges':     _.bind(this.onRangesClick, this),
-                    'protect:lock-options':     _.bind(this.onLockOptionClick, this)
+                    'protect:workbook':     _.bind(this.onWorkbookClick, this),
+                    'protect:sheet':        _.bind(this.onSheetClick, this),
+                    'protect:allow-ranges': _.bind(this.onAllowRangesClick, this),
+                    'protect:lock-options': _.bind(this.onLockOptionClick, this),
+                    'protect:range':       _.bind(this.onProtectRangeClick, this)
                 }
             });
         },
@@ -71,8 +73,8 @@ define([
             this._state = {};
             this.wsLockOptions = ['SelectLockedCells', 'SelectUnlockedCells', 'FormatCells', 'FormatColumns', 'FormatRows', 'InsertColumns', 'InsertRows', 'InsertHyperlinks', 'DeleteColumns',
                 'DeleteRows', 'Sort', 'AutoFilter', 'PivotTables', 'Objects', 'Scenarios'];
-            SSE.enumLock && this.wsLockOptions.forEach(function(item){
-                SSE.enumLock[item] = item;
+            Common.enumLock && this.wsLockOptions.forEach(function(item){
+                Common.enumLock[item] = item;
             });
 
             Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
@@ -98,7 +100,7 @@ define([
         setMode: function(mode) {
             this.appConfig = mode;
 
-            this.appConfig.isEdit && (this.view = this.createView('WBProtection', {
+            this.appConfig.isEdit && this.appConfig.canProtect && (this.view = this.createView('WBProtection', {
                 mode: mode
             }));
 
@@ -180,6 +182,7 @@ define([
                     win = new SSE.Views.ProtectDialog({
                         type: 'sheet',
                         props: props,
+                        api: me.api,
                         handler: function(result, value, props) {
                             btn = result;
                             if (result == 'ok') {
@@ -228,7 +231,7 @@ define([
             }
         },
 
-        onRangesClick: function() {
+        onAllowRangesClick: function() {
             var me = this,
                 props = me.api.asc_getProtectedRanges(),
                 win = new SSE.Views.ProtectRangesDlg({
@@ -270,6 +273,20 @@ define([
             Common.NotificationCenter.trigger('edit:complete', this);
         },
 
+        onProtectRangeClick: function() {
+            var me = this,
+                win = new SSE.Views.ProtectedRangesManagerDlg({
+                    api: me.api,
+                    canRequestUsers: me.appConfig.canRequestUsers,
+                    currentUser: me.appConfig.user,
+                    handler: function(result, settings) {
+                        Common.NotificationCenter.trigger('edit:complete');
+                    }
+                });
+
+            win.show();
+        },
+
         onAppReady: function (config) {
             if (!this.view) return;
 
@@ -281,8 +298,8 @@ define([
 
                 var props = me.getWSProps();
                 me.view.btnProtectSheet.toggle(props.wsLock, true); //current sheet
-                Common.Utils.lockControls(SSE.enumLock['Objects'], props.wsProps['Objects'], { array: [me.view.chLockedText, me.view.chLockedShape]});
-                Common.Utils.lockControls(SSE.enumLock.wsLock, props.wsLock, { array: [me.view.btnAllowRanges]});
+                Common.Utils.lockControls(Common.enumLock['Objects'], props.wsProps['Objects'], { array: [me.view.chLockedText, me.view.chLockedShape]});
+                Common.Utils.lockControls(Common.enumLock.wsLock, props.wsLock, { array: [me.view.btnAllowRanges]});
             });
         },
 
@@ -295,8 +312,8 @@ define([
 
             if (this.view && props) {
                 this.view.btnProtectSheet.toggle(props.wsLock, true); //current sheet
-                Common.Utils.lockControls(SSE.enumLock['Objects'], props.wsProps['Objects'], { array: [this.view.chLockedText, this.view.chLockedShape]});
-                Common.Utils.lockControls(SSE.enumLock.wsLock, props.wsLock, { array: [this.view.btnAllowRanges]});
+                Common.Utils.lockControls(Common.enumLock['Objects'], props.wsProps['Objects'], { array: [this.view.chLockedText, this.view.chLockedShape]});
+                Common.Utils.lockControls(Common.enumLock.wsLock, props.wsLock, { array: [this.view.btnAllowRanges]});
             }
             Common.NotificationCenter.trigger('protect:wslock', props);
         },
@@ -329,13 +346,13 @@ define([
         },
 
         onApiSelectionChanged: function(info) {
-            if (!this.view) return;
+            if (!this.view || !info) return;
             if ($('.asc-window.enable-key-events:visible').length>0) return;
 
             var selectionType = info.asc_getSelectionType();
             var need_disable = (selectionType === Asc.c_oAscSelectionType.RangeCells || selectionType === Asc.c_oAscSelectionType.RangeCol ||
                                 selectionType === Asc.c_oAscSelectionType.RangeRow || selectionType === Asc.c_oAscSelectionType.RangeMax);
-            Common.Utils.lockControls(SSE.enumLock.selRange, need_disable, { array: [this.view.chLockedText, this.view.chLockedShape]});
+            Common.Utils.lockControls(Common.enumLock.selRange, need_disable, { array: [this.view.chLockedText, this.view.chLockedShape]});
 
             var xfs = info.asc_getXfs();
             this.view.chLockedCell.setValue(!!xfs.asc_getLocked(), true);
@@ -352,12 +369,13 @@ define([
                             lock = elValue.asc_getProtectionLocked();
                         this.view.chLockedText.setValue(locktext!==undefined ? !!locktext : 'indeterminate', true);
                         this.view.chLockedShape.setValue(lock!==undefined ? !!lock : 'indeterminate', true);
-                        Common.Utils.lockControls(SSE.enumLock.wsLockText, locktext===null, { array: [this.view.chLockedText]});
-                        Common.Utils.lockControls(SSE.enumLock.wsLockShape, lock===null, { array: [this.view.chLockedShape]});
+                        Common.Utils.lockControls(Common.enumLock.wsLockText, locktext===null, { array: [this.view.chLockedText]});
+                        Common.Utils.lockControls(Common.enumLock.wsLockShape, lock===null, { array: [this.view.chLockedShape]});
                         break;
                     }
                 }
             }
+            Common.Utils.lockControls(Common.enumLock.userProtected, !!info.asc_getUserProtected(), { array: [this.view.chLockedCell, this.view.chHiddenFormula]});
         }
 
     }, SSE.Controllers.WBProtection || {}));

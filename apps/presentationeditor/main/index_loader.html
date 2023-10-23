@@ -9,7 +9,7 @@
 
     <!-- splash -->
     <style type="text/css">
-        .theme-dark {
+        .theme-dark, .theme-type-dark {
             --romb-start-color: #555;
         }
         .loadmask {
@@ -248,6 +248,7 @@
                 '</div>' +
                 '</div>');
     </script>
+    <script src="../../common/main/lib/util/themeinit.js"></script>
 
     <!-- debug begin -->
     <link rel="stylesheet/less" type="text/css" href="resources/less/app.less" />
@@ -258,22 +259,13 @@
 <div id="viewport"></div>
 
 <script src="../../../vendor/svg-injector/svg-injector.min.js"></script>
-<img class="inline-svg" src="../../common/main/resources/img/header/buttons.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/pptx.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/ppsx.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/potx.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/pdf.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/pdfa.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/odp.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/otp.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/pptm.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/png.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/jpg.svg">
-<img class="inline-svg" src="../../common/main/resources/img/doc-formats/blank.svg">
+<img class="inline-svg" src="../../common/main/resources/img/header/icons.svg">
 <img class="inline-svg" src="../../common/main/resources/img/toolbar/shapetypes.svg">
 <img class="inline-svg" src="../../common/main/resources/img/toolbar/charttypes.svg">
-<img class="inline-svg" src="resources/img/recent-file.svg">
-<img class="inline-svg" src="resources/img/file-template.svg">
+<img class="inline-svg" src="../../common/main/resources/img/toolbar/equationicons.svg">
+<img class="inline-svg" src="../../common/main/resources/img/right-panels/arrows.svg">
+<img class="inline-svg" src="../../common/main/resources/img/combo-border-size/BorderSize.svg">
+<div class="inlined-svg"></div>
 <script>
     var svgpoints = document.querySelectorAll('img.inline-svg');
     SVGInjector(svgpoints);

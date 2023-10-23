@@ -1,3 +1,34 @@
+/*
+ * (c) Copyright Ascensio System SIA 2010-2023
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation. In accordance with
+ * Section 7(a) of the GNU AGPL its Section 15 shall be amended to the effect
+ * that Ascensio System SIA expressly excludes the warranty of non-infringement
+ * of any third-party rights.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
+ * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
+ * street, Riga, Latvia, EU, LV-1050.
+ *
+ * The  interactive user interfaces in modified source and object code versions
+ * of the Program must display Appropriate Legal Notices, as required under
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * Pursuant to Section 7(b) of the License you must retain the original Product
+ * logo when distributing the program. Pursuant to Section 7(e) we decline to
+ * grant you any rights under trademark law for use of our trademarks.
+ *
+ * All the Product's GUI elements, including illustrations and icon sets, as
+ * well as technical writing content are licensed under the terms of the
+ * Creative Commons Attribution-ShareAlike 4.0 International. See the License
+ * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ */
 module.exports = function(grunt) {
     var _ = require('lodash'),
         defaultConfig,
@@ -68,6 +99,15 @@ module.exports = function(grunt) {
                     from: /\{\{HELP_URL\}\}/g,
                     to: _encode(process.env.HELP_URL) || 'https://helpcenter.onlyoffice.com'
                 }, {
+                    from: /\{\{HELP_CENTER_WEB_DE\}\}/g,
+                    to: _encode(process.env.HELP_CENTER_WEB_DE) || _encode(process.env.HELP_CENTER_WEB_EDITORS) || 'https://helpcenter.onlyoffice.com/userguides/docs-de.aspx'
+                }, {
+                    from: /\{\{HELP_CENTER_WEB_SSE\}\}/g,
+                    to: _encode(process.env.HELP_CENTER_WEB_SSE) || _encode(process.env.HELP_CENTER_WEB_EDITORS) || 'https://helpcenter.onlyoffice.com/userguides/docs-se.aspx'
+                }, {
+                    from: /\{\{HELP_CENTER_WEB_PE\}\}/g,
+                    to: _encode(process.env.HELP_CENTER_WEB_PE) || _encode(process.env.HELP_CENTER_WEB_EDITORS) || 'https://helpcenter.onlyoffice.com/userguides/docs-pe.aspx'
+                }, {
                     from: /\{\{DEFAULT_LANG\}\}/g,
                     to: _encode(process.env.DEFAULT_LANG) || 'en'
                 }];
@@ -96,7 +136,6 @@ module.exports = function(grunt) {
 
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-less');
     grunt.loadNpmTasks('grunt-contrib-requirejs');
     grunt.loadNpmTasks('grunt-contrib-concat');
@@ -109,6 +148,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-inline');
     grunt.loadNpmTasks('grunt-svgmin');
     grunt.loadNpmTasks('grunt-exec');
+    grunt.loadNpmTasks('grunt-terser');
 
     function doRegisterTask(name, callbackConfig) {
         return grunt.registerTask(name + '-init', function() {
@@ -258,10 +298,16 @@ module.exports = function(grunt) {
             svgmin: {
                 options: {
                     plugins: [{
-                        cleanupIDs: false
+                        name: 'preset-default',
+                        params: {
+                            overrides: {
+                                cleanupIds: false,
+                            }
+                        },
                     },
                     {
-                        convertPathData: {
+                        name: 'convertPathData',
+                        params: {
                             floatPrecision: 4
                         }
                     }]
@@ -272,7 +318,7 @@ module.exports = function(grunt) {
             },
         }
     });
-    doRegisterTask('sockjs');
+    doRegisterTask('socketio');
     doRegisterTask('xregexp');
     doRegisterTask('megapixel');
     doRegisterTask('jquery');
@@ -282,20 +328,18 @@ module.exports = function(grunt) {
     doRegisterTask('iscroll');
     doRegisterTask('fetch');
     doRegisterTask('es6-promise');
-    doRegisterTask('jszip');
-    doRegisterTask('jsziputils');
     doRegisterTask('common-embed');
     doRegisterTask('requirejs', function(defaultConfig, packageFile) {
         return {
-            uglify: {
-                pkg: packageFile,
-
+            terser: {
                 options: {
-                    banner: '/** vim: et:ts=4:sw=4:sts=4\n' +
-                        ' * @license RequireJS 2.1.2 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.\n' +
-                        ' * Available via the MIT or new BSD license.\n' +
-                        ' * see: http://github.com/jrburke/requirejs for details\n' +
-                        ' */\n'
+                    format: {
+                        preamble: '/** vim: et:ts=4:sw=4:sts=4\n' +
+                            ' * @license RequireJS 2.1.2 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.\n' +
+                            ' * Available via the MIT or new BSD license.\n' +
+                            ' * see: http://github.com/jrburke/requirejs for details\n' +
+                            ' */\n',
+                    },
                 },
                 build: {
                     src:  packageFile['requirejs']['min']['src'],
@@ -322,7 +366,7 @@ module.exports = function(grunt) {
                     src: packageFile.main.clean.prebuild
                 },
                 postbuild: {
-                    src: [...packageFile.main.svgicons.clean, ...packageFile.main.clean.postbuild]
+                    src: [...packageFile.main.clean.postbuild]
                 }
             },
 
@@ -343,6 +387,9 @@ module.exports = function(grunt) {
             },
 
             requirejs: {
+                options: {
+                    optimize: "none",
+                },
                 compile: {
                     options: packageFile['main']['js']['requirejs']['options']
                 }
@@ -354,7 +401,7 @@ module.exports = function(grunt) {
                     overwrite: true,
                     replacements: [{
                         from: /\{\{PRODUCT_VERSION\}\}/g,
-                        to: packageFile.version
+                        to: `${packageFile.version}.${packageFile.build}`
                     }, ...global.jsreplacements]
                 },
                 prepareHelp: {
@@ -382,7 +429,7 @@ module.exports = function(grunt) {
                 dynamic: {
                     files: []
                         .concat(packageFile['main']['imagemin']['images-app'])
-                        .concat(packageFile['main']['imagemin']['images-common'])
+                        // .concat(packageFile['main']['imagemin']['images-common'])    skip copy images from common to editor in 7.2
                 }
             },
 
@@ -413,10 +460,16 @@ module.exports = function(grunt) {
             svgmin: {
                 options: {
                     plugins: [{
-                        cleanupIDs: false
+                        name: 'preset-default',
+                        params: {
+                            overrides: {
+                                cleanupIds: false,
+                            }
+                        },
                     },
                     {
-                        convertPathData: {
+                        name: 'convertPathData',
+                        params: {
                             floatPrecision: 4
                         }
                     }]
@@ -424,7 +477,20 @@ module.exports = function(grunt) {
                 dist: {
                     files: packageFile.main.svgicons.common
                 }
-            }
+            },
+
+            terser: {
+                options: {
+                    format: {
+                        comments: false,
+                        preamble: "/* minified by terser */",
+                    },
+                },
+                build: {
+                    src: [packageFile['main']['js']['requirejs']['options']['out']],
+                    dest: packageFile['main']['js']['requirejs']['options']['out']
+                },
+            },
         });
 
         // var replace = grunt.config.get('replace');
@@ -436,21 +502,23 @@ module.exports = function(grunt) {
     grunt.registerTask('deploy-reporter', function(){
         grunt.initConfig({
             pkg: packageFile,
-            uglify: {
+            terser: {
                 options: {
-                    banner: copyright
+                    format: {
+                        comments: false,
+                        preamble: copyright,
+                    },
                 },
-                build: {
-                    files: {
-                        "<%= pkg.main.reporter.uglify.dest %>": packageFile.main.reporter.uglify.src
-                    }
-                }
+                reporter: {
+                    src: packageFile.main.reporter.uglify.src,
+                    dest: packageFile.main.reporter.uglify.dest
+                },
             },
             copy: packageFile.main.reporter.copy
         });
 
 
-        grunt.task.run(['uglify', 'copy']);
+        grunt.task.run(['terser', 'copy']);
     });
 
     grunt.registerTask('mobile-app-init', function() {
@@ -592,9 +660,12 @@ module.exports = function(grunt) {
                 prebuild: packageFile['embed']['clean']['prebuild']
             },
 
-            uglify: {
+            terser: {
                 options: {
-                    banner: copyright
+                    format: {
+                        comments: false,
+                        preamble: copyright,
+                    },
                 },
                 build: {
                     src: packageFile['embed']['js']['src'],
@@ -628,6 +699,49 @@ module.exports = function(grunt) {
         });
     });
 
+    grunt.registerTask('test-app-init', function() {
+        grunt.initConfig({
+            pkg: packageFile,
+
+            clean: {
+                options: {
+                    force: true
+                },
+                prebuild: packageFile['test']['clean']['prebuild']
+            },
+
+            terser: {
+                options: {
+                    format: {
+                        comments: false,
+                        preamble: copyright,
+                    },
+                },
+                build: {
+                    src: packageFile['test']['js']['src'],
+                    dest: packageFile['test']['js']['dist']
+                }
+            },
+
+            less: {
+                production: {
+                    options: {
+                        compress: true,
+                        ieCompat: false
+                    },
+                    files: {
+                        "<%= pkg.test.less.files.dist %>": packageFile['test']['less']['files']['src']
+                    }
+                }
+            },
+
+            copy: {
+                'index-page': {
+                    files: packageFile['test']['copy']['index-page']
+                }
+            }
+        });
+    });
 
     grunt.registerTask('increment-build', function() {
         var pkg = grunt.file.readJSON(defaultConfig);
@@ -645,7 +759,7 @@ module.exports = function(grunt) {
     grunt.registerTask('deploy-apps-common',            ['apps-common-init', 'clean', 'copy', 'imagemin', 'svgmin']);
     grunt.registerTask('deploy-sdk',                    ['sdk-init', 'clean', copyTask]);
 
-    grunt.registerTask('deploy-sockjs',                 ['sockjs-init', 'clean', 'copy']);
+    grunt.registerTask('deploy-socketio',               ['socketio-init', 'clean', 'copy']);
     grunt.registerTask('deploy-xregexp',                ['xregexp-init', 'clean', 'copy']);
     grunt.registerTask('deploy-megapixel',              ['megapixel-init', 'clean', 'copy']);
     grunt.registerTask('deploy-jquery',                 ['jquery-init', 'clean', 'copy']);
@@ -653,14 +767,12 @@ module.exports = function(grunt) {
     grunt.registerTask('deploy-iscroll',                ['iscroll-init', 'clean', 'copy']);
     grunt.registerTask('deploy-fetch',                  ['fetch-init', 'clean', 'copy']);
     grunt.registerTask('deploy-bootstrap',              ['bootstrap-init', 'clean', 'copy']);
-    grunt.registerTask('deploy-jszip',                  ['jszip-init', 'clean', 'copy']);
-    grunt.registerTask('deploy-jsziputils',             ['jsziputils-init', 'clean', 'copy']);
-    grunt.registerTask('deploy-requirejs',              ['requirejs-init', 'clean', 'uglify']);
+    grunt.registerTask('deploy-requirejs',              ['requirejs-init', 'clean', 'terser']);
     grunt.registerTask('deploy-es6-promise',            ['es6-promise-init', 'clean', 'copy']);
     grunt.registerTask('deploy-common-embed',           ['common-embed-init', 'clean', 'copy']);
 
     grunt.registerTask('deploy-app-main',               ['prebuild-icons-sprite', 'main-app-init', 'clean:prebuild', 'imagemin', 'less',
-                                                            'requirejs', 'concat', 'copy', 'svgmin', 'inline', 'json-minify',
+                                                            'requirejs', 'terser', 'concat', 'copy', 'svgmin', 'inline', 'json-minify',
                                                             'replace:writeVersion', 'replace:prepareHelp', 'clean:postbuild']);
 
     grunt.registerTask('deploy-app-mobile',             ['mobile-app-init', 'clean:deploy', /*'cssmin',*/ /*'copy:template-backup',*/
@@ -669,14 +781,18 @@ module.exports = function(grunt) {
                                                             'copy:images-app', 'copy:webpack-dist', 'concat', 'json-minify'/*,*/
                                                             /*'replace:writeVersion', 'replace:fixResourceUrl'*/]);
 
-    grunt.registerTask('deploy-app-embed',              ['embed-app-init', 'clean:prebuild', 'uglify', 'less', 'copy', 
-                                                            'clean:postbuild']);
+    grunt.registerTask('deploy-app-embed',              ['embed-app-init', 'clean:prebuild', 'terser', 'less', 'copy', 'clean:postbuild']);
+    grunt.registerTask('deploy-app-test',               ['test-app-init', 'clean:prebuild', 'terser', 'less', 'copy']);
 
     doRegisterInitializeAppTask('common',               'Common',               'common.json');
     doRegisterInitializeAppTask('documenteditor',       'DocumentEditor',       'documenteditor.json');
     doRegisterInitializeAppTask('spreadsheeteditor',    'SpreadsheetEditor',    'spreadsheeteditor.json');
     doRegisterInitializeAppTask('presentationeditor',   'PresentationEditor',   'presentationeditor.json');
+    doRegisterInitializeAppTask('pdfeditor',            'PDFEditor',            'pdfeditor.json');
 
+    doRegisterInitializeAppTask('testdocumenteditor',    'TestDocumentEditor',           'testdocumenteditor.json');
+    doRegisterInitializeAppTask('testpresentationeditor', 'TestPresentationEditor',      'testpresentationeditor.json');
+    doRegisterInitializeAppTask('testspreadsheeteditor',  'TestSpreadsheetEditor',       'testspreadsheeteditor.json');
 
     grunt.registerTask('deploy-app', 'Deploy application.', function(){
         if (packageFile) {
@@ -693,15 +809,22 @@ module.exports = function(grunt) {
     grunt.registerTask('deploy-documenteditor-component',     ['init-build-documenteditor', 'deploy-app']);
     grunt.registerTask('deploy-spreadsheeteditor-component',  ['init-build-spreadsheeteditor', 'deploy-app']);
     grunt.registerTask('deploy-presentationeditor-component', ['init-build-presentationeditor', 'deploy-app']);
+    grunt.registerTask('deploy-pdfeditor-component',          ['init-build-pdfeditor', 'deploy-app']);
     // This task is called from the Makefile, don't delete it.
     grunt.registerTask('deploy-documents-component',          ['deploy-common-component']);   
 
     grunt.registerTask('deploy-documenteditor',     ['deploy-common-component', 'deploy-documenteditor-component']);
     grunt.registerTask('deploy-spreadsheeteditor',  ['deploy-common-component', 'deploy-spreadsheeteditor-component']);
     grunt.registerTask('deploy-presentationeditor', ['deploy-common-component', 'deploy-presentationeditor-component']);
+    grunt.registerTask('deploy-pdfeditor',          ['deploy-common-component', 'deploy-pdfeditor-component']);
+
+    grunt.registerTask('deploy-testdocumenteditor', ['init-build-testdocumenteditor', 'deploy-app']);
+    grunt.registerTask('deploy-testpresentationeditor', ['init-build-testpresentationeditor', 'deploy-app']);
+    grunt.registerTask('deploy-testspreadsheeteditor', ['init-build-testspreadsheeteditor', 'deploy-app']);
 
     grunt.registerTask('default', ['deploy-common-component',
                                    'deploy-documenteditor-component',
                                    'deploy-spreadsheeteditor-component',
-                                   'deploy-presentationeditor-component']);
+                                   'deploy-presentationeditor-component',
+                                   'deploy-pdfeditor-component']);
 };

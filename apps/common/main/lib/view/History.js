@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  * User: Julia.Radzhabova
  * Date: 06.03.15
@@ -68,11 +67,14 @@ define([
         initialize: function(options) {
             _.extend(this, options);
             Common.UI.BaseView.prototype.initialize.call(this, arguments);
+
+            var filter = Common.localStorage.getKeysFilter();
+            this.appPrefix = (filter && filter.length) ? filter.split(',')[0] : '';
         },
 
         render: function(el) {
             el = el || this.el;
-            $(el).html(this.template({scope: this})).width( (parseInt(Common.localStorage.getItem('de-mainmenu-width')) || MENU_SCALE_PART) - SCALE_MIN);
+            $(el).html(this.template({scope: this})).width( (parseInt(Common.localStorage.getItem(this.appPrefix + 'mainmenu-width')) || MENU_SCALE_PART) - SCALE_MIN);
 
             this.viewHistoryList = new Common.UI.DataView({
                 el: $('#history-list'),
@@ -80,7 +82,7 @@ define([
                 enableKeyEvents: false,
                 itemTemplate: _.template([
                     '<div id="<%= id %>" class="history-item-wrap ' + '<% if (!isVisible) { %>' + 'hidden' + '<% } %>' + '" ',
-                    'style="display: block; ' + '<% if (!isRevision) { %>' + 'padding-left: 40px;' + '<% } %>' + '<% if (canRestore && selected) { %>' + 'padding-bottom: 6px;' + '<% } %>' +'">',
+                    'style="display: block; ' + '<% if (!isRevision) { %>' + (Common.UI.isRTL() ? 'padding-right: 40px;' : 'padding-left: 40px;') + '<% } %>' + '<% if (canRestore && selected) { %>' + 'padding-bottom: 6px;' + '<% } %>' +'">',
                         '<div class="user-date"><%= created %></div>',
                         '<% if (markedAsVersion) { %>',
                         '<div class="user-version">' + this.textVer + '<%=version%></div>',
@@ -110,7 +112,7 @@ define([
                         for(var i=1; i<revisions.length; i++)
                             revisions[i].set('isVisible', isExpanded);
                     }
-                    this.scroller.update({minScrollbarLength: 40});
+                    this.scroller.update({minScrollbarLength: this.minScrollbarLength});
                 } else
                     Common.UI.DataView.prototype.onClickItem.call(this, view, record, e);
                 me.btnExpand.cmpEl.text(me.storeHistory.hasCollapsed() ? me.textShowAll : me.textHideAll);

@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  StatusBar View
  *
@@ -60,10 +59,8 @@ define([
 
             events: function() {
                 return {
-                    'click #status-btn-tabfirst': _.bind(this.onBtnTabScroll, this, 'first'),
                     'click #status-btn-tabback': _.bind(this.onBtnTabScroll, this, 'backward'),
-                    'click #status-btn-tabnext': _.bind(this.onBtnTabScroll, this, 'forward'),
-                    'click #status-btn-tablast': _.bind(this.onBtnTabScroll, this, 'last')
+                    'click #status-btn-tabnext': _.bind(this.onBtnTabScroll, this, 'forward')
                 };
             },
 
@@ -100,13 +97,6 @@ define([
                     hintAnchor: 'top-right'
                 });
 
-                this.btnScrollFirst = new Common.UI.Button({
-                    el: $('#status-btn-tabfirst',this.el),
-                    hint: this.tipFirst,
-                    disabled: true,
-                    hintAnchor: 'top'
-                });
-
                 this.btnScrollBack = new Common.UI.Button({
                     el: $('#status-btn-tabback',this.el),
                     hint: this.tipPrev,
@@ -117,13 +107,6 @@ define([
                 this.btnScrollNext = new Common.UI.Button({
                     el: $('#status-btn-tabnext',this.el),
                     hint: this.tipNext,
-                    disabled: true,
-                    hintAnchor: 'top'
-                });
-
-                this.btnScrollLast = new Common.UI.Button({
-                    el: $('#status-btn-tablast',this.el),
-                    hint: this.tipLast,
                     disabled: true,
                     hintAnchor: 'top'
                 });
@@ -335,8 +318,12 @@ define([
                     menuAlign: 'tl-tr',
                     cls: 'color-tab',
                     items: [
-                        { template: _.template('<div id="id-tab-menu-color" style="width: 169px; height: 240px;"></div>') },
-                        { template: _.template('<a id="id-tab-menu-new-color" style="padding-left:12px;">' + me.textNewColor + '</a>') }
+                        { template: _.template('<div id="id-tab-menu-color" style="width: 164px;display: inline-block;"></div>') },
+                        {caption: '--'},
+                        {
+                            id: "id-tab-menu-new-color",
+                            template: _.template('<a tabindex="-1" type="menuitem" style="' + (Common.UI.isRTL() ? 'padding-right: 12px;': 'padding-left: 12px;') + '">' + me.textNewColor + '</a>')
+                        }
                     ]
                 });
 
@@ -373,11 +360,15 @@ define([
                 }).on('render:after', function(btn) {
                         me.mnuTabColor = new Common.UI.ThemeColorPalette({
                             el: $('#id-tab-menu-color'),
+                            outerMenu: {menu: menuColorItems, index: 0, focusOnShow: true},
                             transparent: true
                         });
-
+                        menuColorItems.setInnerMenu([{menu: me.mnuTabColor, index: 0}]);
                         me.mnuTabColor.on('select', function(picker, color) {
                             me.fireEvent('sheet:setcolor', [color]);
+                            setTimeout(function(){
+                                me.tabMenu.hide();
+                            }, 1);
                         });
                     });
 
@@ -516,8 +507,16 @@ define([
                 this.mode = _.extend({}, this.mode, mode);
 //                this.$el.find('.el-edit')[mode.isEdit?'show':'hide']();
                 //this.btnAddWorksheet.setVisible(this.mode.isEdit);
-                $('#status-addtabs-box')[this.mode.isEdit ? 'show' : 'hide']();
+                $('#status-addtabs-box')[(this.mode.isEdit) ? 'show' : 'hide']();
                 this.btnAddWorksheet.setDisabled(this.mode.isDisconnected || this.api && (this.api.asc_isWorkbookLocked() || this.api.isCellEdited) || this.rangeSelectionMode!=Asc.c_oAscSelectionDialogType.None);
+                if (this.mode.isEditOle) { // change hints order
+                    this.btnAddWorksheet.$el.find('button').addBack().filter('button').attr('data-hint', '1');
+                    this.btnScrollBack.$el.find('button').addBack().filter('button').attr('data-hint', '1');
+                    this.btnScrollNext.$el.find('button').addBack().filter('button').attr('data-hint', '1');
+                    this.cntSheetList.$el.find('button').attr('data-hint', '1');
+                    this.cntSheetList.$el.find('button').removeAttr('data-hint-title'); // 'v' hint is used for paste
+                    this.cntZoom.$el.find('.dropdown-toggle').attr('data-hint', '1');
+                }
                 this.updateTabbarBorders();
             },
 
@@ -591,9 +590,7 @@ define([
                                 '<a id="<%= id %>" style="<%= style %>" tabindex="-1" type="menuitem" <% if (options.hidden) { %> data-hidden="true" <% } %>>',
                                     '<div class="color"></div>',
                                     '<span class="name"><%= caption %></span>',
-                                    '<% if (options.hidden) { %>',
-                                        '<span class="hidden-mark"><%= options.textHidden %></span>',
-                                    '<% } %>',
+                                    '<span class="hidden-mark"><% if (options.hidden) { %><%=  options.textHidden %><% } else { %><% } %></span>',
                                 '</a>'
                             ].join(''))
                         }));
@@ -610,7 +607,7 @@ define([
                     if (this.mode.isEdit) {
                         this.tabbar.addDataHint(_.findIndex(items, function (item) {
                             return item.sheetindex === sindex;
-                        }));
+                        }), this.mode.isEditOle ? '1' : '0');
                     }
 
                     $('#status-label-zoom').text(Common.Utils.String.format(this.zoomText, Math.floor((this.api.asc_getZoom() +.005)*100)));
@@ -699,7 +696,7 @@ define([
                 }
 
                 if (this.mode.isEdit) {
-                    this.tabbar.addDataHint(index);
+                    this.tabbar.addDataHint(index, this.mode.isEditOle ? '1' : '0');
                 }
 
                 this.fireEvent('sheet:changed', [this, tab.sheetindex]);
@@ -710,7 +707,7 @@ define([
 
             onTabMenu: function (o, index, tab, select) {
                 var me = this;
-                if (this.mode.isEdit && !this.isEditFormula && (this.rangeSelectionMode !== Asc.c_oAscSelectionDialogType.Chart) &&
+                if (this.mode.isEdit  && !this.isEditFormula && (this.rangeSelectionMode !== Asc.c_oAscSelectionDialogType.Chart) &&
                                                                (this.rangeSelectionMode !== Asc.c_oAscSelectionDialogType.FormatTable) &&
                                                                (this.rangeSelectionMode !== Asc.c_oAscSelectionDialogType.PrintTitles) &&
                     !this.mode.isDisconnected ) {
@@ -745,6 +742,7 @@ define([
                         this.tabMenu.items[7].setDisabled(select.length>1);
                         this.tabMenu.items[8].setDisabled(issheetlocked || isdocprotected);
 
+                        this.tabMenu.items[7].setVisible(!this.mode.isEditOle && this.mode.canProtect);
                         this.tabMenu.items[7].setCaption(this.api.asc_isProtectedSheet() ? this.itemUnProtect : this.itemProtect);
 
                         if (select.length === 1) {
@@ -762,7 +760,8 @@ define([
                         this.tabMenu.atposition = (function () {
                             return {
                                 top : rect.top,
-                                left: rect.left - parentPos.left - 2
+                                left: rect.left - parentPos.left - 2,
+                                right: rect.right - parentPos.left + 2
                             };
                         })();
 
@@ -778,7 +777,7 @@ define([
 
             onTabMenuAfterShow: function (obj) {
                 if (obj.atposition) {
-                    obj.setOffset(obj.atposition.left);
+                    obj.setOffset(Common.UI.isRTL() ? (obj.atposition.right - $(obj.el).width()) : obj.atposition.left);
                 }
 
                 this.enableKeyEvents = true;
@@ -806,13 +805,11 @@ define([
             },
 
             onTabInvisible: function(obj, opts) {
-                if (this.btnScrollFirst.isDisabled() !== (!opts.first)) {
-                    this.btnScrollFirst.setDisabled(!opts.first);
+                if (this.btnScrollBack.isDisabled() !== (!opts.first)) {
                     this.btnScrollBack.setDisabled(!opts.first);
                 }
                 if (this.btnScrollNext.isDisabled() !== (!opts.last)) {
                     this.btnScrollNext.setDisabled(!opts.last);
-                    this.btnScrollLast.setDisabled(!opts.last);
                 }
                 this.hasTabInvisible = opts.first || opts.last;
             },
@@ -825,12 +822,20 @@ define([
                 var visible = false;
                 var right = parseInt(this.boxZoom.css('width'));
                 if (this.boxMath.is(':visible')) {
-                    this.boxMath.css({'right': right + 'px'});
+                    if (Common.UI.isRTL()) {
+                        this.boxMath.css({'left': right + 'px'});
+                    } else {
+                        this.boxMath.css({'right': right + 'px'});
+                    }
                     right += parseInt(this.boxMath.css('width'));
                     visible = true;
                 }
                 if (this.boxFiltered.is(':visible')) {
-                    this.boxFiltered.css({'right': right + 'px'});
+                    if (Common.UI.isRTL()) {
+                        this.boxFiltered.css({'left': right + 'px'});
+                    } else {
+                        this.boxFiltered.css({'right': right + 'px'});
+                    }
                     right += parseInt(this.boxFiltered.css('width'));
                     visible = true;
                 }
@@ -839,13 +844,23 @@ define([
                     if (this.boxAction.is(':visible')) {
                         var tabsWidth = this.tabbar.getWidth();
                         var actionWidth = this.actionWidth || 140;
-                        if (Common.Utils.innerWidth() - right - 175 - actionWidth - tabsWidth > 0) { // docWidth - right - left - this.boxAction.width
-                            var left = tabsWidth + 175;
-                            this.boxAction.css({'right': right + 'px', 'left': left + 'px', 'width': 'auto'});
-                            this.boxAction.find('.separator').css('border-left-color', 'transparent');
+                        if (Common.Utils.innerWidth() - right - 129 - actionWidth - tabsWidth > 0) { // docWidth - right - left - this.boxAction.width
+                            var left = tabsWidth + 129;
+                            if (Common.UI.isRTL()) {
+                                this.boxAction.css({'left': right + 'px', 'right': left + 'px', 'width': 'auto'});
+                                this.boxAction.find('.separator').css('border-right-color', 'transparent');
+                            } else {
+                                this.boxAction.css({'right': right + 'px', 'left': left + 'px', 'width': 'auto'});
+                                this.boxAction.find('.separator').css('border-left-color', 'transparent');
+                            }
                         } else {
-                            this.boxAction.css({'right': right + 'px', 'left': 'auto', 'width': actionWidth + 'px'});
-                            this.boxAction.find('.separator').css('border-left-color', '');
+                            if (Common.UI.isRTL()) {
+                                this.boxAction.css({'left': right + 'px', 'right': 'auto', 'width': actionWidth + 'px'});
+                                this.boxAction.find('.separator').css('border-right-color', '');
+                            } else {
+                                this.boxAction.css({'right': right + 'px', 'left': 'auto', 'width': actionWidth + 'px'});
+                                this.boxAction.find('.separator').css('border-left-color', '');
+                            }
                             visible = true;
                         }
                         right += parseInt(this.boxAction.css('width'));
@@ -854,18 +869,32 @@ define([
                     this.boxMath.is(':visible') && this.boxMath.css({'top': '0px', 'bottom': 'auto'});
                     this.boxFiltered.is(':visible') && this.boxFiltered.css({'top': '0px', 'bottom': 'auto'});
                     this.boxZoom.css({'top': '0px', 'bottom': 'auto'});
-                    this.tabBarBox.css('right', right + 'px');
+                    if (Common.UI.isRTL()) {
+                        this.tabBarBox.css('left', right + 'px');
+                    } else {
+                        this.tabBarBox.css('right', right + 'px');
+                    }
                 } else {
                     if (this.boxAction.is(':visible')) {
-                        this.boxAction.css({'right': right + 'px', 'left': '135px', 'width': 'auto'});
-                        this.boxAction.find('.separator').css('border-left-color', 'transparent');
+                        if (Common.UI.isRTL()) {
+                            this.boxAction.css({'left': right + 'px', 'right': '135px', 'width': 'auto'});
+                            this.boxAction.find('.separator').css('border-right-color', 'transparent');
+                        } else {
+                            this.boxAction.css({'right': right + 'px', 'left': '135px', 'width': 'auto'});
+                            this.boxAction.find('.separator').css('border-left-color', 'transparent');
+                        }
                     }
                     this.boxMath.is(':visible') && this.boxMath.css({'top': 'auto', 'bottom': '0px'});
                     this.boxFiltered.is(':visible') && this.boxFiltered.css({'top': 'auto', 'bottom': '0px'});
                     this.boxZoom.css({'top': 'auto', 'bottom': '0px'});
-                    this.tabBarBox.css('right', '0px');
+                    if (Common.UI.isRTL()) {
+                        this.tabBarBox.css('left', '0px');
+                        this.boxZoom.find('.separator').css('border-right-color', visible ? '' : 'transparent');
+                    } else {
+                        this.tabBarBox.css('right', '0px');
+                        this.boxZoom.find('.separator').css('border-left-color', visible ? '' : 'transparent');
+                    }
                 }
-                this.boxZoom.find('.separator').css('border-left-color', visible ? '' : 'transparent');
 
                 if (this.statusMessage) {
                     var status = this.getStatusMessage(this.statusMessage);
@@ -890,11 +919,13 @@ define([
                 }
             },
 
-            changeViewMode: function (edit) {
+            changeViewMode: function (mode) {
+                var edit = mode.isEdit,
+                    styleLeft = Common.UI.isRTL() ? 'right' : 'left';
                 if (edit) {
-                    this.tabBarBox.css('left',  '175px');
+                    this.tabBarBox.css(styleLeft, '129px');
                 } else {
-                    this.tabBarBox.css('left',  '');
+                    this.tabBarBox.css(styleLeft, '');
                 }
 
                 this.tabbar.options.draggable = edit;
@@ -919,7 +950,7 @@ define([
                 if (obj.atposition) {
                     var statusHeight = $(this.el).height(),
                         offsetTop = !this.isCompact && (obj.atposition.top - $(this.el).offset().top > statusHeight/2) ? statusHeight/2 : 0;
-                    obj.setOffset(obj.atposition.left, offsetTop);
+                    obj.setOffset(Common.UI.isRTL() ? (obj.atposition.left - $(this.el).width() + 2) : obj.atposition.left, offsetTop);
                 }
                 this.enableKeyEvents = true;
             },
@@ -968,7 +999,7 @@ define([
                     //this.boxAction.show();
                 }
                 this.updateTabbarBorders();
-                this.onTabInvisible(undefined, this.tabbar.checkInvisible(true));
+                (this.tabbar.getCount()>0) && this.onTabInvisible(undefined, this.tabbar.checkInvisible(true));
             },
 
             updateNumberOfSheet: function (active, count) {
@@ -1023,8 +1054,6 @@ define([
             tipZoomIn           : 'Zoom In',
             tipZoomOut          : 'Zoom Out',
             tipZoomFactor       : 'Magnification',
-            tipFirst            : 'First Sheet',
-            tipLast             : 'Last Sheet',
             tipPrev             : 'Previous Sheet',
             tipNext             : 'Next Sheet',
             tipAddTab           : 'Add Worksheet',
@@ -1093,7 +1122,7 @@ define([
                 this.txtName = new Common.UI.InputField({
                     el: $window.find('#txt-sheet-name'),
                     style: 'width:100%;',
-                    value: Common.Utils.String.htmlEncode(this.options.current),
+                    value: this.options.current,
                     allowBlank: false,
                     maxLength: 31,
                     validation: _.bind(this.nameValidator, this)
@@ -1157,14 +1186,13 @@ define([
                     }
                 }
 
-                if (value.length > 2 && value[0]=='"' && value[value.length-1]=='"') return true;
-                if (!/[:\\\/\*\?\[\]\']/.test(value)) return true;
+                if (!/^(\')|[:\\\/\*\?\[\]]|(\')$/.test(value)) return true;
 
                 return this.errNameWrongChar;
             },
 
             errNameExists   : 'Worksheet with such name already exist.',
-            errNameWrongChar: 'A sheet name cannot contains characters: \\, \/, *, ?, [, ], :',
+            errNameWrongChar: 'A sheet name cannot contains characters: \\, \/, *, ?, [, ], : or the character \' as first or last character',
             labelSheetName  : 'Sheet Name'
         }, RenameDialog||{}));
 

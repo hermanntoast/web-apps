@@ -1,42 +1,23 @@
-import React, {useEffect} from 'react';
+import React, { createContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import {f7} from 'framework7-react';
+import { f7 } from 'framework7-react';
 import { observer, inject } from "mobx-react";
-import {Device} from '../../../../../common/mobile/utils/device';
-
+import { Device } from '../../../../../common/mobile/utils/device';
 import SettingsView from "../../view/settings/Settings";
+import { LocalStorage } from "../../../../../common/mobile/utils/LocalStorage.mjs";
 
-const Settings = props => {
-    useEffect(() => {
-        if ( Device.phone ) {
-            f7.popup.open('.settings-popup');
-        } else {
-            f7.popover.open('#settings-popover', '#btn-settings');
-        }
+export const SettingsContext = createContext();
 
-        return () => {
-            // component will unmount
-        }
-    });
+const SettingsController = props => {
+    const storeDocumentInfo = props.storeDocumentInfo;
+    const appOptions = props.storeAppOptions;
+    const { t } = useTranslation();
 
     const closeModal = () => {
-        if (Device.phone) {
-            f7.sheet.close('.settings-popup');
+        if(Device.phone) {
+            f7.sheet.close('.settings-popup', false);
         } else {
-            f7.popover.close('#settings-popover');
-        }
-    };
-
-    const onReaderMode = () => {
-        const appOptions = props.storeAppOptions;
-        appOptions.changeReaderMode();
-
-        Common.EditorApi.get().ChangeReaderMode();
-
-        if (Device.phone) {
-            setTimeout(() => {
-                closeModal();
-            }, 1);
+            f7.popover.close('#settings-popover', false);
         }
     };
 
@@ -69,6 +50,17 @@ const Settings = props => {
         }, 400);
     };
 
+    const showFeedback = () => {
+        let config = appOptions.config;
+
+        closeModal();
+        setTimeout(() => {
+            if(config && !!config.feedback && !!config.feedback.url) {
+                window.open(config.feedback.url, "_blank");
+            } else window.open(__SUPPORT_URL__, "_blank");
+        }, 400);
+    }
+
     const onOrthographyCheck = () => {
         closeModal();
         setTimeout(() => {
@@ -83,15 +75,94 @@ const Settings = props => {
         }, 0);
     };
 
-    return <SettingsView usePopover={!Device.phone}
-                         openOptions={props.openOptions}
-                         onclosed={props.onclosed}
-                         onReaderMode={onReaderMode}
-                         onPrint={onPrint}
-                         showHelp={showHelp}
-                         onOrthographyCheck={onOrthographyCheck}
-                         onDownloadOrigin={onDownloadOrigin}
-    />
+    const onChangeMobileView = () => {
+        const api = Common.EditorApi.get();
+        const isMobileView = appOptions.isMobileView;
+
+        LocalStorage.setBool('mobile-view', !isMobileView);
+        appOptions.changeMobileView();
+        api.ChangeReaderMode();
+    };
+
+    const changeTitleHandler = () => {
+        if(!appOptions.canRename) return;
+
+        const docTitle = storeDocumentInfo.dataDoc.title;
+        const api = Common.EditorApi.get();
+        api.asc_enableKeyEvents(true);
+
+        f7.dialog.create({
+            title: t('Toolbar.textRenameFile'),
+            text : t('Toolbar.textEnterNewFileName'),
+            content: Device.ios ?
+            '<div class="input-field"><input type="text" class="modal-text-input" name="modal-title" id="modal-title"></div>' : '<div class="input-field modal-title"><div class="inputs-list list inline-labels"><ul><li><div class="item-content item-input"><div class="item-inner"><div class="item-input-wrap"><input type="text" name="modal-title" id="modal-title"></div></div></div></li></ul></div></div>',
+            cssClass: 'dlg-adv-options',
+            buttons: [
+                {
+                    text: t('Edit.textCancel')
+                },
+                {
+                    text: t('Edit.textOk'),
+                    cssClass: 'btn-change-title',
+                    bold: true,
+                    close: false,
+                    onClick: () => {
+                        const titleFieldValue = document.querySelector('#modal-title').value;
+                        if(titleFieldValue.trim().length) {
+                            changeTitle(titleFieldValue);
+                            f7.dialog.close();
+                        }
+                    }
+                }
+            ],
+            on: {
+                opened: () => {
+                    const nameDoc = docTitle.split('.')[0];
+                    const titleField = document.querySelector('#modal-title');
+                    const btnChangeTitle = document.querySelector('.btn-change-title');
+
+                    titleField.value = nameDoc;
+                    titleField.focus();
+                    titleField.select();
+
+                    titleField.addEventListener('input', () => {
+                        if(titleField.value.trim().length) {
+                            btnChangeTitle.classList.remove('disabled');
+                        } else {
+                            btnChangeTitle.classList.add('disabled');
+                        }
+                    });
+                }
+            }
+        }).open();
+    };
+
+    const changeTitle = name => {
+        const api = Common.EditorApi.get();
+        const docInfo = storeDocumentInfo.docInfo;
+        const docExt = storeDocumentInfo.dataDoc.fileType;
+        const title = `${name}.${docExt}`;
+
+        storeDocumentInfo.changeTitle(title);
+        docInfo.put_Title(title);
+        storeDocumentInfo.setDocInfo(docInfo);
+        api.asc_setDocInfo(docInfo);
+    };
+
+    return (
+        <SettingsContext.Provider value={{
+            onPrint,
+            showHelp,
+            showFeedback,
+            onOrthographyCheck,
+            onDownloadOrigin,
+            onChangeMobileView,
+            changeTitleHandler,
+            closeModal
+        }}>
+            <SettingsView />
+        </SettingsContext.Provider>
+    );
 };
 
-export default inject("storeAppOptions")(observer(Settings));
+export default inject("storeAppOptions", "storeDocumentInfo")(observer(SettingsController));

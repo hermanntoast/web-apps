@@ -1,4 +1,5 @@
 import {action, observable, computed, makeObservable} from 'mobx';
+import CThumbnailLoader from '../../../../common/mobile/utils/CThumbnailLoader';
 
 export class storeTextSettings {
     constructor() {
@@ -129,179 +130,6 @@ export class storeTextSettings {
     }
 
     loadSprite() {
-        function CThumbnailLoader() {
-            this.image = null;
-            this.binaryFormat = null;
-            this.data = null;
-            this.width = 0;
-            this.heightOne = 0;
-            this.offsets = null;
-
-            this.load = function(url, callback) {
-                if (!callback)
-                    return;
-
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', url + ".bin", true);
-                xhr.responseType = 'arraybuffer';
-
-                if (xhr.overrideMimeType)
-                    xhr.overrideMimeType('text/plain; charset=x-user-defined');
-                else xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
-
-                xhr.onload = e =>  {
-                    // TODO: check errors
-                    this.binaryFormat = new Uint8Array(e.target.response);
-                    callback();
-                };
-
-                xhr.send(null);
-            };
-
-            this.openBinary = function(arrayBuffer) {
-                //var t1 = performance.now();
-
-                const binaryAlpha = this.binaryFormat;
-                this.width      = (binaryAlpha[0] << 24) | (binaryAlpha[1] << 16) | (binaryAlpha[2] << 8) | (binaryAlpha[3] << 0);
-                this.heightOne  = (binaryAlpha[4] << 24) | (binaryAlpha[5] << 16) | (binaryAlpha[6] << 8) | (binaryAlpha[7] << 0);
-                const count      = (binaryAlpha[8] << 24) | (binaryAlpha[9] << 16) | (binaryAlpha[10] << 8) | (binaryAlpha[11] << 0);
-                const height     = count * this.heightOne;
-
-                const MAX_MEMORY_SIZE = 100000000;
-                const memorySize = 4 * this.width * height;
-                const isOffsets = memorySize > MAX_MEMORY_SIZE;
-
-                if (!isOffsets)
-                    this.data = new Uint8ClampedArray(memorySize);
-                else this.offsets = new Array(count);
-
-                var binaryIndex = 12;
-                var binaryLen = binaryAlpha.length;
-                var index = 0;
-
-                var len0 = 0;
-                var tmpValue = 0;
-
-                if (!isOffsets) {
-                    var imagePixels = this.data;
-                    while (binaryIndex < binaryLen) {
-                        tmpValue = binaryAlpha[binaryIndex++];
-                        if (0 == tmpValue) {
-                            len0 = binaryAlpha[binaryIndex++];
-                            while (len0 > 0) {
-                                len0--;
-                                imagePixels[index] = imagePixels[index + 1] = imagePixels[index + 2] = 255;
-                                imagePixels[index + 3] = 0; // this value is already 0.
-                                index += 4;
-                            }
-                        } else {
-                            imagePixels[index] = imagePixels[index + 1] = imagePixels[index + 2] = 255 - tmpValue;
-                            imagePixels[index + 3] = tmpValue;
-                            index += 4;
-                        }
-                    }
-                } else {
-                    var module = this.width * this.heightOne;
-                    var moduleCur = module - 1;
-                    while (binaryIndex < binaryLen) {
-                        tmpValue = binaryAlpha[binaryIndex++];
-                        if (0 == tmpValue) {
-                            len0 = binaryAlpha[binaryIndex++];
-                            while (len0 > 0) {
-                                len0--;
-                                moduleCur++;
-                                if (moduleCur === module) {
-                                    this.offsets[index++] = { pos : binaryIndex, len : len0 + 1 };
-                                    moduleCur = 0;
-                                }
-                            }
-                        } else {
-                            moduleCur++;
-                            if (moduleCur === module) {
-                                this.offsets[index++] = { pos : binaryIndex - 1, len : -1 };
-                                moduleCur = 0;
-                            }
-                        }
-                    }
-                }
-
-                if ( !this.offsets )
-                    delete this.binaryFormat;
-
-                //var t2 = performance.now();
-                //console.log(t2 - t1);
-            };
-
-            this.getImage = function(index, canvas, ctx) {
-
-                //var t1 = performance.now();
-                if (!canvas)
-                {
-                    canvas = document.createElement("canvas");
-                    canvas.width = this.width;
-                    canvas.height = this.heightOne;
-                    canvas.style.width = iconWidth + "px";
-                    canvas.style.height = iconHeight + "px";
-
-                    ctx = canvas.getContext("2d");
-                }
-
-                if (!this.data && !this.offsets) {
-                    this.openBinary(this.binaryFormat);
-                }
-
-                var dataTmp = ctx.createImageData(this.width, this.heightOne);
-                var sizeImage = 4 * this.width * this.heightOne;
-
-                if (!this.offsets) {
-                    dataTmp.data.set(new Uint8ClampedArray(this.data.buffer, index * sizeImage, sizeImage));
-                } else {
-                    const binaryAlpha = this.binaryFormat;
-                    var binaryIndex = this.offsets[index].pos;
-                    var alphaChannel = 0;
-                    var pixelsCount = this.width * this.heightOne;
-                    var tmpValue = 0, len0 = 0;
-                    let imagePixels = dataTmp.data;
-                    if (-1 != this.offsets[index].len) {
-                        /*
-                        // this values is already 0.
-                        for (var i = 0; i < this.offsets[index].len; i++) {
-                            pixels[alphaChannel] = 0;
-                            alphaChannel += 4;
-                        }
-                        */
-                        alphaChannel += 4 * this.offsets[index].len;
-                    }
-                    while (pixelsCount > 0) {
-                        tmpValue = binaryAlpha[binaryIndex++];
-                        if (0 == tmpValue) {
-                            len0 = binaryAlpha[binaryIndex++];
-                            if (len0 > pixelsCount)
-                                len0 = pixelsCount;
-                            while (len0 > 0) {
-                                len0--;
-                                imagePixels[alphaChannel] = imagePixels[alphaChannel + 1] = imagePixels[alphaChannel + 2] = 255;
-                                imagePixels[alphaChannel + 3] = 0; // this value is already 0.
-                                alphaChannel += 4;
-                                pixelsCount--;
-                            }
-                        } else {
-                            imagePixels[alphaChannel] = imagePixels[alphaChannel + 1] = imagePixels[alphaChannel + 2] = 255 - tmpValue;
-                            imagePixels[alphaChannel + 3] = tmpValue;
-                            alphaChannel += 4;
-                            pixelsCount--;
-                        }
-                    }
-                }
-                ctx.putImageData(dataTmp, 0, 0);
-
-                //var t2 = performance.now();
-                //console.log(t2 - t1);
-
-                return canvas;
-            };
-        }
-
         this.spriteThumbs = new CThumbnailLoader();
         this.spriteThumbs.load(this.thumbs[this.thumbIdx].path, () => {
             this.spriteCols = Math.floor(this.spriteThumbs.width / (this.thumbs[this.thumbIdx].width)) || 1;
@@ -343,10 +171,10 @@ export class storeTextSettings {
         this.typeBaseline = typeBaseline;
     }
     get isSuperscript() {
-        return (this.typeBaseline === 1);
+        return (this.typeBaseline === Asc.vertalign_SuperScript);
     }
     get isSubscript() {
-        return (this.typeBaseline === 2);
+        return (this.typeBaseline === Asc.vertalign_SubScript);
     }
 
     // bullets
@@ -362,6 +190,45 @@ export class storeTextSettings {
 
     resetMultiLevel(type) {
         this.typeMultiLevel = type;
+    }
+
+    getBulletsList () {
+        return [
+            {id: 'id-markers-0', type: 0, subtype: -1, numberingInfo: '{"Type":"remove"}' },
+            {id: 'id-markers-1', type: 0, subtype: 1, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"·","rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}}]}' },
+            {id: 'id-markers-2', type: 0, subtype: 2, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"o","rPr":{"rFonts":{"ascii":"Courier New","cs":"Courier New","eastAsia":"Courier New","hAnsi":"Courier New"}}}]}' },
+            {id: 'id-markers-3', type: 0, subtype: 3, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"§","rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}}]}' },
+            {id: 'id-markers-4', type: 0, subtype: 4, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"v","rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}}]}' },
+            {id: 'id-markers-5', type: 0, subtype: 5, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"Ø","rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}}]}' },
+            {id: 'id-markers-6', type: 0, subtype: 6, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"ü","rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}}]}' },
+            {id: 'id-markers-7', type: 0, subtype: 7, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"¨","rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}}]}' }
+        ];
+    }
+
+    getNumbersList () {
+        return [
+            {id: 'id-numbers-0', type: 1, subtype: -1, numberingInfo: '{"Type":"remove"}'},
+            {id: 'id-numbers-4', type: 1, subtype: 4, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"upperLetter"},"lvlText":"%1."}]}'},
+            {id: 'id-numbers-5', type: 1, subtype: 5, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%1)"}]}'},
+            {id: 'id-numbers-6', type: 1, subtype: 6, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%1."}]}'},
+            {id: 'id-numbers-1', type: 1, subtype: 1, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"right","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1."}]}'},
+            {id: 'id-numbers-2', type: 1, subtype: 2, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"right","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1)"}]}'},
+            {id: 'id-numbers-3', type: 1, subtype: 3, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"right","suff":"tab","numFmt":{"val":"upperRoman"},"lvlText":"%1."}]}'},
+            {id: 'id-numbers-7', type: 1, subtype: 7, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"right","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%1."}]}'}
+        ];
+    }
+
+    getMultiLevelList () {
+        return [
+            { id: 'id-multilevels-0', type: 2, subtype: -1, numberingInfo: '{"Type":"remove"}' },
+            { id: 'id-multilevels-1', type: 2, subtype: 1, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1)","pPr":{"ind":{"left":360,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%2)","pPr":{"ind":{"left":720,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%3)","pPr":{"ind":{"left":1080,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%4)","pPr":{"ind":{"left":1440,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%5)","pPr":{"ind":{"left":1800,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%6)","pPr":{"ind":{"left":2160,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%7)","pPr":{"ind":{"left":2520,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%8)","pPr":{"ind":{"left":2880,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%9)","pPr":{"ind":{"left":3240,"firstLine":-360}}}]}' },
+            { id: 'id-multilevels-2', type: 2, subtype: 2, numberingInfo: '{"Type":"number","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.","pPr":{"ind":{"left":360,"firstLine":-360}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.","pPr":{"ind":{"left":792,"firstLine":-432}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.","pPr":{"ind":{"left":1224,"firstLine":-504}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.","pPr":{"ind":{"left":1728,"firstLine":-648}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.","pPr":{"ind":{"left":2232,"firstLine":-792}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.","pPr":{"ind":{"left":2736,"firstLine":-936}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.","pPr":{"ind":{"left":3240,"firstLine":-1080}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.%8.","pPr":{"ind":{"left":3744,"firstLine":-1224}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.%8.%9.","pPr":{"ind":{"left":4320,"firstLine":-1440}}}]}' },
+            { id: 'id-multilevels-3', type: 2, subtype: 3, numberingInfo: '{"Type":"bullet","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"v","pPr":{"ind":{"left":360,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"Ø","pPr":{"ind":{"left":720,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"§","pPr":{"ind":{"left":1080,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"·","pPr":{"ind":{"left":1440,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"¨","pPr":{"ind":{"left":1800,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"Ø","pPr":{"ind":{"left":2160,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"§","pPr":{"ind":{"left":2520,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Wingdings","cs":"Wingdings","eastAsia":"Wingdings","hAnsi":"Wingdings"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"·","pPr":{"ind":{"left":2880,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"bullet"},"lvlText":"¨","pPr":{"ind":{"left":3240,"firstLine":-360}},"rPr":{"rFonts":{"ascii":"Symbol","cs":"Symbol","eastAsia":"Symbol","hAnsi":"Symbol"}}}]}' },
+            { id: 'id-multilevels-4', type: 2, subtype: 4, numberingInfo: '{"Type":"number","Headings":"true","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"upperRoman"},"lvlText":"Article %1.","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimalZero"},"lvlText":"Section %1.%2","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"(%3)","pPr":{"ind":{"left":720,"firstLine":-432}}},{"lvlJc":"right","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"(%4)","pPr":{"ind":{"left":864,"firstLine":-144}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%5)","pPr":{"ind":{"left":1008,"firstLine":-432}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%6)","pPr":{"ind":{"left":1152,"firstLine":-432}}},{"lvlJc":"right","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%7)","pPr":{"ind":{"left":1296,"firstLine":-288}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%8.","pPr":{"ind":{"left":1440,"firstLine":-432}}},{"lvlJc":"right","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"%9.","pPr":{"ind":{"left":1584,"firstLine":-144}}}]}' },
+            { id: 'id-multilevels-5', type: 2, subtype: 5, numberingInfo: '{"Type":"number","Headings":"true","Lvl":[{"lvlJc":"left","suff":"space","numFmt":{"val":"decimal"},"lvlText":"Chapter %1","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"nothing","numFmt":{"val":"none"},"lvlText":"","pPr":{"ind":{"left":0,"firstLine":0}}}]}' },
+            { id: 'id-multilevels-6', type: 2, subtype: 6, numberingInfo: '{"Type":"number","Headings":"true","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"upperRoman"},"lvlText":"%1.","pPr":{"ind":{"left":0,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"upperLetter"},"lvlText":"%2.","pPr":{"ind":{"left":720,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%3.","pPr":{"ind":{"left":1440,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"%4)","pPr":{"ind":{"left":2160,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"(%5)","pPr":{"ind":{"left":2880,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"(%6)","pPr":{"ind":{"left":3600,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"(%7)","pPr":{"ind":{"left":4320,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerLetter"},"lvlText":"(%8)","pPr":{"ind":{"left":5040,"firstLine":0}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"lowerRoman"},"lvlText":"(%9)","pPr":{"ind":{"left":5760,"firstLine":0}}}]}' },
+            { id: 'id-multilevels-7', type: 2, subtype: 7, numberingInfo: '{"Type":"number","Headings":"true","Lvl":[{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.","pPr":{"ind":{"left":432,"firstLine":-432}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.","pPr":{"ind":{"left":576,"firstLine":-576}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.","pPr":{"ind":{"left":720,"firstLine":-720}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.","pPr":{"ind":{"left":864,"firstLine":-864}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.","pPr":{"ind":{"left":1008,"firstLine":-1008}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.","pPr":{"ind":{"left":1152,"firstLine":-1152}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.","pPr":{"ind":{"left":1296,"firstLine":-1296}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.%8.","pPr":{"ind":{"left":1440,"firstLine":-1440}}},{"lvlJc":"left","suff":"tab","numFmt":{"val":"decimal"},"lvlText":"%1.%2.%3.%4.%5.%6.%7.%8.%9.","pPr":{"ind":{"left":1584,"firstLine":-1584}}}]}' }
+        ];
     }
 
     resetParagraphAlign (align) {

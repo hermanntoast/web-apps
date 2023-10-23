@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  * User: Julia.Radzhabova
  * Date: 30.07.19
@@ -51,21 +50,28 @@ define([
         el: '#left-panel-spellcheck',
 
         template: _.template([
-            '<div id="spellcheck-box" class="layout-ct vbox active">',
-                '<div id="spellcheck-header" style="font-size: 14px; padding-bottom: 16px;"><%= scope.txtSpelling %></div>',
-                '<div style="display: flex; width: 100%; padding-bottom: 8px;">',
-                    '<div id="spellcheck-current-word"></div>',
-                    '<div id="spellcheck-next" style=""></div>',
+            '<div id="spellcheck-box" class="layout-ct active">',
+                '<div class="spellcheck-settings">',
+                    '<div class="spellcheck-settings-inner">',
+                        '<div style="display: flex; width: 100%; padding-bottom: 8px; padding-top: 16px;">',
+                            '<div id="spellcheck-current-word"></div>',
+                            '<div id="spellcheck-next" style=""></div>',
+                        '</div>',
+                        '<div id="spellcheck-suggestions-list"></div>',
+                        '<div id="spellcheck-change" style=""></div>',
+                        '<div id="spellcheck-ignore" class="padding-large margin-left-9"></div>',
+                        '<button class="btn btn-text-default auto" id="spellcheck-add-to-dictionary" data-hint="1" data-hint-direction="bottom" data-hint-offset="big"><%= scope.txtAddToDictionary %></button>',
+                        '<label class="header" style="display: block;"><%= scope.txtDictionaryLanguage %></label>',
+                        '<div id="spellcheck-dictionary-language"></div>',
+                        '<div id="spellcheck-complete" class="hidden">',
+                            '<i class="btn-resolve margin-right-10"></i>',
+                            '<%= scope.txtComplete %>' ,
+                        '</div>',
+                    '</div>',
                 '</div>',
-                '<div id="spellcheck-suggestions-list"></div>',
-                '<div id="spellcheck-change" style=""></div>',
-                '<div id="spellcheck-ignore" class="padding-large"></div>',
-                '<button class="btn btn-text-default auto" id="spellcheck-add-to-dictionary" data-hint="1" data-hint-direction="bottom" data-hint-offset="big"><%= scope.txtAddToDictionary %></button>',
-                '<label class="header" style="display: block;"><%= scope.txtDictionaryLanguage %></label>',
-                '<div id="spellcheck-dictionary-language"></div>',
-                '<div id="spellcheck-complete" class="hidden">',
-                    '<i class="btn-resolve" style="display: inline-block;margin-right: 10px;"></i>',
-                    '<%= scope.txtComplete %>' ,
+                '<div id="spellcheck-header">',
+                    '<label><%= scope.txtSpelling %></label>',
+                    '<div id="spellcheck-btn-close" class="float-right margin-left-4"></div>',
                 '</div>',
             '</div>'
         ].join('')),
@@ -80,6 +86,17 @@ define([
             this.$el = $(el);
             this.$el.html(this.template({scope: this}));
 
+            this.buttonClose = new Common.UI.Button({
+                parentEl: $('#spellcheck-btn-close', this.$el),
+                cls: 'btn-toolbar',
+                iconCls: 'toolbar__icon btn-close',
+                hint: this.txtClosePanel,
+                dataHint: '1',
+                dataHintDirection: 'bottom',
+                dataHintOffset: 'big'
+            });
+            this.buttonClose.on('click', _.bind(this.onClickClosePanel, this));
+
             this.currentWord = new Common.UI.InputField({
                 el : $('#spellcheck-current-word'),
                 allowBlank  : true,
@@ -92,12 +109,11 @@ define([
 
             this.buttonNext = new Common.UI.Button({
                 parentEl: $('#spellcheck-next'),
-                style: 'margin-left: 5px;',
                 cls: 'btn-toolbar bg-white',
                 iconCls: 'toolbar__icon btn-nextitem',
                 hint: this.txtNextTip,
                 dataHint: '1',
-                dataHintDirection: 'top'
+                dataHintDirection: 'bottom'
             });
 
             this.suggestionList = new Common.UI.ListView({
@@ -185,10 +201,15 @@ define([
 
             if (_.isUndefined(this.scroller)) {
                 this.scroller = new Common.UI.Scroller({
-                    el: this.$el.find('#spellcheck-box'),
-                    suppressScrollX: true
+                    el: this.$el.find('.spellcheck-settings-inner'),
+                    suppressScrollX: true,
+                    alwaysVisibleY: true
                 });
             }
+
+            $(window).on('resize', _.bind(function() {
+                this.scroller.update({alwaysVisibleY: true});
+            }, this));
 
             return this;
         },
@@ -206,6 +227,10 @@ define([
         ChangeSettings: function(props) {
         },
 
+        onClickClosePanel: function() {
+            Common.NotificationCenter.trigger('leftmenu:change', 'hide');
+        },
+
         txtSpelling: 'Spelling',
         noSuggestions: 'No spelling suggestions',
         textChange: 'Change',
@@ -215,7 +240,8 @@ define([
         txtAddToDictionary: 'Add To Dictionary',
         txtDictionaryLanguage: 'Dictionary Language',
         txtComplete: 'Spellcheck has been complete',
-        txtNextTip: 'Go to the next word'
+        txtNextTip: 'Go to the next word',
+        txtClosePanel: 'Close spelling'
 
     }, SSE.Views.Spellcheck || {}));
 });

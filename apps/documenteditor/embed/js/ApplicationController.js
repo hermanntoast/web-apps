@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 DE.ApplicationController = new(function(){
     var me,
         api,
@@ -75,6 +74,8 @@ DE.ApplicationController = new(function(){
         embedConfig = $.extend(embedConfig, data.config.embedded);
 
         common.controller.modals.init(embedConfig);
+        common.controller.SearchBar.init(embedConfig);
+
 
         // Docked toolbar
         if (embedConfig.toolbarDocked === 'bottom') {
@@ -116,6 +117,7 @@ DE.ApplicationController = new(function(){
 
             docInfo.put_Id(docConfig.key);
             docInfo.put_Url(docConfig.url);
+            docInfo.put_DirectUrl(docConfig.directUrl);
             docInfo.put_Title(docConfig.title);
             docInfo.put_Format(docConfig.fileType);
             docInfo.put_VKey(docConfig.vkey);
@@ -227,7 +229,7 @@ DE.ApplicationController = new(function(){
             if (type == Asc.c_oAscMouseMoveDataTypes.Hyperlink || type==Asc.c_oAscMouseMoveDataTypes.Form) { // hyperlink
                 me.isHideBodyTip = false;
 
-                var str = (type == Asc.c_oAscMouseMoveDataTypes.Hyperlink) ? me.txtPressLink : data.get_FormHelpText();
+                var str = (type == Asc.c_oAscMouseMoveDataTypes.Hyperlink) ? (me.txtPressLink.replace('%1', common.utils.isMac ? '⌘' : me.textCtrl)) : data.get_FormHelpText();
                 if (str.length>500)
                     str = str.substr(0, 500) + '...';
                 str = common.utils.htmlEncode(str);
@@ -399,7 +401,6 @@ DE.ApplicationController = new(function(){
 
         if ( permissions.print === false) {
             $('#idt-print').hide();
-            $(dividers[0]).hide();
             itemsCount--;
         }
 
@@ -411,8 +412,6 @@ DE.ApplicationController = new(function(){
         if ( !appOptions.canFillForms || permissions.download === false) {
             $('#idt-download-docx').hide();
             $('#idt-download-pdf').hide();
-            $(dividers[0]).hide();
-            $(dividers[1]).hide();
             itemsCount -= 2;
         }
 
@@ -424,10 +423,15 @@ DE.ApplicationController = new(function(){
         if (!config.canBackToFolder) {
             $('#idt-close').hide();
             itemsCount--;
+        } else {
+            var text = config.customization.goback.text;
+            text && (typeof text == 'string') && $('#idt-close .caption').text(text);
         }
 
-        if (itemsCount<3)
-            $(dividers[2]).hide();
+        if (itemsCount < 7) {
+            $(dividers[0]).hide();
+            $(dividers[1]).hide();
+        }
 
         if ( !embedConfig.embedUrl || appOptions.canFillForms) {
             $('#idt-embed').hide();
@@ -518,6 +522,11 @@ DE.ApplicationController = new(function(){
                 downloadAs(Asc.c_oAscFileType.PDF);
             });
 
+        DE.ApplicationView.tools.get('#idt-search')
+            .on('click', function(){
+                common.controller.SearchBar.show();
+            });
+
         $('#id-btn-zoom-in').on('click', api.zoomIn.bind(this));
         $('#id-btn-zoom-out').on('click', api.zoomOut.bind(this));
 
@@ -603,6 +612,15 @@ DE.ApplicationController = new(function(){
 
     function onEditorPermissions(params) {
         var licType = params.asc_getLicenseType();
+        if (Asc.c_oLicenseResult.Expired === licType || Asc.c_oLicenseResult.Error === licType || Asc.c_oLicenseResult.ExpiredTrial === licType ||
+            Asc.c_oLicenseResult.NotBefore === licType || Asc.c_oLicenseResult.ExpiredLimited === licType) {
+            $('#id-critical-error-title').text(Asc.c_oLicenseResult.NotBefore === licType ? me.titleLicenseNotActive : me.titleLicenseExp);
+            $('#id-critical-error-message').html(Asc.c_oLicenseResult.NotBefore === licType ? me.warnLicenseBefore : me.warnLicenseExp);
+            $('#id-critical-error-close').parent().remove();
+            $('#id-critical-error-dialog').css('z-index', 20002).modal({backdrop: 'static', keyboard: false, show: true});
+            return;
+        }
+
         appOptions.canLicense     = (licType === Asc.c_oLicenseResult.Success || licType === Asc.c_oLicenseResult.SuccessLimit);
         appOptions.canFillForms   = false; // use forms editor for filling forms
         appOptions.canSubmitForms = appOptions.canLicense && (typeof (config.customization) == 'object') && !!config.customization.submitForm;
@@ -663,6 +681,28 @@ DE.ApplicationController = new(function(){
     function onOpenDocument(progress) {
         var proc = (progress.asc_getCurrentFont() + progress.asc_getCurrentImage())/(progress.asc_getFontsCount() + progress.asc_getImagesCount());
         me.loadMask && me.loadMask.setTitle(me.textLoadingDocument + ': ' + common.utils.fixedDigits(Math.min(Math.round(proc*100), 100), 3, "  ") + '%');
+    }
+
+    function onAdvancedOptions(type, advOptions, mode, formatOptions) {
+        if (type == Asc.c_oAscAdvancedOptionsID.DRM) {
+            var isCustomLoader = !!config.customization.loaderName || !!config.customization.loaderLogo;
+            var submitPassword = function(val) {
+                api && api.asc_setAdvancedOptions(Asc.c_oAscAdvancedOptionsID.DRM, new Asc.asc_CDRMAdvancedOptions(val)); 
+                me.loadMask && me.loadMask.show();
+                if(!isCustomLoader) {
+                    $('#loading-mask').addClass("end-animation");
+                    $('#loading-mask').removeClass("none-animation");
+                }
+            };
+            common.controller.modals.createDlgPassword(submitPassword);
+            if(isCustomLoader) {
+                hidePreloader();
+            } else {
+                $('#loading-mask').removeClass("end-animation");
+                $('#loading-mask').addClass("none-animation");
+            }
+            onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
+        }
     }
 
     function onError(id, level, errData) {
@@ -745,6 +785,22 @@ DE.ApplicationController = new(function(){
             case Asc.c_oAscError.ID.KeyExpire:
                 message = me.errorTokenExpire;
                 break;
+
+            case Asc.c_oAscError.ID.ConvertationOpenFormat:
+                if (errData === 'pdf')
+                    message = me.errorInconsistentExtPdf.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'docx')
+                    message = me.errorInconsistentExtDocx.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'xlsx')
+                    message = me.errorInconsistentExtXlsx.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'pptx')
+                    message = me.errorInconsistentExtPptx.replace('%1', docConfig.fileType || '');
+                else
+                    message = me.errorInconsistentExt;
+                break;
+
+            case Asc.c_oAscError.ID.SessionToken: // don't show error message
+                return;
 
             default:
                 message = me.errorDefaultMessage.replace('%1', id);
@@ -892,7 +948,13 @@ DE.ApplicationController = new(function(){
         });
 
         window["flat_desine"] = true;
-        api = new Asc.asc_docs_api({
+        var result = /[\?\&]fileType=\b(pdf|djvu|xps|oxps)\b&?/i.exec(window.location.search),
+            isPDF = (!!result && result.length && typeof result[1] === 'string');
+
+        api = isPDF ? new Asc.PDFEditorApi({
+            'id-view'  : 'editor_sdk',
+            'embedded' : true
+        }) : new Asc.asc_docs_api({
             'id-view'  : 'editor_sdk',
             'embedded' : true
         });
@@ -901,6 +963,7 @@ DE.ApplicationController = new(function(){
             api.asc_registerCallback('asc_onError',                 onError);
             api.asc_registerCallback('asc_onDocumentContentReady',  onDocumentContentReady);
             api.asc_registerCallback('asc_onOpenDocumentProgress',  onOpenDocument);
+            api.asc_registerCallback('asc_onAdvancedOptions',       onAdvancedOptions);
 
             api.asc_registerCallback('asc_onCountPages',            onCountPages);
 //            api.asc_registerCallback('OnCurrentVisiblePage',    onCurrentPage);
@@ -911,6 +974,8 @@ DE.ApplicationController = new(function(){
             Common.Gateway.on('opendocument',       loadDocument);
             Common.Gateway.on('showmessage',        onExternalMessage);
             Common.Gateway.appReady();
+
+            common.controller.SearchBar.setApi(api);
         }
 
         return me;
@@ -949,9 +1014,19 @@ DE.ApplicationController = new(function(){
         textGotIt: 'Got it',
         errorForceSave: "An error occurred while saving the file. Please use the 'Download as' option to save the file to your computer hard drive or try again later.",
         txtEmpty: '(Empty)',
-        txtPressLink: 'Press Ctrl and click link',
+        txtPressLink: 'Press %1 and click link',
         errorLoadingFont: 'Fonts are not loaded.<br>Please contact your Document Server administrator.',
         errorTokenExpire: 'The document security token has expired.<br>Please contact your Document Server administrator.',
-        openErrorText: 'An error has occurred while opening the file'
+        openErrorText: 'An error has occurred while opening the file',
+        textCtrl: 'Ctrl',
+        errorInconsistentExtDocx: 'An error has occurred while opening the file.<br>The file content corresponds to text documents (e.g. docx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtXlsx: 'An error has occurred while opening the file.<br>The file content corresponds to spreadsheets (e.g. xlsx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtPptx: 'An error has occurred while opening the file.<br>The file content corresponds to presentations (e.g. pptx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtPdf: 'An error has occurred while opening the file.<br>The file content corresponds to one of the following formats: pdf/djvu/xps/oxps, but the file has the inconsistent extension: %1.',
+        errorInconsistentExt: 'An error has occurred while opening the file.<br>The file content does not match the file extension.',
+        titleLicenseExp: 'License expired',
+        titleLicenseNotActive: 'License not active',
+        warnLicenseBefore: 'License not active. Please contact your administrator.',
+        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.'
     }
 })();

@@ -2,8 +2,12 @@
   "common.view.modals.txtCopy": "Copiar no portapapeis",
   "common.view.modals.txtEmbed": "Incorporar",
   "common.view.modals.txtHeight": "Altura",
+  "common.view.modals.txtIncorrectPwd": "O contrasinal é incorrecto",
+  "common.view.modals.txtOpenFile": "Insira o contrasinal para abrir o ficheiro",
   "common.view.modals.txtShare": "Compartir ligazón",
+  "common.view.modals.txtTitleProtected": "Ficheiro protexido",
   "common.view.modals.txtWidth": "Largura",
+  "common.view.SearchBar.textFind": "Buscar",
   "SSE.ApplicationController.convertationErrorText": "Fallou a conversión.",
   "SSE.ApplicationController.convertationTimeoutText": "Excedeu o tempo límite de conversión.",
   "SSE.ApplicationController.criticalErrorTitle": "Erro",
@@ -25,6 +29,7 @@
   "SSE.ApplicationController.textGuest": "Convidado",
   "SSE.ApplicationController.textLoadingDocument": "Cargando a folla de cálculo",
   "SSE.ApplicationController.textOf": "de",
+  "SSE.ApplicationController.titleLicenseExp": "A licenza expirou",
   "SSE.ApplicationController.txtClose": "Pechar",
   "SSE.ApplicationController.unknownErrorText": "Erro descoñecido.",
   "SSE.ApplicationController.unsupportedBrowserErrorText": "O seu navegador non é compatible.",
@@ -34,5 +39,6 @@
   "SSE.ApplicationView.txtFileLocation": "Abrir ubicación do ficheiro",
   "SSE.ApplicationView.txtFullScreen": "Pantalla completa",
   "SSE.ApplicationView.txtPrint": "Imprimir",
+  "SSE.ApplicationView.txtSearch": "Buscar",
   "SSE.ApplicationView.txtShare": "Compartir"
 }

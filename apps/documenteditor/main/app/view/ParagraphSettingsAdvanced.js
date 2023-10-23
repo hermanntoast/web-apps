@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  ParagraphSettingsAdvanced.js
  *
@@ -52,7 +51,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
     DE.Views.ParagraphSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 370,
-            height: 394,
+            height: 415,
             toggleGroup: 'paragraph-adv-settings-group',
             storageName: 'de-para-settings-adv-category'
         },
@@ -203,6 +202,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 allowAuto   : true,
                 autoText    : this.txtAutoText
             });
+
             this.numSpacingBefore.on('change', _.bind(function (field, newValue, oldValue, eOpts) {
                 if (this.Spacing === null) {
                     var properties = (this._originalProps) ? this._originalProps : new Asc.asc_CParagraphProperty();
@@ -243,7 +243,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 menuStyle   : 'min-width: 85px;',
                 takeFocusOnClose: true
             });
-            this.cmbLineRule.setValue(this.CurLineRuleIdx);
+            this.cmbLineRule.setValue('');
             this.cmbLineRule.on('selected', _.bind(this.onLineRuleSelect, this));
 
             this.numLineHeight = new Common.UI.MetricSpinner({
@@ -397,21 +397,20 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             });
 
             var _arrBorderPresets = [
-                ['lrtb',    'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-outer',    'paragraphadv-button-border-outer', this.tipOuter],
-                ['lrtbm',   'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-all',      'paragraphadv-button-border-all',    this.tipAll],
-                ['',        'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-none',     'paragraphadv-button-border-none',       this.tipNone],
-                ['l',       'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-left',     'paragraphadv-button-border-left',      this.tipLeft],
-                ['r',       'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-right',    'paragraphadv-button-border-right',     this.tipRight],
-                ['t',       'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-top',      'paragraphadv-button-border-top',         this.tipTop],
-                ['m',       'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-inner',    'paragraphadv-button-border-inner-hor', this.tipInner],
-                ['b',       'btn-borders-large toolbar__icon toolbar__icon-big paragraph-borders-bottom',   'paragraphadv-button-border-bottom',  this.tipBottom]
+                ['lrtb',    'toolbar__icon toolbar__icon-big btn-paragraph-borders-outer',    'paragraphadv-button-border-outer', this.tipOuter],
+                ['lrtbm',   'toolbar__icon toolbar__icon-big btn-paragraph-borders-all',      'paragraphadv-button-border-all',    this.tipAll],
+                ['',        'toolbar__icon toolbar__icon-big btn-paragraph-borders-none',     'paragraphadv-button-border-none',       this.tipNone],
+                ['l',       'toolbar__icon toolbar__icon-big btn-paragraph-borders-left',     'paragraphadv-button-border-left',      this.tipLeft],
+                ['r',       'toolbar__icon toolbar__icon-big btn-paragraph-borders-right',    'paragraphadv-button-border-right',     this.tipRight],
+                ['t',       'toolbar__icon toolbar__icon-big btn-paragraph-borders-top',      'paragraphadv-button-border-top',         this.tipTop],
+                ['m',       'toolbar__icon toolbar__icon-big btn-paragraph-borders-inner',    'paragraphadv-button-border-inner-hor', this.tipInner],
+                ['b',       'toolbar__icon toolbar__icon-big btn-paragraph-borders-bottom',   'paragraphadv-button-border-bottom',  this.tipBottom]
             ];
 
             this._btnsBorderPosition = [];
             _.each(_arrBorderPresets, function(item, index, list){
                 var _btn = new Common.UI.Button({
                     parentEl: $('#'+item[2]),
-                    style: 'margin-left: 4px; margin-bottom: 4px;',
                     cls: 'btn-options large border-off',
                     iconCls: item[1],
                     strId   :item[0],
@@ -512,6 +511,36 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 }
             }, this));
             this.spinners.push(this.numPosition);
+
+            this._arrLigatures = [
+                {displayValue: this.textNone, value: Asc.LigaturesType.None},
+                {displayValue: this.textStandard, value: Asc.LigaturesType.Standard},
+                {displayValue: this.textContext, value: Asc.LigaturesType.Contextual},
+                {displayValue: this.textHistorical, value: Asc.LigaturesType.Historical},
+                {displayValue: this.textDiscret, value: Asc.LigaturesType.Discretional},
+                {displayValue: this.textStandardContext, value: Asc.LigaturesType.StandardContextual},
+                {displayValue: this.textStandardHistorical, value: Asc.LigaturesType.StandardHistorical},
+                {displayValue: this.textContextHistorical, value: Asc.LigaturesType.ContextualHistorical},
+                {displayValue: this.textStandardDiscret, value: Asc.LigaturesType.StandardDiscretional},
+                {displayValue: this.textContextDiscret, value: Asc.LigaturesType.ContextualDiscretional},
+                {displayValue: this.textHistoricalDiscret, value: Asc.LigaturesType.HistoricalDiscretional},
+                {displayValue: this.textStandardContextHist, value: Asc.LigaturesType.StandardContextualHistorical},
+                {displayValue: this.textStandardContextDiscret, value: Asc.LigaturesType.StandardContextualDiscretional},
+                {displayValue: this.textStandardHistDiscret, value: Asc.LigaturesType.StandardHistoricalDiscretional},
+                {displayValue: this.textContextHistDiscret, value: Asc.LigaturesType.ContextualHistoricalDiscretional},
+                {displayValue: this.textAll, value: Asc.LigaturesType.All}
+            ];
+            this.cmbLigatures = new Common.UI.ComboBox({
+                el: $('#paragraphadv-cmb-ligatures'),
+                cls: 'input-group-nr',
+                editable: false,
+                data: this._arrLigatures,
+                style: 'width: 210px;',
+                menuStyle   : 'min-width: 210px;max-height:135px;',
+                takeFocusOnClose: true
+            });
+            this.cmbLigatures.setValue(Asc.LigaturesType.None);
+            this.cmbLigatures.on('selected', _.bind(this.onLigaturesSelect, this));
 
             // Tabs
             this.numTab = new Common.UI.MetricSpinner({
@@ -825,7 +854,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 this.numSpacingAfter.setValue((value !== null) ? (value<0 ? value : Common.Utils.Metric.fnRecalcFromMM(value)) : '', true);
 
                 var linerule = props.get_Spacing().get_LineRule();
-                this.cmbLineRule.setValue((linerule !== null) ? linerule : '', true);
+                this.cmbLineRule.setValue((linerule !== null) ? linerule : '');
 
                 if(props.get_Spacing() !== null && props.get_Spacing().get_Line() !== null) {
                     this.numLineHeight.setValue((linerule==c_paragraphLinerule.LINERULE_AUTO) ? props.get_Spacing().get_Line() : Common.Utils.Metric.fnRecalcFromMM(props.get_Spacing().get_Line()), true);
@@ -941,6 +970,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
 
                 this.cmbOutlinelevel.setValue((props.get_OutlineLvl() === undefined || props.get_OutlineLvl()===null) ? -1 : props.get_OutlineLvl());
                 this.cmbOutlinelevel.setDisabled(!!props.get_OutlineLvlStyle());
+                this.cmbLigatures.setValue((props.get_Ligatures() === undefined || props.get_Ligatures()===null) ? '' : props.get_Ligatures());
 
                 this._noApply = false;
 
@@ -964,8 +994,9 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             this._arrLineRule[2].minValue =  this._arrLineRule[0].minValue = parseFloat(Common.Utils.Metric.fnRecalcFromMM(0.3).toFixed(2));
             this._arrLineRule[2].step =  this._arrLineRule[0].step = (Common.Utils.Metric.getCurrentMetric()==Common.Utils.Metric.c_MetricUnits.pt) ? 1 : 0.01;
             if (this.CurLineRuleIdx !== null) {
-                this.numLineHeight.setDefaultUnit(this._arrLineRule[this.CurLineRuleIdx].defaultUnit);
-                this.numLineHeight.setStep(this._arrLineRule[this.CurLineRuleIdx].step);
+                var rec = this._arrLineRule[this.CurLineRuleIdx !== -1 ? this.CurLineRuleIdx : 0];
+                this.numLineHeight.setDefaultUnit(rec.defaultUnit);
+                this.numLineHeight.setStep(rec.step);
             }
         },
 
@@ -979,7 +1010,9 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             this.updateThemeColors();
 
             this._setDefaults(this._originalProps);
-
+            var colorstr = (typeof(this.paragraphShade) == 'object') ? this.paragraphShade.color : this.paragraphShade;
+            this.BordersImage.setTableColor(colorstr);
+            (colorstr!='transparent') &&this.BordersImage.redrawTable();
             if (this.borderProps !== undefined) {
                 this.btnBorderColor.setColor(this.borderProps.borderColor);
                 this.btnBorderColor.setAutoColor(this.borderProps.borderColor=='auto');
@@ -996,25 +1029,19 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                     this.onBorderSizeSelect(this.cmbBorderSize, rec);
             }
 
-            for (var i=0; i<this.BordersImage.rows; i++) {
-                for (var j=0; j<this.BordersImage.columns; j++) {
-                    this.BordersImage.getCell(j, i).on('borderclick', function(ct, border, size, color){
-                        if (this.ChangedBorders===undefined) {
-                            this.ChangedBorders = new Asc.asc_CParagraphBorders();
-                        }
-                        this._UpdateCellBordersStyle(ct, border, size, color, this.Borders);
-                    }, this);
+            this.BordersImage.on('borderclick:cellborder', function(ct, border, size, color){
+                if (this.ChangedBorders===undefined) {
+                    this.ChangedBorders = new Asc.asc_CParagraphBorders();
                 }
-            }
+                this._UpdateCellBordersStyle(ct, border, size, color, this.Borders);
+            }, this);
+
             this.BordersImage.on('borderclick', function(ct, border, size, color){
                 if (this.ChangedBorders===undefined) {
                     this.ChangedBorders = new Asc.asc_CParagraphBorders();
                 }
                 this._UpdateTableBordersStyle(ct, border, size, color, this.Borders);
             }, this);
-
-            var colorstr = (typeof(this.paragraphShade) == 'object') ? this.paragraphShade.color : this.paragraphShade;
-            this.BordersImage.setCellsColor(colorstr);
 
             if (this.storageName) {
                 var value = Common.localStorage.getItem(this.storageName);
@@ -1166,7 +1193,8 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 }
             }
             var colorstr = (typeof(color) == 'object') ? color.color : color;
-            this.BordersImage.setCellsColor(colorstr);
+            this.BordersImage.setTableColor(colorstr);
+            this.BordersImage.redrawTable();
         },
 
 
@@ -1209,41 +1237,9 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
 
         _UpdateCellBordersStyle: function(ct, border, size, color, destination) {
             var updateBorders = destination;
-
-            if ( ct.col==0 && border.indexOf('l') > -1 ) {
-                updateBorders.put_Left(this._UpdateBorderStyle(updateBorders.get_Left(), (size>0)));
-                if (this.ChangedBorders) {
-                    this.ChangedBorders.put_Left(new Asc.asc_CTextBorder(updateBorders.get_Left()));
-                }
-            }
-
-            if ( ct.col== this.tableStylerColumns-1 && border.indexOf('r') > -1 )  {
-                updateBorders.put_Right(this._UpdateBorderStyle(updateBorders.get_Right(), (size>0)));
-                if (this.ChangedBorders) {
-                    this.ChangedBorders.put_Right(new Asc.asc_CTextBorder(updateBorders.get_Right()));
-                }
-            }
-
-            if ( ct.row==0 && border.indexOf('t') > -1 ) {
-                updateBorders.put_Top(this._UpdateBorderStyle(updateBorders.get_Top(), (size>0)));
-                if (this.ChangedBorders) {
-                    this.ChangedBorders.put_Top(new Asc.asc_CTextBorder(updateBorders.get_Top()));
-                }
-            }
-
-            if ( ct.row== this.tableStylerRows-1 && border.indexOf('b') > -1 ) {
-                updateBorders.put_Bottom(this._UpdateBorderStyle(updateBorders.get_Bottom(), (size>0)));
-                if (this.ChangedBorders) {
-                    this.ChangedBorders.put_Bottom(new Asc.asc_CTextBorder(updateBorders.get_Bottom()));
-                }
-            }
-
-            if ( ct.row==0 && border.indexOf('b') > -1 ||
-                ct.row== this.tableStylerRows-1 && border.indexOf('t') > -1) {
-                updateBorders.put_Between(this._UpdateBorderStyle(updateBorders.get_Between(), (size>0)));
-                if (this.ChangedBorders) {
-                    this.ChangedBorders.put_Between(new Asc.asc_CTextBorder(updateBorders.get_Between()));
-                }
+            updateBorders.put_Between(this._UpdateBorderStyle(updateBorders.get_Between(), (size>0)));
+            if (this.ChangedBorders) {
+                this.ChangedBorders.put_Between(new Asc.asc_CTextBorder(updateBorders.get_Between()));
             }
         },
 
@@ -1286,26 +1282,25 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             this._UpdateBorder(this.Borders.get_Bottom(), 'b');
 
             if (this.Borders.get_Between() !== null) {
-                for (var i=0; i<this.BordersImage.columns; i++) {
-                    this._UpdateCellBorder(this.Borders.get_Between(), 'b', this.BordersImage.getCell(i, 0));
-                    this._UpdateCellBorder(this.Borders.get_Between(), 't', this.BordersImage.getCell(i, 1));
-                }
+                for (var i=0; i<this.BordersImage.rows-1; i++) {
+                    this._UpdateCellBorder(this.Borders.get_Between(),  this.BordersImage.getCellBorder(i, -1));                }
             }
 
             this.BordersImage.setVirtualBorderSize(oldSize.pxValue);
             this.BordersImage.setVirtualBorderColor((typeof(oldColor) == 'object') ? oldColor.color : oldColor);
+            this.BordersImage.redrawTable();
         },
 
-        _UpdateCellBorder: function(BorderParam, borderName, cell){
+        _UpdateCellBorder: function(BorderParam,  betweenBorder){
             if (null !== BorderParam && undefined !== BorderParam){
                 if (null !== BorderParam.get_Value() && null !== BorderParam.get_Size() && null !== BorderParam.get_Color() && 1 == BorderParam.get_Value()){
-                    cell.setBordersSize(borderName, this._BorderPt2Px(BorderParam.get_Size() * 72 / 25.4));
-                    cell.setBordersColor(borderName, 'rgb(' + BorderParam.get_Color().get_r() + ',' + BorderParam.get_Color().get_g() + ',' + BorderParam.get_Color().get_b() + ')');
+                    betweenBorder.setBordersSize( this._BorderPt2Px(BorderParam.get_Size() * 72 / 25.4));
+                    betweenBorder.setBordersColor(new Common.Utils.RGBColor('rgb(' + BorderParam.get_Color().get_r() + ',' + BorderParam.get_Color().get_g() + ',' + BorderParam.get_Color().get_b() + ')'));
                 } else
-                    cell.setBordersSize(borderName, 0);
+                    betweenBorder.setBordersSize( 0);
             }
             else {
-                cell.setBordersSize(borderName, 0);
+                betweenBorder.setBordersSize( 0);
             }
         },
 
@@ -1329,8 +1324,8 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             if (value <=1.5) return 2;
             if (value <=2.25) return 3;
             if (value <=3) return 4;
-            if (value <=4.5) return 5;
-            return 6;
+            if (value <=4.5) return 6;
+            return 8;
         },
 
         addTab: function(btn, eOpts){
@@ -1487,6 +1482,12 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             }
         },
 
+        onLigaturesSelect: function(combo, record) {
+            if (this._changedProps) {
+                this._changedProps.put_Ligatures(record.value);
+            }
+        },
+
         textTitle:      'Paragraph - Advanced Settings',
         strIndentsLeftText:     'Left',
         strIndentsRightText:    'Right',
@@ -1558,7 +1559,24 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
         strIndentsOutlinelevel: 'Outline level',
         strIndent: 'Indents',
         strSpacing: 'Spacing',
-        strSuppressLineNumbers: 'Suppress line numbers'
+        strSuppressLineNumbers: 'Suppress line numbers',
+        textOpenType: 'OpenType Features',
+        textLigatures: 'Ligatures',
+        textStandard: 'Standard only',
+        textContext: 'Contextual',
+        textHistorical: 'Historical',
+        textDiscret: 'Discretionary',
+        textStandardContext: 'Standard and Contextual',
+        textStandardHistorical: 'Standard and Historical',
+        textStandardDiscret: 'Standard and Discretionary',
+        textContextHistorical: 'Contextual and Historical',
+        textContextDiscret: 'Contextual and Discretionary',
+        textHistoricalDiscret: 'Historical and Discretionary',
+        textStandardContextHist: 'Standard, Contextual and Historical',
+        textStandardContextDiscret: 'Standard, Contextual and Discretionary',
+        textStandardHistDiscret: 'Standard, Historical and Discretionary',
+        textContextHistDiscret: 'Contextual, Historical and Discretionary',
+        textAll: 'All'
 
     }, DE.Views.ParagraphSettingsAdvanced || {}));
 });

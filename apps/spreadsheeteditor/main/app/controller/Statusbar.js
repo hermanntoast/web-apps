@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  Statusbar.js
  *
@@ -67,9 +66,6 @@ define([
                     'sheet:setcolor':       _.bind(this.setWorksheetColor, this),
                     'sheet:updateColors':   _.bind(this.updateTabsColors, this),
                     'sheet:move':           _.bind(this.moveWorksheet, this)
-                },
-                'Common.Views.Header': {
-                    'statusbar:setcompact': _.bind(this.onChangeViewMode, this)
                 },
                 'ViewTab': {
                     'statusbar:setcompact': _.bind(this.onChangeViewMode, this)
@@ -146,7 +142,9 @@ define([
         * */
 
         onZoomChange: function(percent, type) {
-            this.statusbar.labelZoom.text(Common.Utils.String.format(this.zoomText, Math.floor((percent +.005)*100)));
+            var pr = Math.floor((percent +.005)*100);
+            this.statusbar.labelZoom.text(Common.Utils.String.format(this.zoomText, pr));
+            Common.localStorage.setItem('sse-last-zoom', pr);
         },
 
         onApiDisconnect: function() {
@@ -191,7 +189,7 @@ define([
                 }
             }
             var listItem =this.statusbar.sheetListMenu.items[index];
-            if (listItem.$el.children().first().data('hidden')) {
+            if (listItem && listItem.$el && listItem.$el.children().first().data('hidden')) {
                 listItem.setDisabled(locked);
             }
         },
@@ -259,7 +257,7 @@ define([
             this.statusbar.$el.css('z-index', '');
             this.statusbar.tabMenu.on('item:click', _.bind(this.onTabMenu, this));
             this.statusbar.btnAddWorksheet.on('click', _.bind(this.onAddWorksheetClick, this));
-            if (!Common.UI.LayoutManager.isElementVisible('statusBar-actionStatus')) {
+            if (!Common.UI.LayoutManager.isElementVisible('statusBar-actionStatus') || this.statusbar.mode.isEditOle) {
                 this.statusbar.customizeStatusBarMenu.items[0].setVisible(false);
                 this.statusbar.customizeStatusBarMenu.items[1].setVisible(false);
                 this.statusbar.boxAction.addClass('hide');
@@ -783,9 +781,9 @@ define([
                 this._sheetViewTip.hide();
         },
 
-        onChangeViewMode: function(item, compact) {
+        onChangeViewMode: function(item, compact, suppressEvent) {
             this.statusbar.fireEvent('view:compact', [this.statusbar, compact]);
-            Common.localStorage.setBool('sse-compact-statusbar', compact);
+            !suppressEvent && Common.localStorage.setBool('sse-compact-statusbar', compact);
             Common.NotificationCenter.trigger('layout:changed', 'status');
             this.statusbar.onChangeCompact(compact);
 
@@ -841,6 +839,15 @@ define([
         hideDisconnectTip: function() {
             this.disconnectTip && this.disconnectTip.hide();
             this.disconnectTip = null;
+        },
+
+        getSelectTabs: function () {
+            var selectTabs = this.statusbar.tabbar.selectTabs,
+                tabIndArr = [];
+            selectTabs.forEach(function (item) {
+                tabIndArr.push(item.sheetindex);
+            });
+            return tabIndArr;
         },
 
         zoomText        : 'Zoom {0}%',

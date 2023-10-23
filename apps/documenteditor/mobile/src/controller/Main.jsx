@@ -3,7 +3,7 @@ import React, {Component, Fragment} from 'react';
 import {inject} from "mobx-react";
 import { f7 } from "framework7-react";
 import { withTranslation } from 'react-i18next';
-import { LocalStorage } from '../../../../common/mobile/utils/LocalStorage';
+import { LocalStorage } from '../../../../common/mobile/utils/LocalStorage.mjs';
 import CollaborationController from '../../../../common/mobile/lib/controller/collaboration/Collaboration.jsx';
 import {InitReviewController as ReviewController} from '../../../../common/mobile/lib/controller/collaboration/Review.jsx';
 import { onAdvancedOptions } from './settings/Download.jsx';
@@ -19,6 +19,7 @@ import PluginsController from '../../../../common/mobile/lib/controller/Plugins.
 import EncodingController from "./Encoding";
 import DropdownListController from "./DropdownList";
 import { Device } from '../../../../common/mobile/utils/device';
+
 @inject(
     "users",
     "storeAppOptions",
@@ -31,8 +32,10 @@ import { Device } from '../../../../common/mobile/utils/device';
     "storeChartSettings",
     "storeApplicationSettings",
     "storeLinkSettings",
-    "storeToolbarSettings"
-    )
+    "storeToolbarSettings",
+    "storeNavigation",
+    "storeVersionHistory"
+)
 class MainController extends Component {
     constructor(props) {
         super(props);
@@ -45,10 +48,12 @@ class MainController extends Component {
         this._state = {
             licenseType: false,
             isFromGatewayDownloadAs: false,
-            isDocModified: false
+            isDocModified: false,
+            docProtection: false
         };
 
         this.defaultTitleText = __APP_TITLE_TEXT__;
+        this.stackMacrosRequests = [];
 
         const { t } = this.props;
         this._t = t('Main', {returnObjects:true});
@@ -59,9 +64,7 @@ class MainController extends Component {
             !window.sdk_scripts && (window.sdk_scripts = ['../../../../sdkjs/common/AllFonts.js',
                                                             '../../../../sdkjs/word/sdk-all-min.js']);
             let dep_scripts = ['../../../vendor/xregexp/xregexp-all-min.js',
-                                '../../../vendor/sockjs/sockjs.min.js',
-                                '../../../vendor/jszip/jszip.min.js',
-                                '../../../vendor/jszip-utils/jszip-utils.min.js'];
+                                '../../../vendor/socketio/socket.io.min.js'];
             dep_scripts.push(...window.sdk_scripts);
 
             const promise_get_script = (scriptpath) => {
@@ -99,18 +102,23 @@ class MainController extends Component {
                 }
                 this.props.storeApplicationSettings.changeMacrosSettings(value);
 
+                value = localStorage.getItem("de-mobile-allow-macros-request");
+                this.props.storeApplicationSettings.changeMacrosRequest((value !== null) ? parseInt(value)  : 0);
+
+                this.props.storeAppOptions.wopi = this.editorConfig.wopi;
+
                 Common.Notifications.trigger('configOptionsFill');
             };
 
             const loadDocument = data => {
                 this.permissions = {};
                 this.document = data.doc;
-
                 let docInfo = {};
 
                 if (data.doc) {
                     this.permissions = Object.assign(this.permissions, data.doc.permissions);
 
+                    const _options = Object.assign({}, data.doc.options, this.editorConfig.actionLink || {});
                     const _userOptions = this.props.storeAppOptions.user;
                     const _user = new Asc.asc_CUserInfo();
                     _user.put_Id(_userOptions.id);
@@ -120,10 +128,11 @@ class MainController extends Component {
                     docInfo = new Asc.asc_CDocInfo();
                     docInfo.put_Id(data.doc.key);
                     docInfo.put_Url(data.doc.url);
+                    docInfo.put_DirectUrl(data.doc.directUrl);
                     docInfo.put_Title(data.doc.title);
                     docInfo.put_Format(data.doc.fileType);
                     docInfo.put_VKey(data.doc.vkey);
-                    docInfo.put_Options(data.doc.options);
+                    docInfo.put_Options(_options);
                     docInfo.put_UserInfo(_user);
                     docInfo.put_CallbackUrl(this.editorConfig.callbackUrl);
                     docInfo.put_Token(data.doc.token);
@@ -131,13 +140,19 @@ class MainController extends Component {
                     docInfo.put_EncryptedInfo(this.editorConfig.encryptionKeys);
                     docInfo.put_Lang(this.editorConfig.lang);
                     docInfo.put_Mode(this.editorConfig.mode);
-                    
+
+                    let type = /^(?:(pdf|djvu|xps|oxps))$/.exec(data.doc.fileType);
+                    let coEditMode = (type && typeof type[1] === 'string') ? 'strict' :  // offline viewer for pdf|djvu|xps|oxps
+                                    !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object') ? 'fast' : // fast by default
+                                    this.editorConfig.mode === 'view' && this.editorConfig.coEditing.change!==false ? 'fast' : // if can change mode in viewer - set fast for using live viewer
+                                    this.editorConfig.coEditing.mode || 'fast';
+                    docInfo.put_CoEditingMode(coEditMode);
+
                     let enable = !this.editorConfig.customization || (this.editorConfig.customization.macros !== false);
                     docInfo.asc_putIsEnabledMacroses(!!enable);
                     enable = !this.editorConfig.customization || (this.editorConfig.customization.plugins !== false);
                     docInfo.asc_putIsEnabledPlugins(!!enable);
 
-                    let type = /^(?:(pdf|djvu|xps|oxps))$/.exec(data.doc.fileType);
                     if (type && typeof type[1] === 'string') {
                         this.permissions.edit = this.permissions.review = false;
                     }
@@ -152,6 +167,7 @@ class MainController extends Component {
                 this.api.asc_registerCallback('asc_onGetEditorPermissions', onEditorPermissions);
                 this.api.asc_registerCallback('asc_onDocumentContentReady', onDocumentContentReady);
                 this.api.asc_registerCallback('asc_onLicenseChanged', this.onLicenseChanged.bind(this));
+                this.api.asc_registerCallback('asc_onMacrosPermissionRequest', this.onMacrosPermissionRequest.bind(this));
                 this.api.asc_registerCallback('asc_onRunAutostartMacroses', this.onRunAutostartMacroses.bind(this));
                 this.api.asc_setDocInfo(docInfo);
                 this.api.asc_getEditorPermissions(this.editorConfig.licenseUrl, this.editorConfig.customerId);
@@ -159,8 +175,10 @@ class MainController extends Component {
                 // Document Info
 
                 const storeDocumentInfo = this.props.storeDocumentInfo;
+                // this.document
 
                 storeDocumentInfo.setDataDoc(this.document);
+                storeDocumentInfo.setDocInfo(docInfo);
 
                 // Common.SharedSettings.set('document', data.doc);
 
@@ -181,15 +199,14 @@ class MainController extends Component {
                 // check licType
                 if (Asc.c_oLicenseResult.Expired === licType ||
                     Asc.c_oLicenseResult.Error === licType ||
-                    Asc.c_oLicenseResult.ExpiredTrial === licType) {
+                    Asc.c_oLicenseResult.ExpiredTrial === licType ||
+                    Asc.c_oLicenseResult.NotBefore === licType ||
+                    Asc.c_oLicenseResult.ExpiredLimited === licType) {
                     f7.dialog.create({
-                        title   : _t.titleLicenseExp,
-                        text    : _t.warnLicenseExp
+                        title   : Asc.c_oLicenseResult.NotBefore === licType ? _t.titleLicenseNotActive : _t.titleLicenseExp,
+                        text    : Asc.c_oLicenseResult.NotBefore === licType ? _t.warnLicenseBefore : _t.warnLicenseExp
                     }).open();
                     return;
-                }
-                if (Asc.c_oLicenseResult.ExpiredLimited === licType) {
-                    this._state.licenseType = licType;
                 }
 
                 if ( this.onServerVersion(params.asc_getBuildVersion()) ) return;
@@ -197,10 +214,24 @@ class MainController extends Component {
                 this.appOptions.canLicense = (licType === Asc.c_oLicenseResult.Success || licType === Asc.c_oLicenseResult.SuccessLimit);
 
                 const storeAppOptions = this.props.storeAppOptions;
+                const editorConfig = window.native?.editorConfig;
+                const isForceEdit = editorConfig?.mobileForceView === false;
 
                 storeAppOptions.setPermissionOptions(this.document, licType, params, this.permissions, EditorUIController.isSupportEditFeature());
 
                 this.applyMode(storeAppOptions);
+
+                const storeDocumentInfo = this.props.storeDocumentInfo;
+                const dataDoc = storeDocumentInfo.dataDoc;
+                const isExtRestriction = dataDoc.fileType !== 'oform';
+
+                if(isExtRestriction && !isForceEdit) {
+                    this.api.asc_addRestriction(Asc.c_oAscRestrictionType.View);
+                } else if(isExtRestriction && isForceEdit) {
+                    storeAppOptions.changeViewerMode(false);
+                } else {
+                    this.api.asc_addRestriction(Asc.c_oAscRestrictionType.OnlyForms)
+                }
 
                 this.api.asc_LoadDocument();
                 this.api.Resize();
@@ -212,6 +243,9 @@ class MainController extends Component {
 
                 const appOptions = this.props.storeAppOptions;
                 const appSettings = this.props.storeApplicationSettings;
+                const storeDocumentInfo = this.props.storeDocumentInfo;
+                const dataDoc = storeDocumentInfo.dataDoc;
+                const isExtRestriction = dataDoc.fileType !== 'oform';
 
                 f7.emit('resize');
 
@@ -234,8 +268,6 @@ class MainController extends Component {
 
                 this.updateWindowTitle(true);
 
-                this.api.SetTextBoxInputMode(LocalStorage.getBool("de-settings-inputmode"));
-
                 value = LocalStorage.getBool("de-mobile-no-characters");
                 appSettings.changeNoCharacters(value);
                 this.api.put_ShowParaMarks(value);
@@ -243,6 +275,14 @@ class MainController extends Component {
                 value = LocalStorage.getBool("de-mobile-hidden-borders");
                 appSettings.changeShowTableEmptyLine(value);
                 this.api.put_ShowTableEmptyLine(value);
+
+                value = LocalStorage.getBool('mobile-view', true);
+
+                if(value && isExtRestriction) {
+                    this.api.ChangeReaderMode();
+                } else {
+                    appOptions.changeMobileView();
+                }
 
                 if (appOptions.isEdit && this.needToUpdateVersion) {
                     Common.Notifications.trigger('api:disconnect');
@@ -260,7 +300,6 @@ class MainController extends Component {
                 this.api.Resize();
                 this.api.zoomFitToWidth();
                 this.api.asc_GetDefaultTableStyles && setTimeout(() => {this.api.asc_GetDefaultTableStyles()}, 1);
-
                 this.applyLicense();
 
                 Common.Notifications.trigger('document:ready');
@@ -292,7 +331,24 @@ class MainController extends Component {
                                 _translate[item] += ' ';
                         }
                     }
-                    this.api = new Asc.asc_docs_api({
+                    ["Error! Bookmark not defined",
+                     "No table of contents entries found",
+                     "No table of figures entries found",
+                     "Error! Main Document Only",
+                     "Error! Not a valid bookmark self-reference",
+                     "Error! No text of specified style in document"].forEach(item => {
+                        _translate[item + '.'] = _translate[item];
+                        delete _translate[item];
+                    });
+
+                    var result = /[\?\&]fileType=\b(pdf|djvu|xps|oxps)\b&?/i.exec(window.location.search),
+                        isPDF = (!!result && result.length && typeof result[1] === 'string');
+
+                    this.api = isPDF ? new Asc.PDFEditorApi({
+                        'id-view'  : 'editor_sdk',
+                        'mobile'   : true,
+                        'translate': _translate
+                    }) : new Asc.asc_docs_api({
                         'id-view'  : 'editor_sdk',
                         'mobile'   : true,
                         'translate': _translate
@@ -423,6 +479,11 @@ class MainController extends Component {
             (licType === Asc.c_oLicenseResult.Connections || licType === Asc.c_oLicenseResult.UsersCount || licType === Asc.c_oLicenseResult.ConnectionsOS || licType === Asc.c_oLicenseResult.UsersCountOS
                 || licType === Asc.c_oLicenseResult.SuccessLimit && (appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0))
             this._state.licenseType = licType;
+
+        if (licType !== undefined && appOptions.canLiveView && (licType===Asc.c_oLicenseResult.ConnectionsLive || licType===Asc.c_oLicenseResult.ConnectionsLiveOS ||
+                                                                licType===Asc.c_oLicenseResult.UsersViewCount || licType===Asc.c_oLicenseResult.UsersViewCountOS))
+            this._state.licenseType = licType;
+
         if (this._isDocReady && this._state.licenseType)
             this.applyLicense();
     }
@@ -438,11 +499,16 @@ class MainController extends Component {
         const warnLicenseUsersExceeded = _t.warnLicenseUsersExceeded.replace(/%1/g, __COMPANY_NAME__);
 
         const appOptions = this.props.storeAppOptions;
+        const storeDocumentInfo = this.props.storeDocumentInfo;
+        const dataDoc = storeDocumentInfo.dataDoc;
+        const docExt = dataDoc.fileType;
+        const isOpenForm = docExt === 'oform';
+
         if (appOptions.config.mode !== 'view' && !EditorUIController.isSupportEditFeature()) {
             let value = LocalStorage.getItem("de-opensource-warning");
             value = (value !== null) ? parseInt(value) : 0;
             const now = (new Date).getTime();
-            if (now - value > 86400000) {
+            if (now - value > 86400000 && !isOpenForm) {
                 LocalStorage.setItem("de-opensource-warning", now);
                 f7.dialog.create({
                     title: _t.notcriticalErrorTitle,
@@ -454,15 +520,32 @@ class MainController extends Component {
             return;
         }
 
-        if (this._state.licenseType) {
+        if (appOptions.config.mode === 'view') {
+            if (appOptions.canLiveView && (this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLive || this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLiveOS ||
+                                            this._state.licenseType===Asc.c_oLicenseResult.UsersViewCount || this._state.licenseType===Asc.c_oLicenseResult.UsersViewCountOS ||
+                                            !appOptions.isAnonymousSupport && !!appOptions.config.user.anonymous)) {
+                appOptions.canLiveView = false;
+                this.api.asc_SetFastCollaborative(false);
+            }
+            Common.Notifications.trigger('toolbar:activatecontrols');
+        } else if (!appOptions.isAnonymousSupport && !!appOptions.config.user.anonymous) {
+            Common.Notifications.trigger('toolbar:activatecontrols');
+            Common.Notifications.trigger('toolbar:deactivateeditcontrols');
+            this.api.asc_coAuthoringDisconnect();
+            Common.Notifications.trigger('api:disconnect');
+            f7.dialog.create({
+                title: _t.notcriticalErrorTitle,
+                text : _t.warnLicenseAnonymous,
+                buttons: [{text: 'OK'}]
+            }).open();
+        } else if (this._state.licenseType) {
             let license = this._state.licenseType;
             let buttons = [{text: 'OK'}];
             if ((appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0 &&
                 (license === Asc.c_oLicenseResult.SuccessLimit ||
-                    license === Asc.c_oLicenseResult.ExpiredLimited ||
                     appOptions.permissionsLicense === Asc.c_oLicenseResult.SuccessLimit)
             ) {
-                license = (license === Asc.c_oLicenseResult.ExpiredLimited) ? _t.warnLicenseLimitedNoAccess : _t.warnLicenseLimitedRenewed;
+                license = _t.warnLicenseLimitedRenewed;
             } else if (license === Asc.c_oLicenseResult.Connections || license === Asc.c_oLicenseResult.UsersCount) {
                 license = (license===Asc.c_oLicenseResult.Connections) ? warnLicenseExceeded : warnLicenseUsersExceeded;
             } else {
@@ -486,6 +569,7 @@ class MainController extends Component {
             } else {
                 Common.Notifications.trigger('toolbar:activatecontrols');
                 Common.Notifications.trigger('toolbar:deactivateeditcontrols');
+                this.api.asc_coAuthoringDisconnect();
                 Common.Notifications.trigger('api:disconnect');
             }
 
@@ -544,12 +628,8 @@ class MainController extends Component {
             this.api.Resize();
         });
 
-        $$(window).on('popover:open popup:open sheet:open actions:open dialog:open', () => {
+        $$(window).on('popover:open popup:open sheet:open actions:open dialog:open searchbar:enable', () => {
             this.api.asc_enableKeyEvents(false);
-        });
-
-        $$(window).on('popover:close popup:close sheet:close actions:close dialog:close', () => {
-            this.api.asc_enableKeyEvents(true);
         });
 
         this.api.asc_registerCallback('asc_onDocumentUpdateVersion', this.onUpdateVersion.bind(this));
@@ -561,6 +641,7 @@ class MainController extends Component {
         EditorUIController.initThemeColors && EditorUIController.initThemeColors();
 
         this.api.asc_registerCallback('asc_onDownloadUrl', this.onDownloadUrl.bind(this));
+        this.api.asc_registerCallback('asc_onExpiredToken', this.onExpiredToken.bind(this));
 
         const storeDocumentSettings = this.props.storeDocumentSettings;
         this.api.asc_registerCallback('asc_onPageOrient', isPortrait => {
@@ -572,7 +653,13 @@ class MainController extends Component {
 
         this.api.asc_registerCallback('asc_onShowContentControlsActions', (obj, x, y) => {
             const storeAppOptions = this.props.storeAppOptions;
-            if (!storeAppOptions.isEdit && !(storeAppOptions.isRestrictedEdit && storeAppOptions.canFillForms) || this.props.users.isDisconnected) return;
+            const storeDocumentInfo = this.props.storeDocumentInfo;
+            const isViewer = storeAppOptions.isViewer;
+            const dataDoc = storeDocumentInfo.dataDoc;
+            const docExt = dataDoc.fileType;
+            const isAvailableExt = docExt && docExt !== 'oform';
+
+            if (!storeAppOptions.isEdit && !(storeAppOptions.isRestrictedEdit && storeAppOptions.canFillForms) || this.props.users.isDisconnected || (isViewer && isAvailableExt)) return;
 
             switch (obj.type) {
                 case Asc.c_oAscContentControlSpecificType.DateTime:
@@ -604,25 +691,6 @@ class MainController extends Component {
 
         this.api.asc_registerCallback('asc_onVerticalAlign', (typeBaseline) => {
             storeTextSettings.resetTypeBaseline(typeBaseline);
-        });
-        this.api.asc_registerCallback('asc_onListType', (data) => {
-            let type    = data.get_ListType();
-            let subtype = data.get_ListSubType();
-            storeTextSettings.resetListType(type);
-            switch (type) {
-                case 0:
-                    storeTextSettings.resetBullets(subtype);
-                    storeTextSettings.resetNumbers(-1);
-                    break;
-                case 1:
-                    storeTextSettings.resetNumbers(subtype);
-                    storeTextSettings.resetBullets(-1);
-                    break;
-                default: 
-                    storeTextSettings.resetBullets(-1);
-                    storeTextSettings.resetNumbers(-1);
-                    storeTextSettings.resetMultiLevel(-1);
-            }
         });
         this.api.asc_registerCallback('asc_onPrAlign', (align) => {
             storeTextSettings.resetParagraphAlign(align);
@@ -690,6 +758,12 @@ class MainController extends Component {
           storeDocumentInfo.changeCount(this.objectInfo);
         });
 
+        this.api.asc_registerCallback('asc_onMeta', (meta) => {
+            if(meta) {
+                storeDocumentInfo.changeTitle(meta.title);
+            }
+        });
+
         // Color Schemes
 
         this.api.asc_registerCallback('asc_onSendThemeColorSchemes', (arr) => {
@@ -699,13 +773,20 @@ class MainController extends Component {
         // Downloaded Advanced Options
         
         this.api.asc_registerCallback('asc_onAdvancedOptions', (type, advOptions, mode, formatOptions) => {
-            const {t} = this.props;
+            const { t } = this.props;
             const _t = t("Settings", { returnObjects: true });
+            const storeAppOptions = this.props.storeAppOptions;
+
             if(type == Asc.c_oAscAdvancedOptionsID.DRM) {
+                storeAppOptions.setEncryptionFile(true);
                 onAdvancedOptions(type, _t, this._isDocReady, this.props.storeAppOptions.canRequestClose, this.isDRM);
                 this.isDRM = true;
             }
         });
+
+        // Protection document
+        this.api.asc_registerCallback('asc_onChangeDocumentProtection', this.onChangeProtectDocument.bind(this));
+        // this.api.asc_registerCallback('asc_onLockDocumentProtection', this.onLockDocumentProtection.bind(this));
 
         // Toolbar settings
 
@@ -720,6 +801,112 @@ class MainController extends Component {
         });
 
         this.api.asc_registerCallback('asc_onReplaceAll', this.onApiTextReplaced.bind(this));
+
+        const storeNavigation = this.props.storeNavigation;
+
+        this.api.asc_registerCallback('asc_onViewerBookmarksUpdate', (bookmarks) => {
+            storeNavigation.initBookmarks(bookmarks);
+        });
+    }
+
+    onExpiredToken() {
+        const currentRev = this.props.storeVersionHistory.currentVersion.revision;
+        
+        setTimeout(() => {
+            Common.Gateway.requestHistoryData(currentRev);
+        }, 10);
+    }
+
+    onChangeProtectDocument() {
+        const storeVersionHistory = this.props.storeVersionHistory;
+        if (storeVersionHistory.isVersionHistoryMode) return;
+
+        const { t } = this.props;
+        const storeAppOptions = this.props.storeAppOptions;
+        const props = this.getDocProps(true);
+        const isProtected = props && (props.isReadOnly || props.isCommentsOnly || props.isFormsOnly || props.isReviewOnly || props.isTrackedChanges);
+        let textWarningDialog;
+
+        if(!storeAppOptions.isReviewOnly) {
+            if(props.isReviewOnly) {
+                this.api.asc_SetLocalTrackRevisions(true);
+            } else {
+                this.api.asc_SetLocalTrackRevisions(false);
+            }
+        }
+
+        switch(props.type) {
+            case Asc.c_oAscEDocProtect.ReadOnly:
+                textWarningDialog = t('Main.textDialogProtectedOnlyView');
+                break;
+            case Asc.c_oAscEDocProtect.Comments:
+                textWarningDialog = t('Main.textDialogProtectedEditComments');
+                break;
+            case Asc.c_oAscEDocProtect.TrackedChanges: 
+                textWarningDialog = t('Main.textDialogProtectedChangesTracked')
+                break;
+            case Asc.c_oAscEDocProtect.Forms:
+                textWarningDialog = t('Main.textDialogProtectedFillForms');
+                break;
+        }
+
+        storeAppOptions.setProtection(isProtected);
+        storeAppOptions.setTypeProtection(props.type);
+        props && this.applyRestrictions(props.type);
+        Common.Notifications.trigger('protect:doclock', props);
+
+        if(isProtected) {
+            f7.dialog.create({
+                title: t('Main.titleDialogProtectedDocument'),
+                text: textWarningDialog,
+                buttons: [
+                    {
+                        text: t('Main.textOk')
+                    }
+                ]
+            }).open();
+        }
+    }
+
+    applyRestrictions(type) {
+        const storeAppOptions = this.props.storeAppOptions;
+
+        if (type === Asc.c_oAscEDocProtect.ReadOnly) {
+            this.api.asc_setRestriction(Asc.c_oAscRestrictionType.View);
+        } else if (type === Asc.c_oAscEDocProtect.Comments) {
+            this.api.asc_setRestriction(storeAppOptions.canComments ? Asc.c_oAscRestrictionType.OnlyComments : Asc.c_oAscRestrictionType.View);
+        } else if (type === Asc.c_oAscEDocProtect.Forms) {
+            this.api.asc_setRestriction(storeAppOptions.canFillForms ? Asc.c_oAscRestrictionType.OnlyForms : Asc.c_oAscRestrictionType.View);
+        } else { 
+            if (storeAppOptions?.isRestrictedEdit) {
+                storeAppOptions.canComments && this.api.asc_setRestriction(Asc.c_oAscRestrictionType.OnlyComments);
+                storeAppOptions.canFillForms && this.api.asc_setRestriction(Asc.c_oAscRestrictionType.OnlyForms);
+            } else {
+                // this.api.asc_setRestriction(Asc.c_oAscRestrictionType.None);
+                this.api.asc_setRestriction(Asc.c_oAscRestrictionType.View);
+            }
+        }
+    };
+
+    getDocProps(isUpdate) {
+        const storeAppOptions = this.props.storeAppOptions;
+        if (!storeAppOptions || !storeAppOptions.isEdit && !storeAppOptions.isRestrictedEdit) return;
+
+        if (isUpdate || !this._state.docProtection) {
+            const props = this.api.asc_getDocumentProtection();
+            const type = props ? props.asc_getEditType() : Asc.c_oAscEDocProtect.None;
+
+            this._state.docProtection = {
+                type: type,
+                isReadOnly: type === Asc.c_oAscEDocProtect.ReadOnly,
+                isCommentsOnly: type === Asc.c_oAscEDocProtect.Comments,
+                isReviewOnly: type === Asc.c_oAscEDocProtect.TrackedChanges,
+                isFormsOnly: type === Asc.c_oAscEDocProtect.Forms,
+                isTrackedChanges: type === Asc.c_oAscEDocProtect.TrackedChanges
+            };
+        }
+
+        return this._state.docProtection;
     }
 
     onApiTextReplaced(found, replaced) {
@@ -728,7 +915,7 @@ class MainController extends Component {
         if (found) { 
             f7.dialog.alert(null, !(found - replaced > 0) ? t('Main.textReplaceSuccess').replace(/\{0\}/, `${replaced}`) : t('Main.textReplaceSkipped').replace(/\{0\}/, `${found - replaced}`));
         } else {
-            f7.dialog.alert(null, t('Main.textNoTextFound'));
+            f7.dialog.alert(null, t('Main.textNoMatches'));
         }
     }
 
@@ -749,13 +936,14 @@ class MainController extends Component {
 
         controlsContainer.css({left: `${x}px`, top: `${y}px`});
 
+        const val = specProps ? specProps.get_FullDate() : undefined;
         this.cmpCalendar = f7.calendar.create({
             inputEl: '#calendar-target-element',
             dayNamesShort: [t('Edit.textSu'), t('Edit.textMo'), t('Edit.textTu'), t('Edit.textWe'), t('Edit.textTh'), t('Edit.textFr'), t('Edit.textSa')],
             monthNames: [t('Edit.textJanuary'), t('Edit.textFebruary'), t('Edit.textMarch'), t('Edit.textApril'), t('Edit.textMay'), t('Edit.textJune'), t('Edit.textJuly'), t('Edit.textAugust'), t('Edit.textSeptember'), t('Edit.textOctober'), t('Edit.textNovember'), t('Edit.textDecember')],
             backdrop: isPhone ? false : true,
             closeByBackdropClick: isPhone ? false : true,
-            value: [new Date(specProps ? specProps.get_FullDate() : undefined)],
+            value: [val ? new Date(val) : new Date()],
             openIn: isPhone ? 'sheet' : 'popover',
             on: {
                 change: (calendar, value) => {
@@ -854,7 +1042,37 @@ class MainController extends Component {
     }
 
     onRequestClose () {
-        Common.Gateway.requestClose();
+        const { t } = this.props;
+        const _t = t("Toolbar", { returnObjects: true });
+
+        if (this.api.isDocumentModified()) {
+            this.api.asc_stopSaving();
+
+            f7.dialog.create({
+                title: _t.dlgLeaveTitleText,
+                text: _t.dlgLeaveMsgText,
+                verticalButtons: true,
+                buttons : [
+                    {
+                        text: _t.leaveButtonText,
+                        onClick: () => {
+                            this.api.asc_undoAllChanges();
+                            this.api.asc_continueSaving();
+                            Common.Gateway.requestClose();
+                        }
+                    },
+                    {
+                        text: _t.stayButtonText,
+                        bold: true,
+                        onClick: () => {
+                            this.api.asc_continueSaving();
+                        }
+                    }
+                ]
+            }).open();
+        } else {
+            Common.Gateway.requestClose();
+        }
     }
 
     onUpdateVersion (callback) {
@@ -987,6 +1205,70 @@ class MainController extends Component {
                         }]
                 }).open();
             }
+        }
+    }
+
+    onMacrosPermissionRequest (url, callback) {
+        if (url && callback) {
+            this.stackMacrosRequests.push({url: url, callback: callback});
+            if (this.stackMacrosRequests.length>1) {
+                return;
+            }
+        } else if (this.stackMacrosRequests.length>0) {
+            url = this.stackMacrosRequests[0].url;
+            callback = this.stackMacrosRequests[0].callback;
+        } else
+            return;
+
+        const value = this.props.storeApplicationSettings.macrosRequest;
+        if (value>0) {
+            callback && callback(value === 1);
+            this.stackMacrosRequests.shift();
+            this.onMacrosPermissionRequest();
+        } else {
+            const { t } = this.props;
+            const _t = t('Main', {returnObjects:true});
+            f7.dialog.create({
+                title: _t.notcriticalErrorTitle,
+                text: _t.textRequestMacros.replace('%1', url),
+                cssClass: 'dlg-macros-request',
+                content: `<div class="checkbox-in-modal">
+                      <label class="checkbox">
+                        <input type="checkbox" name="checkbox-show-macros" />
+                        <i class="icon-checkbox"></i>
+                      </label>
+                      <span class="right-text">${_t.textRemember}</span>
+                      </div>`,
+                buttons: [{
+                    text: _t.textYes,
+                    onClick: () => {
+                        const dontshow = $$('input[name="checkbox-show-macros"]').prop('checked');
+                        if (dontshow) {
+                            this.props.storeApplicationSettings.changeMacrosRequest(1);
+                            LocalStorage.setItem("de-mobile-allow-macros-request", 1);
+                        }
+                        setTimeout(() => {
+                            if (callback) callback(true);
+                            this.stackMacrosRequests.shift();
+                            this.onMacrosPermissionRequest();
+                        }, 1);
+                    }},
+                    {
+                        text: _t.textNo,
+                        onClick: () => {
+                            const dontshow = $$('input[name="checkbox-show-macros"]').prop('checked');
+                            if (dontshow) {
+                                this.props.storeApplicationSettings.changeMacrosRequest(2);
+                                LocalStorage.setItem("de-mobile-allow-macros-request", 2);
+                            }
+                            setTimeout(() => {
+                                if (callback) callback(false);
+                                this.stackMacrosRequests.shift();
+                                this.onMacrosPermissionRequest();
+                            }, 1);
+                        }
+                    }]
+            }).open();
         }
     }
 

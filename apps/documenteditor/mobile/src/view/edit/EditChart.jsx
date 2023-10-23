@@ -1,6 +1,7 @@
 import React, {Fragment, useState} from 'react';
 import {observer, inject} from "mobx-react";
-import {List, ListItem, ListButton, Icon, Row, Page, Navbar, NavRight, BlockTitle, Toggle, Range, Link, Tabs, Tab} from 'framework7-react';
+import { List, ListItem, ListButton, Icon, Page, Navbar, NavRight, BlockTitle, Toggle, Range, Link } from 'framework7-react';
+import { Swiper, SwiperSlide } from 'swiper/react';
 import {f7} from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
@@ -143,6 +144,8 @@ const PageChartType = props => {
     const { t } = useTranslation();
     const storeChartSettings = props.storeChartSettings;
     const types = storeChartSettings.types;
+    const countSlides = Math.floor(types.length / 3);
+    const arraySlides = Array(countSlides).fill(countSlides);
     const storeFocusObjects = props.storeFocusObjects;
     const chartProperties = storeFocusObjects.chartObject && storeFocusObjects.chartObject.get_ChartProperties();
     const curType = chartProperties && chartProperties.getType();
@@ -153,23 +156,35 @@ const PageChartType = props => {
 
             <div id={"edit-chart-type"} className="page-content no-padding-top dataview">
                 <div className="chart-types">
-                    {types.map((row, rowIndex) => {
-                        return (
-                            <ul className="row" key={`row-${rowIndex}`}>
-                                {row.map((type, index)=>{
-                                    return(
-                                        <li key={`${rowIndex}-${index}`}
-                                            className={curType === type.type ? ' active' : ''}
-                                            onClick={() => {props.onType(type.type)}}>
-                                            <div className={'thumb'}
-                                                style={{backgroundImage: `url('resources/img/charts/${type.thumb}')`}}>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                        )
-                    })}
+                    {types && types.length ? (
+                        <Swiper>
+                            {arraySlides.map((_, indexSlide) => {
+                                let typesSlide = types.slice(indexSlide * 3, (indexSlide * 3) + 3);
+
+                                return (
+                                    <SwiperSlide key={indexSlide}>
+                                        {typesSlide.map((row, rowIndex) => {
+                                            return (
+                                                <ul className="row" key={`row-${rowIndex}`}>
+                                                    {row.map((type, index) => {
+                                                        return (
+                                                            <li key={`${rowIndex}-${index}`}
+                                                                className={curType === type.type ? ' active' : ''}
+                                                                onClick={() => {props.onType(type.type)}}>
+                                                                <div className={'thumb'}
+                                                                    style={{backgroundImage: `url('resources/img/charts/${type.thumb}')`}}>
+                                                                </div>
+                                                            </li>
+                                                        )
+                                                    })}
+                                                </ul>
+                                            )
+                                        })}
+                                    </SwiperSlide>
+                                )
+                            })}
+                        </Swiper>
+                    ) : null}
                 </div>
             </div>
         </Page>
@@ -261,7 +276,7 @@ const PageChartBorder = props => {
                                    onRangeChanged={(value) => {props.onBorderSize(borderSizeTransform.sizeByIndex(value))}}
                             ></Range>
                         </div>
-                        <div slot='inner-end' style={{minWidth: '60px', textAlign: 'right'}}>
+                        <div className='range-number' slot='inner-end'>
                             {stateTextBorderSize + ' ' + Common.Utils.Metric.getMetricName(Common.Utils.Metric.c_MetricUnits.pt)}
                         </div>
                     </ListItem>
@@ -376,8 +391,8 @@ const PageWrap = props => {
                 <Fragment>
                     <BlockTitle>{_t.textAlign}</BlockTitle>
                     <List>
-                        <ListItem  className='buttons'>
-                            <Row>
+                        <ListItem className='buttons'>
+                            <div className="row">
                                 <a className={'button' + (align === Asc.c_oAscAlignH.Left ? ' active' : '')}
                                    onClick={() => {
                                        props.onAlign(Asc.c_oAscAlignH.Left)
@@ -396,7 +411,7 @@ const PageWrap = props => {
                                    }}>
                                     <Icon slot="media" icon="icon-block-align-right"></Icon>
                                 </a>
-                            </Row>
+                            </div>
                         </ListItem>
                     </List>
                 </Fragment>
@@ -421,7 +436,7 @@ const PageWrap = props => {
                                        onRangeChanged={(value) => {props.onWrapDistance(value)}}
                                 ></Range>
                             </div>
-                            <div slot='inner-end' style={{minWidth: '60px', textAlign: 'right'}}>
+                            <div className='range-number' slot='inner-end'>
                                 {stateDistance + ' ' + metricText}
                             </div>
                         </ListItem>
@@ -442,7 +457,7 @@ const PageReorder = props => {
     }
     return (
         <Page>
-            <Navbar title={_t.textReorder} backLink={_t.textBack}>
+            <Navbar title={t('Edit.textArrange')} backLink={_t.textBack}>
                 {Device.phone &&
                     <NavRight>
                         <Link sheetClose='#edit-sheet'>
@@ -489,7 +504,7 @@ const EditChart = props => {
                     onOverlap: props.onOverlap,
                     onWrapDistance: props.onWrapDistance
                 }}></ListItem>
-                <ListItem title={t('Edit.textReorder')} link='/edit-chart-reorder/' routeProps={{
+                <ListItem title={t('Edit.textArrange')} link='/edit-chart-reorder/' routeProps={{
                     onReorder: props.onReorder
                 }}></ListItem>
             </List>

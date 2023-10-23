@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *    FileMenu.js
  *
@@ -43,7 +42,8 @@
 define([
     'text!documenteditor/main/app/template/FileMenu.template',
     'underscore',
-    'common/main/lib/component/BaseView'
+    'common/main/lib/component/BaseView',
+    'common/main/lib/view/RecentFiles'
 ], function (tpl, _) {
     'use strict';
 
@@ -66,6 +66,15 @@ define([
                     var item = _.findWhere(this.items, {el: event.currentTarget});
                     if (item) {
                         var panel = this.panels[item.options.action];
+                        if (item.options.action === 'help') {
+                            if ( panel.noHelpContents === true && navigator.onLine ) {
+                                this.fireEvent('item:click', [this, 'external-help', true]);
+                                const helpCenter = Common.Utils.InternalSettings.get('url-help-center');
+                                !!helpCenter && window.open(helpCenter, '_blank');
+                                return;
+                            }
+                        }
+
                         this.fireEvent('item:click', [this, item.options.action, !!panel]);
 
                         if (panel) {
@@ -79,6 +88,9 @@ define([
         },
 
         initialize: function () {
+            this._state = {
+                infoPreviewMode: false
+            };
         },
 
         render: function () {
@@ -148,6 +160,17 @@ define([
                 dataHint: 1,
                 dataHintDirection: 'left-top',
                 dataHintOffset: [2, 14]
+            });
+
+            this.miPrintWithPreview = new Common.UI.MenuItem({
+                el      : $markup.elementById('#fm-btn-print-with-preview'),
+                action  : 'printpreview',
+                caption : this.btnPrintCaption,
+                canFocused: false,
+                dataHint: 1,
+                dataHintDirection: 'left-top',
+                dataHintOffset: [2, 14],
+                dataHintTitle: 'P'
             });
 
             this.miPrint = new Common.UI.MenuItem({
@@ -284,6 +307,7 @@ define([
                 this.miSaveCopyAs,
                 this.miSaveAs,
                 this.miPrint,
+                this.miPrintWithPreview,
                 this.miRename,
                 this.miProtect,
                 this.miRecent,
@@ -310,7 +334,12 @@ define([
                     me.scroller.update();
                 });
             }
+
             this.applyMode();
+
+            if ( Common.Controllers.Desktop.isActive() ) {
+                Common.NotificationCenter.trigger('update:recents', Common.Controllers.Desktop.recentFiles());
+            }
 
             if ( !!this.api ) {
                 this.panels['info'].setApi(this.api);
@@ -319,6 +348,7 @@ define([
                     this.panels['protect'].setApi(this.api);
             }
 
+            this.fireEvent('render:after', [this]);
             return this;
         },
 
@@ -334,7 +364,7 @@ define([
             this.$el.show();
             this.scroller.update();
             this.selectMenu(panel, opts, defPanel);
-            this.api.asc_enableKeyEvents(false);
+            this.api && this.api.asc_enableKeyEvents(false);
 
             this.fireEvent('menu:show', [this]);
         },
@@ -355,6 +385,7 @@ define([
                     'info'      : (new DE.Views.FileMenuPanels.DocumentInfo({menu:this})).render(this.$el.find('#panel-info')),
                     'rights'    : (new DE.Views.FileMenuPanels.DocumentRights({menu:this})).render(this.$el.find('#panel-rights'))
                 };
+                this._state.infoPreviewMode && this.panels['info'].setPreviewMode(this._state.infoPreviewMode);
             }
 
             if (!this.mode) return;
@@ -368,15 +399,16 @@ define([
             isVisible && (lastSeparator = this.miClose.$el.find('+.devider'));
 
             this.miDownload[((this.mode.canDownload || this.mode.canDownloadOrigin) && (!this.mode.isDesktopApp || !this.mode.isOffline))?'show':'hide']();
-            var isBCSupport = window["AscDesktopEditor"] ? window["AscDesktopEditor"]["isBlockchainSupport"]() : false;
+            var isBCSupport = Common.Controllers.Desktop.isActive() ? Common.Controllers.Desktop.call("isBlockchainSupport") : false;
             this.miSaveCopyAs[((this.mode.canDownload || this.mode.canDownloadOrigin) && (!this.mode.isDesktopApp || !this.mode.isOffline)) && (this.mode.canRequestSaveAs || this.mode.saveAsUrl) && !isBCSupport ?'show':'hide']();
             this.miSaveAs[((this.mode.canDownload || this.mode.canDownloadOrigin) && this.mode.isDesktopApp && this.mode.isOffline)?'show':'hide']();
             this.miSave[this.mode.isEdit && Common.UI.LayoutManager.isElementVisible('toolbar-file-save') ?'show':'hide']();
             this.miEdit[!this.mode.isEdit && this.mode.canEdit && this.mode.canRequestEditRights ?'show':'hide']();
-            this.miPrint[this.mode.canPrint?'show':'hide']();
+            this.miPrint[this.mode.canPrint && !this.mode.canPreviewPrint ?'show':'hide']();
+            this.miPrintWithPreview[this.mode.canPreviewPrint?'show':'hide']();
             this.miRename[(this.mode.canRename && !this.mode.isDesktopApp) ?'show':'hide']();
-            this.miProtect[this.mode.canProtect ?'show':'hide']();
-            separatorVisible = (this.mode.canDownload || this.mode.canDownloadOrigin || this.mode.isEdit && Common.UI.LayoutManager.isElementVisible('toolbar-file-save') || this.mode.canPrint || this.mode.canProtect ||
+            this.miProtect[(this.mode.isSignatureSupport || this.mode.isPasswordSupport) ?'show':'hide']();
+            separatorVisible = (this.mode.canDownload || this.mode.canDownloadOrigin || this.mode.isEdit && Common.UI.LayoutManager.isElementVisible('toolbar-file-save') || this.mode.canPrint || (this.mode.isSignatureSupport || this.mode.isPasswordSupport) ||
                                 !this.mode.isEdit && this.mode.canEdit && this.mode.canRequestEditRights || this.mode.canRename && !this.mode.isDesktopApp) && !this.mode.isDisconnected;
             this.miProtect.$el.find('+.devider')[separatorVisible?'show':'hide']();
             separatorVisible && (lastSeparator = this.miProtect.$el.find('+.devider'));
@@ -428,16 +460,15 @@ define([
 
             if ( this.mode.canCreateNew ) {
                 if (this.mode.templates && this.mode.templates.length) {
-                    $('a',this.miNew.$el).text(this.btnCreateNewCaption + '...');
                     !this.panels['new'] && (this.panels['new'] = ((new DE.Views.FileMenuPanels.CreateNew({menu: this, docs: this.mode.templates, blank: this.mode.canRequestCreateNew || !!this.mode.createUrl})).render()));
                 }
             }
 
             if ( this.mode.canOpenRecent && this.mode.recent ) {
-                !this.panels['recent'] && (this.panels['recent'] = (new DE.Views.FileMenuPanels.RecentFiles({menu:this, recent: this.mode.recent})).render());
+                !this.panels['recent'] && (this.panels['recent'] = (new Common.Views.RecentFiles({ el: '#panel-recentfiles', menu:this, recent: this.mode.recent})).render());
             }
 
-            if (this.mode.canProtect) {
+            if (this.mode.isSignatureSupport || this.mode.isPasswordSupport) {
                 !this.panels['protect'] && (this.panels['protect'] = (new DE.Views.FileMenuPanels.ProtectDoc({menu:this})).render());
                 this.panels['protect'].setMode(this.mode);
             }
@@ -454,6 +485,12 @@ define([
             if (this.mode.canHelp && !this.panels['help']) {
                 this.panels['help'] = ((new DE.Views.FileMenuPanels.Help({menu: this})).render());
                 this.panels['help'].setLangConfig(this.mode.lang);
+            }
+
+            if (this.mode.canPreviewPrint) {
+                var printPanel = DE.getController('Print').getView('PrintWithPreview');
+                printPanel.menu = this;
+                !this.panels['printpreview'] && (this.panels['printpreview'] = printPanel.render(this.$el.find('#panel-print')));
             }
 
             if ( Common.Controllers.Desktop.isActive() ) {
@@ -561,6 +598,7 @@ define([
 
             options && options.protect && _btn_protect.setDisabled(disable);
             options && options.history && _btn_history.setDisabled(disable);
+            options && options.info && (this.panels ? this.panels['info'].setPreviewMode(disable) : this._state.infoPreviewMode = disable );
         },
 
         isVisible: function () {

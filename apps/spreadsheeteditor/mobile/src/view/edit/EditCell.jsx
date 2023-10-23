@@ -1,10 +1,10 @@
 import React, {Fragment, useState, useEffect} from 'react';
 import {observer, inject} from "mobx-react";
-import {f7, List, ListItem, Icon, Row, Button, Page, Navbar, Segmented, BlockTitle, NavRight, Link, Toggle, Swiper, SwiperSlide} from 'framework7-react';
+import {f7, List, ListItem, Icon, Button, Page, Navbar, Segmented, BlockTitle, NavRight, Link, Toggle, ListInput, Block} from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
 import { ThemeColorPalette, CustomColorPicker } from '../../../../../common/mobile/lib/component/ThemeColorPalette.jsx';
-import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage';
+import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage.mjs';
 
 const EditCell = props => {
     const isAndroid = Device.android;
@@ -14,9 +14,8 @@ const EditCell = props => {
     const storeWorksheets = props.storeWorksheets;
     const wsProps = storeWorksheets.wsProps;
     const cellStyles = storeCellSettings.cellStyles;
-    const countSlides = Math.floor(cellStyles.length / 9);
-    const arraySlides = Array(countSlides).fill(countSlides);
-    const styleName = storeCellSettings.styleName;
+    const curStyleName = storeCellSettings.styleName;
+    const curStyle = cellStyles.find(style => style.name === curStyleName);
 
     const fontInfo = storeCellSettings.fontInfo;
     const fontName = fontInfo.name || _t.textFonts;
@@ -49,11 +48,11 @@ const EditCell = props => {
                 <>
                     <List>
                         <ListItem className='buttons'>
-                            <Row>
+                            <div className="row">
                                 <a className={'button' + (isBold ? ' active' : '')} onClick={() => {props.toggleBold(!isBold)}}><b>B</b></a>
                                 <a className={'button' + (isItalic ? ' active' : '')} onClick={() => {props.toggleItalic(!isItalic)}}><i>I</i></a>
                                 <a className={'button' + (isUnderline ? ' active' : '')} onClick={() => {props.toggleUnderline(!isUnderline)}} style={{textDecoration: "underline"}}>U</a>
-                            </Row>
+                            </div>
                         </ListItem>
                         <ListItem title={_t.textTextColor} link="/edit-cell-text-color/" routeProps={{
                             onTextColor: props.onTextColor,
@@ -102,38 +101,73 @@ const EditCell = props => {
                             onCurrencyCellFormat: props.onCurrencyCellFormat,
                             onAccountingCellFormat: props.onAccountingCellFormat,
                             dateFormats: props.dateFormats,
-                            timeFormats: props.timeFormats
+                            timeFormats: props.timeFormats,
+                            setCustomFormat: props.setCustomFormat,
+                            onCellFormat: props.onCellFormat
                         }}>
                             {!isAndroid ?
                                 <Icon slot="media" icon="icon-format-general"></Icon> : null
                             }
                         </ListItem>
                     </List>
-                    <BlockTitle>{_t.textCellStyles}</BlockTitle>
-                    {cellStyles.length ? (
-                        <div className="swiper-container swiper-init demo-swiper">
-                            <div className="swiper-wrapper">
-                                {arraySlides.map((_, indexSlide) => {
-                                    let stylesSlide = cellStyles.slice(indexSlide * 9, (indexSlide * 9) + 9);
-                                    
-                                    return (
-                                        <div className="swiper-slide" key={indexSlide}>
-                                            <List className="cell-styles-list">
-                                                {stylesSlide.map((elem, index) => (
-                                                    <ListItem key={index} className={elem.name === styleName ? "item-theme active" : "item-theme"} onClick={() => props.onStyleClick(elem.name)}>
-                                                        <div className='thumb' style={{backgroundImage: `url(${elem.image})`}}></div>
-                                                    </ListItem> 
-                                                ))}
-                                            </List>
-                                        </div>
-                                )})}
+                    <List>
+                        <ListItem title={t('View.Edit.textCellStyle')} link="/edit-cell-style/" routeProps={{
+                            onStyleClick: props.onStyleClick
+                        }}>
+                            {!isAndroid && <Icon slot="media" icon="icon-cell-style" />}
+                            <div slot="after">
+                                <div className='preview-cell-style' style={{backgroundImage: `url(${curStyle ? curStyle.image : null})`}}></div>
                             </div>
-                        </div>
-                    ) : null}
+                        </ListItem>
+                    </List>
                 </>}    
         </Fragment>
     )
 };
+
+const PageCellStyle = props => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+    const storeCellSettings = props.storeCellSettings;
+    const styleName = storeCellSettings.styleName;
+    const cellStyles = storeCellSettings.cellStyles;
+    const countStylesSlide = Device.phone ? 6 : 15;
+    const countSlides = Math.floor(cellStyles.length / countStylesSlide);
+    const arraySlides = Array(countSlides).fill(countSlides);
+
+    return (
+        <Page>
+            <Navbar title={t('View.Edit.textCellStyle')} backLink={_t.textBack}>
+                {Device.phone &&
+                    <NavRight>
+                        <Link icon='icon-expand-down' sheetClose></Link>
+                    </NavRight>
+                }
+            </Navbar>
+            {cellStyles && cellStyles.length ? (
+                <div className="swiper-container swiper-init" data-pagination='{"el": ".swiper-pagination"}'>
+                    <div className="swiper-wrapper">
+                        {arraySlides.map((_, indexSlide) => {
+                            let stylesSlide = cellStyles.slice(indexSlide * countStylesSlide, (indexSlide * countStylesSlide) + countStylesSlide);
+                            
+                            return (
+                                <div className="swiper-slide" key={indexSlide}>
+                                    <List className="cell-styles-list">
+                                        {stylesSlide.map((elem, index) => (
+                                            <ListItem key={index} className={elem.name === styleName ? "item-theme active" : "item-theme"} onClick={() => props.onStyleClick(elem.name)}>
+                                                <div className='thumb' style={{backgroundImage: `url(${elem.image})`}}></div>
+                                            </ListItem> 
+                                        ))}
+                                    </List>
+                                </div>
+                        )})}
+                    </div>
+                    <div className="swiper-pagination"></div>
+                </div>
+            ) : null}
+        </Page>
+    )
+}
 
 const PageFontsCell = props => {
     const isAndroid = Device.android;
@@ -833,6 +867,7 @@ const PageBorderSizeCell = props => {
 const PageFormatCell = props => {
     const { t } = useTranslation();
     const _t = t('View.Edit', {returnObjects: true});
+    const isIos = Device.ios;
 
     return (
         <Page>
@@ -844,6 +879,12 @@ const PageFormatCell = props => {
                 }
             </Navbar>
             <List>
+                <ListItem link='/custom-format/' className='no-indicator' title={t('View.Edit.textCustomFormat')} routeProps={{
+                    setCustomFormat: props.setCustomFormat,
+                    onCellFormat: props.onCellFormat
+                }}>
+                    <Icon slot="media" icon={isIos ? 'icon-plus' : 'icon-add-custom-format'}></Icon>
+                </ListItem>
                 <ListItem link='#' className='no-indicator' title={_t.textGeneral} onClick={() => props.onCellFormat('General')}>
                     <Icon slot="media" icon="icon-format-general"></Icon>
                 </ListItem>
@@ -889,7 +930,95 @@ const PageFormatCell = props => {
     )
 }
 
-const PageAccountingFormatCell = props => {
+const PageCustomFormats = props => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+    const storeCellSettings = props.storeCellSettings;
+    const customFormats = storeCellSettings.customFormats;
+    const [renderList, setRenderList] = useState(false);
+
+    useEffect(() => {
+        if (customFormats?.length) {
+            setRenderList(true);
+        }
+    }, [customFormats]);
+
+    const handleCellFormatClick = (format) => {
+        props.onCellFormat(format);
+        props.f7router.back();
+    };
+
+    return (
+        <Page>
+            <Navbar title={t('View.Edit.textCustomFormat')} backLink={_t.textBack}>
+                {Device.phone &&
+                    <NavRight>
+                        <Link icon='icon-expand-down' sheetClose></Link>
+                    </NavRight>
+                }
+            </Navbar>
+            <List>
+                <ListItem title={t('View.Edit.textCreateCustomFormat')} link="/create-custom-format/" className='no-indicator' routeProps={{
+                    setCustomFormat: props.setCustomFormat,
+                    customFormats: props.customFormats
+                }}></ListItem>
+            </List>
+            {renderList && (
+                <List>
+                    {customFormats.map((item, idx) => (
+                        <ListItem
+                            link='#'
+                            className='no-indicator'
+                            key={idx}
+                            title={item.format}
+                            value={item.value}
+                            onClick={() => handleCellFormatClick(item.value)}
+                        />
+                    ))}
+                </List>
+            )}
+        </Page>
+    )
+}
+
+const PageCreationCustomFormat = observer(props => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+    const [formatValue, setFormatValue] = useState('');
+    const isIos = Device.ios;
+
+    const handleSetCustomFormat = (value) => {
+        props.setCustomFormat(value);
+        props.f7router.back();
+    }
+
+    return (
+        <Page>
+            <Navbar title={t('View.Edit.textCreateFormat')} backLink={_t.textBack}>
+                <NavRight>
+                    <Link text={isIos ? t('View.Edit.textSave') : ''} icon={!isIos ? 'icon-check' : null} className={!formatValue && 'disabled'} onClick={() => handleSetCustomFormat(formatValue)}></Link>
+                </NavRight>
+            </Navbar>
+            <>
+                <List className="inputs-list">
+                    <ListInput 
+                        label={!isIos ? t('View.Edit.textFormat') : null}
+                        type="text"
+                        placeholder={t('View.Edit.textEnterFormat')}
+                        value={formatValue}
+                        onInput={e => setFormatValue(e.target.value)}
+                        clearButton={isIos ? true : false}
+                    />
+                </List>
+                <Block>
+                    <p>{t('View.Edit.textCustomFormatWarning')}</p>
+                </Block>
+            </>
+        </Page>
+    )
+});
+
+const PageAccountingFormatCell = observer(props => {
     const { t } = useTranslation();
     const _t = t('View.Edit', {returnObjects: true});
 
@@ -921,7 +1050,7 @@ const PageAccountingFormatCell = props => {
             </List>
         </Page>
     )
-}
+});
 
 const PageCurrencyFormatCell = props => {
     const { t } = useTranslation();
@@ -1022,6 +1151,8 @@ const BorderStyleCell = inject("storeCellSettings", "storeFocusObjects")(observe
 const BorderColorCell = inject("storeCellSettings", "storePalette")(observer(PageBorderColorCell));
 const CustomBorderColorCell = inject("storeCellSettings", "storePalette")(observer(PageCustomBorderColorCell));
 const BorderSizeCell = inject("storeCellSettings")(observer(PageBorderSizeCell));
+const CellStyle = inject("storeCellSettings")(observer(PageCellStyle));
+const CustomFormats = inject("storeCellSettings")(observer(PageCustomFormats));
 
 export {
     PageEditCell as EditCell,
@@ -1040,5 +1171,8 @@ export {
     PageAccountingFormatCell,
     PageCurrencyFormatCell,
     PageDateFormatCell,
-    PageTimeFormatCell
+    PageTimeFormatCell,
+    CellStyle,
+    CustomFormats,
+    PageCreationCustomFormat
 };

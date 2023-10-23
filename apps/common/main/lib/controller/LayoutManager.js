@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2021
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -47,14 +46,16 @@ if (Common.UI === undefined) {
 }
 
 Common.UI.LayoutManager = new(function() {
-    var _config;
-    var _init = function(config) {
+    var _config,
+        _licensed;
+    var _init = function(config, licensed) {
         _config = config;
+        _licensed = licensed;
     };
 
     var _applyCustomization = function(config, el, prefix) {
         !config && (config = _config);
-        if (!config) return;
+        if (!_licensed || !config) return;
 
         for (var name in config) {
             if(config.hasOwnProperty(name)) {
@@ -71,7 +72,7 @@ Common.UI.LayoutManager = new(function() {
 
     var _isElementVisible = function(value, config, prefix) {
         !config && (config = _config);
-        if (!config) return true;
+        if (!_licensed || !config) return true;
 
         var res = true;
         for (var name in config) {
@@ -89,10 +90,31 @@ Common.UI.LayoutManager = new(function() {
         return res;
     };
 
+    var _getInitValue = function(name) {
+        if (_licensed && _config) {
+            var arr = name.split('-'),
+                i = 0,
+                obj = _config;
+            for (i=0; i<arr.length; i++) {
+                if (typeof obj[arr[i]] === 'object' && obj[arr[i]]) {
+                    obj = obj[arr[i]];
+                } else
+                    break;
+            }
+            if (i===arr.length) {
+                if (typeof obj === 'object' && obj)
+                    return obj.mode;
+                else
+                    return obj;
+            }
+        }
+    };
+
     return {
         init: _init,
         applyCustomization: _applyCustomization,
-        isElementVisible: _isElementVisible
+        isElementVisible: _isElementVisible,
+        getInitValue: _getInitValue
     }
 })();
 

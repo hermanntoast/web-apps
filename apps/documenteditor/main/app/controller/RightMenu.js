@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  RightMenu.js
  *
@@ -54,10 +53,20 @@ define([
         initialize: function() {
             this.editMode = true;
             this._initSettings = true;
-
+            this._state = {
+                docProtection: {
+                    isReadOnly: false,
+                    isReviewOnly: false,
+                    isFormsOnly: false,
+                    isCommentsOnly: false
+                }
+            };
             this.addListeners({
                 'RightMenu': {
                     'rightmenuclick': this.onRightMenuClick
+                },
+                'ViewTab': {
+                    'rightmenu:hide': _.bind(this.onRightMenuHide, this)
                 }
             });
 
@@ -89,6 +98,7 @@ define([
         setApi: function(api) {
             this.api = api;
             this.api.asc_registerCallback('asc_onUpdateSignatures', _.bind(this.onApiUpdateSignatures, this));
+            Common.NotificationCenter.on('protect:doclock', _.bind(this.onChangeProtectDocument, this));
             this.api.asc_registerCallback('asc_onCoAuthoringDisconnect',_.bind(this.onCoAuthoringDisconnect, this));
             Common.NotificationCenter.on('api:disconnect',              _.bind(this.onCoAuthoringDisconnect, this));
         },
@@ -122,8 +132,10 @@ define([
 
                 var panel = this._settings[type].panel;
                 var props = this._settings[type].props;
-                if (props && panel)
+                if (props && panel) {
                     panel.ChangeSettings.call(panel, (type==Common.Utils.documentSettingsType.MailMerge || type==Common.Utils.documentSettingsType.Signature) ? undefined : props);
+                    this.rightmenu.updateScroller();
+                }
             } else if (minimized && type==Common.Utils.documentSettingsType.MailMerge) {
                 this.rightmenu.mergeSettings.disablePreviewMode();
             }
@@ -156,8 +168,12 @@ define([
             this._settings[Common.Utils.documentSettingsType.Signature].locked = false;
 
             var isChart = false,
-                isSmartArtInternal = false;
+                isShape = false,
+                isSmartArtInternal = false,
+                isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly;
+
             var control_props = this.api.asc_IsContentControl() ? this.api.asc_GetContentControlProperties() : null,
+                is_form = control_props && control_props.get_FormPr(),
                 control_lock = false;
             for (i=0; i<SelectedObjects.length; i++)
             {
@@ -179,17 +195,18 @@ define([
                         isChart = true;
                         settingsType = Common.Utils.documentSettingsType.Chart;
                     } else if (value.get_ShapeProperties() !== null) {
+                        isShape = true;
                         isChart = value.get_ShapeProperties().get_FromChart();
                         isSmartArtInternal = value.get_ShapeProperties().get_FromSmartArtInternal();
                         settingsType = Common.Utils.documentSettingsType.Shape;
                         if (value.get_ShapeProperties().asc_getTextArtProperties()) {
                             this._settings[Common.Utils.documentSettingsType.TextArt].props = value;
                             this._settings[Common.Utils.documentSettingsType.TextArt].hidden = 0;
-                            this._settings[Common.Utils.documentSettingsType.TextArt].locked = value.get_Locked() || content_locked;
+                            this._settings[Common.Utils.documentSettingsType.TextArt].locked = value.get_Locked() || content_locked || isProtected;
                         }
                     }
                     control_lock = control_lock || value.get_Locked();
-                } else if (settingsType == Common.Utils.documentSettingsType.Paragraph) {
+                } else if (settingsType == Common.Utils.documentSettingsType.Paragraph && !(is_form && is_form.get_Fixed())) {
                     this._settings[settingsType].panel.isChart = isChart;
                     this._settings[settingsType].panel.isSmartArtInternal = isSmartArtInternal;
                     can_add_table = value.get_CanAddTable();
@@ -197,22 +214,27 @@ define([
                 }
                 this._settings[settingsType].props = value;
                 this._settings[settingsType].hidden = 0;
-                this._settings[settingsType].locked = value.get_Locked() || content_locked;
+                this._settings[settingsType].locked = value.get_Locked() || content_locked || isProtected;
                 if (!this._settings[Common.Utils.documentSettingsType.MailMerge].locked) // lock MailMerge-InsertField, если хотя бы один объект locked
-                    this._settings[Common.Utils.documentSettingsType.MailMerge].locked = value.get_Locked();
+                    this._settings[Common.Utils.documentSettingsType.MailMerge].locked = value.get_Locked() || isProtected;
                 if (!this._settings[Common.Utils.documentSettingsType.Signature].locked) // lock Signature, если хотя бы один объект locked
                     this._settings[Common.Utils.documentSettingsType.Signature].locked = value.get_Locked();
             }
 
-            if (control_props && control_props.get_FormPr() && this.rightmenu.formSettings) {
+            if(is_form && is_form.get_Fixed()) {
+                this._settings[Common.Utils.documentSettingsType.Paragraph].hidden = 1;
+            }
+
+            if (is_form && this.rightmenu.formSettings) {
                 var spectype = control_props.get_SpecificType();
-                if (spectype==Asc.c_oAscContentControlSpecificType.CheckBox || spectype==Asc.c_oAscContentControlSpecificType.Picture ||
-                    spectype==Asc.c_oAscContentControlSpecificType.ComboBox || spectype==Asc.c_oAscContentControlSpecificType.DropDownList || spectype==Asc.c_oAscContentControlSpecificType.None) {
+                if (spectype==Asc.c_oAscContentControlSpecificType.CheckBox || spectype==Asc.c_oAscContentControlSpecificType.Picture || spectype==Asc.c_oAscContentControlSpecificType.Complex ||
+                    spectype==Asc.c_oAscContentControlSpecificType.ComboBox || spectype==Asc.c_oAscContentControlSpecificType.DropDownList || spectype==Asc.c_oAscContentControlSpecificType.None ||
+                    spectype==Asc.c_oAscContentControlSpecificType.DateTime) {
                     settingsType = Common.Utils.documentSettingsType.Form;
                     this._settings[settingsType].props = control_props;
-                    this._settings[settingsType].locked = control_lock;
+                    this._settings[settingsType].locked = control_lock || isProtected;
                     this._settings[settingsType].hidden = 0;
-                    if (control_props.get_FormPr().get_Fixed())
+                    if (is_form.get_Fixed())
                         this._settings[Common.Utils.documentSettingsType.TextArt].hidden = 1;
                 }
             }
@@ -252,6 +274,9 @@ define([
             if (!this._settings[Common.Utils.documentSettingsType.MailMerge].hidden)
                 this._settings[Common.Utils.documentSettingsType.MailMerge].panel.setLocked(this._settings[Common.Utils.documentSettingsType.MailMerge].locked);
 
+            if (!this._settings[Common.Utils.documentSettingsType.Signature].hidden)
+                this._settings[Common.Utils.documentSettingsType.Signature].panel.setProtected(isProtected);
+
             if (!this.rightmenu.minimizedMode || open) {
                 var active;
 
@@ -286,10 +311,22 @@ define([
                 
                 if (active !== undefined) {
                     this.rightmenu.SetActivePane(active, open);
-                    if (active!=Common.Utils.documentSettingsType.MailMerge && active!=Common.Utils.documentSettingsType.Signature)
+                    if (active === Common.Utils.documentSettingsType.Form)
+                        this._settings[active].panel.ChangeSettings.call(this._settings[active].panel, this._settings[active].props, isShape);
+                    else if (active!=Common.Utils.documentSettingsType.MailMerge && active!=Common.Utils.documentSettingsType.Signature)
                         this._settings[active].panel.ChangeSettings.call(this._settings[active].panel, this._settings[active].props);
                     else
                         this._settings[active].panel.ChangeSettings.call(this._settings[active].panel);
+                    (active !== currentactive) && this.rightmenu.updateScroller();
+                } else if (activePane) { // lock active pane if no selected objects (ex. drawing)
+                    for (var i=0; i<this._settings.length; i++) {
+                        if (this._settings[i] && this._settings[i].panelId === activePane) {
+                            this._settings[i].locked = true;
+                            this._settings[i].panel.setLocked(true);
+                            this._settings[i].panel.disableControls(true);
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -354,7 +391,6 @@ define([
                 }
                 this.api.asc_registerCallback('asc_onError',             _.bind(this.onError, this));
             }
-
             if (this.editMode && this.api) {
                 // this.rightmenu.shapeSettings.createDelayedElements();
                 var selectedElements = this.api.getSelectedElements();
@@ -362,6 +398,7 @@ define([
                     this.onFocusObject(selectedElements);
                 }
             }
+            this.onChangeProtectDocument();
         },
 
         onDoubleClickOnObject: function(obj) {
@@ -385,6 +422,7 @@ define([
             if (settingsType !== Common.Utils.documentSettingsType.Paragraph) {
                 this.rightmenu.SetActivePane(settingsType, true);
                 this._settings[settingsType].panel.ChangeSettings.call(this._settings[settingsType].panel, this._settings[settingsType].props);
+                this.rightmenu.updateScroller();
             }
         },
 
@@ -395,6 +433,7 @@ define([
             this.rightmenu.SetActivePane(type, true);
             this._settings[type].panel.setLocked(this._settings[type].locked);
             this._settings[type].panel.ChangeSettings.call(this._settings[type].panel);
+            this.rightmenu.updateScroller();
         },
 
         onError: function(id, level, errData) {
@@ -415,6 +454,7 @@ define([
             this._settings[type].hidden = disabled ? 1 : 0;
             this._settings[type].btn.setDisabled(disabled);
             this._settings[type].panel.setLocked(this._settings[type].locked);
+            this._settings[type].panel.setProtected(this._state.docProtection ? this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly : false);
         },
 
         SetDisabled: function(disabled, allowMerge, allowSignature) {
@@ -450,7 +490,8 @@ define([
                 } else {
                     var selectedElements = this.api.getSelectedElements();
                     if (selectedElements.length > 0)
-                        this.onFocusObject(selectedElements, false, !Common.Utils.InternalSettings.get("de-hide-right-settings"));
+                        this.onFocusObject(selectedElements, false, !Common.Utils.InternalSettings.get("de-hide-right-settings") && // user didn't close panel
+                                                                                            !Common.Utils.InternalSettings.get("de-hidden-rightmenu")); // user didn't hide right menu
                 }
             }
         },
@@ -466,6 +507,40 @@ define([
                 case Asc.c_oAscTypeSelectElement.Header:
                     return Common.Utils.documentSettingsType.Header;
             }
+        },
+
+        onChangeProtectDocument: function(props) {
+            if (!props) {
+                var docprotect = this.getApplication().getController('DocProtection');
+                props = docprotect ? docprotect.getDocProps() : null;
+            }
+            if (props) {
+                this._state.docProtection = props;
+                if (this.api) {
+                    var selectedElements = this.api.getSelectedElements();
+                    if (selectedElements.length > 0)
+                        this.onFocusObject(selectedElements);
+                }
+            }
+        },
+
+        onRightMenuHide: function (view, status) { // status = true when show panel
+            if (this.rightmenu) {
+                !status && this.rightmenu.clearSelection();
+                status ? this.rightmenu.show() : this.rightmenu.hide();
+                Common.localStorage.setBool('de-hidden-rightmenu', !status);
+                Common.Utils.InternalSettings.set("de-hidden-rightmenu", !status);
+                if (status) {
+                    var selectedElements = this.api.getSelectedElements();
+                    if (selectedElements.length > 0)
+                        this.onFocusObject(selectedElements, false, !Common.Utils.InternalSettings.get("de-hide-right-settings"));
+                } else {
+                    this.rightmenu.signatureSettings && this.rightmenu.signatureSettings.hideSignatureTooltip();
+                }
+            }
+
+            Common.NotificationCenter.trigger('layout:changed', 'main');
+            Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
         }
     });
 });

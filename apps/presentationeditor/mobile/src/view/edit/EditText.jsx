@@ -1,10 +1,11 @@
 import React, {Fragment, useState, useEffect} from 'react';
 import {observer, inject} from "mobx-react";
-import {f7, Swiper, View, SwiperSlide, List, ListItem, Icon, Row,  Button, Page, Navbar, Segmented, BlockTitle, NavRight, Link} from 'framework7-react';
+import {f7, View, List, ListItem, ListButton, ListInput, Icon,  Button, Page, Navbar, Segmented, BlockTitle, NavRight, Link} from 'framework7-react';
 import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
 import { ThemeColorPalette, CustomColorPicker } from '../../../../../common/mobile/lib/component/ThemeColorPalette.jsx';
-import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { LocalStorage } from '../../../../../common/mobile/utils/LocalStorage.mjs';
 import HighlightColorPalette from '../../../../../common/mobile/lib/component/HighlightColorPalette.jsx';
 
 const EditText = props => {
@@ -67,12 +68,12 @@ const EditText = props => {
                     changeFontFamily: props.changeFontFamily
                 }}/>
                 <ListItem className='buttons'>
-                    <Row>
+                    <div className="row">
                         <a className={'button' + (isBold ? ' active' : '')} onClick={() => { props.toggleBold(!isBold)}}><b>B</b></a>
                         <a className={'button' + (isItalic ? ' active' : '')} onClick={() => {props.toggleItalic(!isItalic)}}><i>I</i></a>
                         <a className={'button' + (isUnderline ? ' active' : '')} onClick={() => {props.toggleUnderline(!isUnderline)}} style={{textDecoration: "underline"}}>U</a>
                         <a className={'button' + (isStrikethrough ? ' active' : '')} onClick={() => {props.toggleStrikethrough(!isStrikethrough)}} style={{textDecoration: "line-through"}}>S</a>
-                    </Row>
+                    </div>
                 </ListItem>
                 <ListItem title={_t.textFontColor} link="/edit-text-font-color/" routeProps={{
                     onTextColor: props.onTextColor
@@ -102,7 +103,7 @@ const EditText = props => {
                 <Fragment>
                     <List>
                         <ListItem className='buttons'>
-                            <Row>
+                            <div className="row">
                                 <a className={'button' + (paragraphAlign === 'left' ? ' active' : '')} onClick={() => {props.onParagraphAlign('left')}}>
                                     <Icon slot="media" icon="icon-text-align-left"></Icon>
                                 </a>
@@ -115,10 +116,10 @@ const EditText = props => {
                                 <a className={'button' + (paragraphAlign === 'just' ? ' active' : '')} onClick={() => {props.onParagraphAlign('just')}}>
                                     <Icon slot="media" icon="icon-text-align-just"></Icon>
                                 </a>
-                            </Row>
+                            </div>
                         </ListItem>
                         <ListItem className='buttons'>
-                            <Row>
+                            <div className="row">
                                 <a className={'button' + (paragraphValign === 'top' ? ' active' : '')} onClick={() => {props.onParagraphValign('top')}}>
                                     <Icon slot="media" icon="icon-text-valign-top"></Icon>
                                 </a>
@@ -128,21 +129,25 @@ const EditText = props => {
                                 <a className={'button' + (paragraphValign === 'bottom' ? ' active' : '')} onClick={() => {props.onParagraphValign('bottom')}}>
                                     <Icon slot="media" icon="icon-text-valign-bottom"></Icon>
                                 </a>
-                            </Row>
+                            </div>
                         </ListItem>
                         <ListItem className='buttons'>
-                            <Row>
+                            <div className="row">
                                 <a className={'button item-link' + (!canDecreaseIndent ? ' disabled' : '') } onClick={() => {props.onParagraphMove('left')}}>
                                     <Icon slot="media" icon="icon-de-indent"></Icon>
                                 </a>
                                 <a className={'button item-link' + (!canIncreaseIndent ? ' disabled' : '') } onClick={() => {props.onParagraphMove('right')}}>
                                     <Icon slot="media" icon="icon-in-indent"></Icon>
                                 </a>
-                            </Row>
+                            </div>
                         </ListItem>
                         <ListItem title={_t.textBulletsAndNumbers} link='/edit-bullets-and-numbers/' routeProps={{
                             onBullet: props.onBullet,
                             onNumber: props.onNumber,
+                            getIconsBulletsAndNumbers: props.getIconsBulletsAndNumbers,
+                            onImageSelect: props.onImageSelect,
+                            onInsertByUrl: props.onInsertByUrl
+                            
                         }}>
                             <div className="preview">{previewList}</div>
                             {!isAndroid && <Icon slot="media" icon="icon-bullets"></Icon>}
@@ -496,25 +501,74 @@ const PageAdditionalFormatting = props => {
     )
 };
 
+const PageBulletLinkSettings = (props) => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+    const [stateValue, setValue] = useState('');
+
+    return (
+        <Page>
+            <Navbar title={_t.textLinkSettings} backLink={_t.textBack}></Navbar>
+            <BlockTitle>{_t.textAddress}</BlockTitle>
+            <List className='add-image'>
+                <ListInput
+                    type='text'
+                    placeholder={_t.textImageURL}
+                    value={stateValue}
+                    onChange={(event) => {setValue(event.target.value)}}
+                >
+                </ListInput>
+            </List>
+            <List className="buttons-list">
+                <ListButton 
+                    className={'button-fill button-raised' + (stateValue.length < 1 ? ' disabled' : '')}
+                    onClick={() => {props.onInsertByUrl(stateValue)}}
+                >
+                    {_t.textInsertImage}
+                </ListButton>
+            </List>
+        </Page>
+    )
+}
+
+const PageAddImage = (props) => {
+    const { t } = useTranslation();
+    const _t = t('View.Edit', {returnObjects: true});
+
+    return (
+        <List className='bullet-menu-image'>
+            <ListItem title={_t.textPictureFromLibrary} onClick={props.onImageSelect}>
+                <Icon slot="media" icon="icon-image-library" />
+            </ListItem>
+            <ListItem title={_t.textPictureFromURL} link="#" onClick={() =>  
+                props.f7router.navigate('/edit-bullets-and-numbers/image-link/',
+                {props: {onInsertByUrl: props.onInsertByUrl}}) }>
+                <Icon slot="media" icon="icon-link" />
+            </ListItem>
+        </List>
+    )
+}
+
 const PageBullets = observer(props => {
     const { t } = useTranslation();
     const _t = t('View.Edit', {returnObjects: true});
-    const bulletArrays = [
-        [
-            {type: -1, thumb: ''},
-            {type: 1, thumb: 'bullet-01.png'},
-            {type: 2, thumb: 'bullet-02.png'},
-            {type: 3, thumb: 'bullet-03.png'}
-        ],
-        [
-            {type: 4, thumb: 'bullet-04.png'},
-            {type: 5, thumb: 'bullet-05.png'},
-            {type: 6, thumb: 'bullet-06.png'},
-            {type: 7, thumb: 'bullet-07.png'}
-        ]
-    ];
+
     const storeTextSettings = props.storeTextSettings;
     const typeBullets = storeTextSettings.typeBullets;
+    const bulletArrays = [
+        {id: 'id-markers-0', type: 0, subtype: -1, numberingInfo: 'undefined'},
+        {id: 'id-markers-1', type: 0, subtype: 1, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Symbol"},"bulletType":{"type":"char","char":"·","startAt":null}}' },
+        {id: 'id-markers-2', type: 0, subtype: 2, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Courier New"},"bulletType":{"type":"char","char":"o","startAt":null}}'},
+        {id: 'id-markers-3', type: 0, subtype: 3, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Wingdings"},"bulletType":{"type":"char","char":"§","startAt":null}}' },
+        {id: 'id-markers-4', type: 0, subtype: 4, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Wingdings"},"bulletType":{"type":"char","char":"v","startAt":null}}' },
+        {id: 'id-markers-5', type: 0, subtype: 5, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Wingdings"},"bulletType":{"type":"char","char":"Ø","startAt":null}}' },
+        {id: 'id-markers-6', type: 0, subtype: 6, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Wingdings"},"bulletType":{"type":"char","char":"ü","startAt":null}}' },
+        {id: 'id-markers-7', type: 0, subtype: 7, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Symbol"},"bulletType":{"type":"char","char":"¨","startAt":null}}' }
+    ];
+
+    useEffect(() => {
+        props.getIconsBulletsAndNumbers(bulletArrays, 0);
+    }, []);
 
     const paragraph = props.storeFocusObjects.paragraphObject;
     const shapeObj = props.storeFocusObjects.shapeObject;
@@ -525,49 +579,48 @@ const PageBullets = observer(props => {
 
     return(
         <View className='bullets dataview'>
-            {bulletArrays.map((bullets, index) => (
-                    <List className="row" style={{listStyle: 'none'}} key={'bullets-' + index}>
-                        {bullets.map((bullet) => (
-                            <ListItem key={'bullet-' + bullet.type} data-type={bullet.type} className={(bullet.type === typeBullets) && 
-                                (storeTextSettings.listType === 0 || storeTextSettings.listType === -1) ? 'active' : ''}
-                                onClick={() => {
-                                    storeTextSettings.resetBullets(bullet.type);
-                                    props.onBullet(bullet.type);
-                                }}>
-                                {bullet.thumb.length < 1 ?
-                                    <Icon className="thumb" style={{position: 'relative'}}>
-                                        <label>{_t.textNone}</label>
-                                    </Icon> :
-                                    <Icon className="thumb" style={{backgroundImage: `url('resources/img/bullets/${bullet.thumb}')`}}></Icon>
-                                }
-                            </ListItem>
-                        ))}
-                    </List>
-            ))}
+            <List className="row" style={{listStyle: 'none'}}>
+                {bulletArrays.map( bullet => (
+                    <ListItem key={'bullet-' + bullet.subtype} data-type={bullet.subtype} className={(bullet.subtype === typeBullets) && 
+                        (storeTextSettings.listType === 0 || storeTextSettings.listType === -1) ? 'active' : ''}
+                        onClick={() => {
+                            storeTextSettings.resetBullets(bullet.subtype);
+                            props.onBullet(bullet.subtype);
+                        }}>
+                        <div id={bullet.id} className='item-marker'>
+                        
+                        </div>
+                    </ListItem>
+                ))}
+            </List>
+            { !Device.isPhone && 
+                <PageAddImage
+                    f7router={props.f7router} 
+                    onImageSelect={props.onImageSelect}
+                    onInsertByUrl={props.onInsertByUrl} 
+                />
+            }
         </View>
     )
 });
 
 const PageNumbers = observer(props => {
-    const { t } = useTranslation();
-    const _t = t('View.Edit', {returnObjects: true});
-    const numberArrays = [
-        [
-            {type: -1, thumb: ''},
-            {type: 4, thumb: 'number-01.png'},
-            {type: 5, thumb: 'number-02.png'},
-            {type: 6, thumb: 'number-03.png'}
-        ],
-        [
-            {type: 1, thumb: 'number-04.png'},
-            {type: 2, thumb: 'number-05.png'},
-            {type: 3, thumb: 'number-06.png'},
-            {type: 7, thumb: 'number-07.png'}
-        ]
-    ];
-
     const storeTextSettings = props.storeTextSettings;
     const typeNumbers = storeTextSettings.typeNumbers;
+    const numberArrays = [
+            {id: 'id-numbers-0', type: 1, subtype: -1, numberingInfo: 'undefined'},
+            {id: 'id-numbers-4', type: 1, subtype: 4, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"alphaUcPeriod","startAt":null}}'},
+            {id: 'id-numbers-5', type: 1, subtype: 5, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"alphaLcParenR","startAt":null}}'},
+            {id: 'id-numbers-6', type: 1, subtype: 6, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"alphaLcPeriod","startAt":null}}'},
+            {id: 'id-numbers-1', type: 1, subtype: 1, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"arabicPeriod","startAt":null}}'},
+            {id: 'id-numbers-2', type: 1, subtype: 2, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"arabicParenR","startAt":null}}'},
+            {id: 'id-numbers-3', type: 1, subtype: 3, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"romanUcPeriod","startAt":null}}'},
+            {id: 'id-numbers-7', type: 1, subtype: 7, numberingInfo: '{"bulletTypeface":{"type":"bufont","typeface":"Arial"},"bulletType":{"type":"autonum","char":null,"autoNumType":"romanLcPeriod","startAt":null}}'}
+    ];
+
+    useEffect(() => {
+        props.getIconsBulletsAndNumbers(numberArrays, 1);
+    }, []);
 
     const paragraph = props.storeFocusObjects.paragraphObject;
     const shapeObj = props.storeFocusObjects.shapeObject;
@@ -578,27 +631,20 @@ const PageNumbers = observer(props => {
 
     return (
         <View className='numbers dataview'>
-            {numberArrays.map((numbers, index) => (
-                <List className="row" style={{listStyle: 'none'}} key={'numbers-' + index}>
-                    {numbers.map((number) => (
-                        <ListItem key={'number-' + number.type} data-type={number.type} className={(number.type === typeNumbers) && 
-                            (storeTextSettings.listType === 1 || storeTextSettings.listType === -1) ? 'active' : ''}
-                            onClick={() => {
-                                storeTextSettings.resetNumbers(number.type);
-                                props.onNumber(number.type);
-                            }}>
-                            {number.thumb.length < 1 ?
-                                <Icon className="thumb" style={{position: 'relative'}}>
-                                    <label>{_t.textNone}</label>
-                                </Icon> :
-                                <Icon className="thumb" style={{backgroundImage: `url('resources/img/numbers/${number.thumb}')`}}></Icon>
-                            }
-                        </ListItem>
-                    ))}
-                </List>
-            ))}
+            <List className="row" style={{listStyle: 'none'}}>
+                {numberArrays.map( number => (
+                    <ListItem key={'number-' + number.subtype} data-type={number.subtype} className={(number.subtype === typeNumbers) &&
+                        (storeTextSettings.listType === 1 || storeTextSettings.listType === -1) ? 'active' : ''}
+                        onClick={() => {
+                            storeTextSettings.resetNumbers(number.subtype);
+                            props.onNumber(number.subtype);
+                        }}>
+                        <div id={number.id} className='item-number'></div>
+                    </ListItem>
+                ))}
+            </List>
         </View>
-    )
+    );
 });
 
 const PageBulletsAndNumbers = props => {
@@ -619,8 +665,35 @@ const PageBulletsAndNumbers = props => {
                 }
             </Navbar>
             <Swiper pagination>
-                <SwiperSlide> <PageNumbers f7router={props.f7router} storeFocusObjects={storeFocusObjects} storeTextSettings={storeTextSettings} onNumber={props.onNumber}/></SwiperSlide> 
-                <SwiperSlide> <PageBullets f7router={props.f7router} storeFocusObjects={storeFocusObjects} storeTextSettings={storeTextSettings} onBullet={props.onBullet}/></SwiperSlide>
+                <SwiperSlide> 
+                    <PageNumbers 
+                        f7router={props.f7router} 
+                        storeFocusObjects={storeFocusObjects} 
+                        storeTextSettings={storeTextSettings} 
+                        onNumber={props.onNumber}
+                        getIconsBulletsAndNumbers={props.getIconsBulletsAndNumbers}
+                    />
+                </SwiperSlide> 
+                <SwiperSlide> 
+                    <PageBullets 
+                        f7router={props.f7router} 
+                        storeFocusObjects={storeFocusObjects} 
+                        storeTextSettings={storeTextSettings} 
+                        onBullet={props.onBullet}
+                        getIconsBulletsAndNumbers={props.getIconsBulletsAndNumbers}
+                        onImageSelect={props.onImageSelect}
+                        onInsertByUrl={props.onInsertByUrl}
+                    />
+                </SwiperSlide>
+                { Device.phone &&
+                    <SwiperSlide> 
+                        <PageAddImage
+                            f7router={props.f7router}
+                            onImageSelect={props.onImageSelect}
+                            onInsertByUrl={props.onInsertByUrl}
+                        />
+                    </SwiperSlide>
+                }
             </Swiper>
         </Page>
     )
@@ -670,6 +743,7 @@ const PageTextCustomFontColor = inject("storeTextSettings", "storePalette")(obse
 const PageTextAddFormatting = inject("storeTextSettings", "storeFocusObjects")(observer(PageAdditionalFormatting));
 const PageTextBulletsAndNumbers = inject("storeTextSettings", "storeFocusObjects")(observer(PageBulletsAndNumbers));
 const PageTextLineSpacing = inject("storeTextSettings", "storeFocusObjects")(observer(PageLineSpacing));
+const PageTextBulletsLinkSettings = inject("storeTextSettings", "storeFocusObjects")(observer(PageBulletLinkSettings));
 
 export {
     EditTextContainer as EditText,
@@ -679,5 +753,6 @@ export {
     PageTextCustomFontColor,
     PageTextAddFormatting,
     PageTextBulletsAndNumbers,
-    PageTextLineSpacing
+    PageTextLineSpacing,
+    PageTextBulletsLinkSettings
 };

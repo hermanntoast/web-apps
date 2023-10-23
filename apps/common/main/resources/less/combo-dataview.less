@@ -5,7 +5,7 @@
 
     .view {
         display: inline-block;
-        float: left;
+        .float-left();
         overflow: hidden;
         width: @combo-dataview-width;
         height: 100%;
@@ -22,7 +22,7 @@
 
     .button {
         display: inline-block;
-        float: right;
+        .float-right();
 
         button {
             border-radius:0 @border-radius-small @border-radius-small 0;
@@ -31,11 +31,17 @@
             background-color: @background-normal-ie;
             background-color: @background-normal;
 
+            .rtl & {
+                border-radius:@border-radius-small 0 0 @border-radius-small;
+            }
+
             &.dropdown-toggle {
                 .inner-box-caret {
-                    padding: 0 1px 0 0;
+                    &,
+                    .rtl & {
+                        padding: 0 1px 0 0;
+                    }
                 }
-
                 .caret {
 //                    width: 7px;
 //                    height: 7px;
@@ -51,6 +57,7 @@
 
             &.active, &:active {
                 .caret {
+                    border-color: @icon-normal-ie;
                     border-color: @icon-normal;
                 }
             }
@@ -68,6 +75,7 @@
     }
 
     &.disabled {
+        opacity: @component-disabled-opacity-ie;
         opacity: @component-disabled-opacity;
 
         .dataview.inner {
@@ -76,20 +84,26 @@
             }
         }
     }
+
+    .masked & {
+        &.disabled {
+            opacity: 1;
+        }
+    }
 }
 
 
-.combo-styles {
+.combo-styles(@combo-dataview-height: 46px, @item-height: 46px, @row-count: 1) {
     @combo-dataview-button-width: 30px;
-    @combo-dataview-height: 46px;
-    @combo-dataview-height-calc: calc(40px + 2 * @scaled-two-px-value + 2 * @scaled-one-px-value);
-
+    @item-height-calc: calc(@item-height - 6px + 2 * @scaled-two-px-value + 2 * @scaled-one-px-value);
+    @combo-dataview-height-calc: calc(@combo-dataview-height - ((@row-count - 1) * @scaled-one-px-value) - @row-count * (6px - 2 * @scaled-two-px-value - 2 * @scaled-one-px-value));
+    
     height: @combo-dataview-height;
     height: @combo-dataview-height-calc;
 
     .view {
-        margin-right: -@combo-dataview-button-width;
-        padding-right: @combo-dataview-button-width;
+        .margin-right(-@combo-dataview-button-width);
+        .padding-right(calc(@combo-dataview-button-width - @scaled-two-px-value));
 
         .border-left-radius(0);
 
@@ -98,8 +112,18 @@
             height: @combo-dataview-height;
             height: @combo-dataview-height-calc;
             padding: 0;
-            margin: -1 0 0 -1;
+            margin: -1px 0 0 -1px;
             margin: @minus-px 0 0 @minus-px;
+        }
+        .rtl & {
+            .border-radius(@border-radius-small);
+            .border-right-radius(0);
+
+            .dataview {
+                @minus-px: calc(-1px / @pixel-ratio-factor);
+                margin: -1px -1px 0 0;
+                margin: @minus-px @minus-px 0 0;
+            }
         }
     }
 
@@ -111,11 +135,11 @@
         .box-shadow(none);
 
         @minus-px-ie: -1px;
-        @minus-px: calc(-1px / @pixel-ratio-factor);
+        @minus-px: calc((-1px / @pixel-ratio-factor));
         margin: 0 @minus-px-ie @minus-px-ie 0;
         margin: 0 @minus-px @minus-px 0;
-        height: @combo-dataview-height;
-        height: @combo-dataview-height-calc;
+        height: @item-height;
+        height: @item-height-calc;
         background-color: @background-normal-ie;
         background-color: @background-normal;
         display: flex;
@@ -214,6 +238,14 @@
     }
 }
 
+.combo-styles {
+    .combo-styles()
+}
+
+.combo-cell-styles {
+    .combo-styles(52px, 26px, 2);
+}
+
 .combo-template(@combo-dataview-height: 64px) {
     @combo-dataview-button-width: 18px;
 
@@ -224,8 +256,8 @@
     }
 
     .view {
-        margin-right: -@combo-dataview-button-width;
-        padding-right: @combo-dataview-button-width;
+        .margin-right(-@combo-dataview-button-width);
+        .padding-right(@combo-dataview-button-width);
 
         .dataview {
             padding: 2px;
@@ -263,8 +295,8 @@
     height: @combo-dataview-height;
 
     .view {
-        margin-right: -@combo-dataview-button-width;
-        padding-right: @combo-dataview-button-width;
+        .margin-right(-@combo-dataview-button-width);
+        .padding-right(@combo-dataview-button-width);
     }
 
     .button {
@@ -275,6 +307,10 @@
     .item {
         margin: @combo-dataview-item-margins 0 @combo-dataview-item-margins @combo-dataview-item-margins;
         .box-shadow(none);
+
+        .rtl & {
+            margin: @combo-dataview-item-margins @combo-dataview-item-margins @combo-dataview-item-margins 0;
+        }
     }
 
     &.disabled {
@@ -297,7 +333,7 @@
     }
 
     .dropdown-menu {
-        padding-right: 2px;
+        .padding-x(1px, 2px);
     }
 
     .ps-scrollbar-y-rail {
@@ -321,6 +357,11 @@
         margin-left: 4px;
         .box-shadow(0 0 0 @scaled-one-px-value-ie @border-regular-control-ie);
         .box-shadow(0 0 0 @scaled-one-px-value @border-regular-control);
+
+        .rtl & {
+            margin: 2px 0 2px 2px;
+            margin-right: 4px;
+        }
     }
 
     &.disabled {
@@ -341,13 +382,47 @@
 .combo-pivot-template {
     .combo-template(60px);
 
-    top: -7px;
-    padding-right: 24px;
+    top: -4px;
     position: absolute;
+    .padding-right-12();
+
+    .more-container & {
+        position: static;
+    }
 
     .view .dataview, .dropdown-menu {
         padding: 1px;
     }
+
+    .dataview {
+        .item {
+            &:hover {
+                .box-shadow(0 0 0 2px @border-preview-hover-ie) !important;
+                .box-shadow(0 0 0 @scaled-two-px-value @border-preview-hover) !important;
+            }
+      
+            &.selected {
+                .box-shadow(0 0 0 2px @border-preview-select-ie) !important;
+                .box-shadow(0 0 0 @scaled-two-px-value @border-preview-select) !important;
+            }
+        }
+    }
+
+    .dropdown-menu {
+        padding: 5px 1px 5px 1px;
+
+        .dataview {
+            .group-description {
+                padding: 3px 0 3px 10px;
+                .font-weight-bold();
+
+                .rtl & {
+                    padding: 3px 10px 3px 0;
+                }
+            } 
+        }
+    }
+
 }
 
 .combo-slicer-style {
@@ -364,8 +439,8 @@
     height: @combo-dataview-height-calc;
 
     .view {
-        margin-right: -@combo-dataview-button-width;
-        padding-right: @combo-dataview-button-width;
+        .margin-right(-@combo-dataview-button-width);
+        .padding-right(calc(@combo-dataview-button-width - @scaled-one-px-value));
     }
 
     .view .dataview, .dropdown-menu {
@@ -380,6 +455,7 @@
 
     .item, .menu-picker-container .dataview .group-items-container .item {
         padding: 0px;
+        margin: 2px;
         margin: @combo-dataview-item-margins;
         .box-shadow(none);
 
@@ -397,7 +473,11 @@
     .menu-picker-container {
         .group-description {
             padding: 3px 0 3px 10px;
-            font-weight: bold;
+            .font-weight-bold();
+
+            .rtl & {
+                padding: 3px 10px 3px 0;
+            }
         }
 
         .group-items-container .item {
@@ -436,7 +516,6 @@
 
         .caption{
             line-height: 12px;
-            font-size: 11px;
             text-overflow: ellipsis;
             overflow: hidden;
             width: 100%;

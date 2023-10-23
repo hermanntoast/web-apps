@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  StatusBar View
  *
@@ -160,6 +159,10 @@ define([
             me.zoomMenu.on('item:click', function(menu, item) {
                 me.fireEvent('zoom:value', [item.value]);
             });
+
+            me.btnDocInfo.menu.on('show:after', _.bind(this.onDocInfoShow, this));
+
+            me.onChangeProtectDocument();
         }
 
         DE.Views.Statusbar = Backbone.View.extend(_.extend({
@@ -176,7 +179,15 @@ define([
                 _.extend(this, options);
                 this.pages = new DE.Models.Pages({current:1, count:1});
                 this.pages.on('change', _.bind(_updatePagesCaption,this));
-                this.state = {};
+                this._state = {
+                    docProtection: {
+                        isReadOnly: false,
+                        isReviewOnly: false,
+                        isFormsOnly: false,
+                        isCommentsOnly: false
+                    }
+                };
+                this._isDisabled = false;
 
                 var me = this;
                 this.$layout = $(this.template({
@@ -224,6 +235,7 @@ define([
 
                 this.btnLanguage = new Common.UI.Button({
                     cls         : 'btn-toolbar',
+                    scaling     : false,
                     caption     : 'English (United States)',
                     hintAnchor  : 'top-left',
                     disabled: true,
@@ -237,13 +249,14 @@ define([
                     style: 'margin-top:-5px;',
                     restoreHeight: 285,
                     itemTemplate: _.template([
-                        '<a id="<%= id %>" tabindex="-1" type="menuitem" style="padding-left: 28px !important;" langval="<%= value.value %>" class="<% if (checked) { %> checked <% } %>">',
+                        '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value.value %>" class="<% if (checked) { %> checked <% } %>">',
                             '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
                             '<%= caption %>',
                         '</a>'
                     ].join('')),
                     menuAlign: 'bl-tl',
-                    search: true
+                    search: true,
+                    focusToCheckedItem: true
                 });
 
                 this.zoomMenu = new Common.UI.Menu({
@@ -279,6 +292,36 @@ define([
                     }
                 });
 
+                var template = _.template(
+                    // '<a id="<%= id %>" tabindex="-1" type="menuitem">' +
+                    '<div style="display: flex;padding: 5px 20px;line-height: 16px;">' +
+                        '<div style="flex-grow: 1;"><%= caption %></div>' +
+                        '<div class="margin-left-20 text-align-right" style="word-break: normal; min-width: 35px;"><%= options.value%></div>' +
+                    '</div>'
+                    // '</a>'
+                );
+
+                this.btnDocInfo = new Common.UI.Button({
+                    cls         : 'btn-toolbar no-caret',
+                    caption     : this.txtWordCount,
+                    iconCls: 'toolbar__icon btn-word-count',
+                    hintAnchor  : 'top-left',
+                    dataHint    : '0',
+                    dataHintDirection: 'top',
+                    menu: new Common.UI.Menu({
+                        style: 'margin-top:-5px;',
+                        menuAlign: 'bl-tl',
+                        itemTemplate: template,
+                        items: [
+                            { caption: this.txtPages, value: 0 },
+                            { caption: this.txtParagraphs, value: 0 },
+                            { caption: this.txtWords, value: 0 },
+                            { caption: this.txtSymbols, value: 0 },
+                            { caption: this.txtSpaces, value: 0 }
+                        ]
+                    })
+                });
+
                 var promise = new Promise(function (accept, reject) {
                     accept();
                 });
@@ -310,10 +353,11 @@ define([
                     me.btnLanguage.setMenu(me.langMenu);
                     me.langMenu.prevTip = 'en';
                 }
+                me.btnDocInfo.render($('#slot-status-btn-info', me.$layout));
 
                 if (config.canUseSelectHandTools) {
-                    _btn_render(me.btnSelectTool, $('#btn-select-tool', me.$layout));
-                    _btn_render(me.btnHandTool, $('#btn-hand-tool', me.$layout));
+                    _btn_render(me.btnSelectTool, $('#status-btn-select-tool', me.$layout));
+                    _btn_render(me.btnHandTool, $('#status-btn-hand-tool', me.$layout));
                 }
 
                 me.zoomMenu.render($('.cnt-zoom',me.$layout));
@@ -331,10 +375,14 @@ define([
                 if (this.api) {
                     this.api.asc_registerCallback('asc_onCountPages',   _.bind(_onCountPages, this));
                     this.api.asc_registerCallback('asc_onCurrentPage',  _.bind(_onCurrentPage, this));
+                    this.api.asc_registerCallback('asc_onGetDocInfoStart', _.bind(this.onGetDocInfoStart, this));
+                    this.api.asc_registerCallback('asc_onGetDocInfoStop', _.bind(this.onGetDocInfoEnd, this));
+                    this.api.asc_registerCallback('asc_onDocInfo', _.bind(this.onDocInfo, this));
+                    this.api.asc_registerCallback('asc_onGetDocInfoEnd', _.bind(this.onGetDocInfoEnd, this));
                     this.api.asc_registerCallback('asc_onCoAuthoringDisconnect',_.bind(this.onApiCoAuthoringDisconnect, this));
                     Common.NotificationCenter.on('api:disconnect',      _.bind(this.onApiCoAuthoringDisconnect, this));
+                    Common.NotificationCenter.on('protect:doclock', _.bind(this.onChangeProtectDocument, this));
                 }
-
                 return this;
 
             },
@@ -367,7 +415,8 @@ define([
                 });
                 this.langMenu.resetItems(arr);
                 if (this.langMenu.items.length>0) {
-                    this.btnLanguage.setDisabled(!!this.mode.isDisconnected);
+                    var isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly;
+                    this.btnLanguage.setDisabled(this._isDisabled || !!this.mode.isDisconnected || isProtected);
                 }
             },
 
@@ -399,8 +448,65 @@ define([
             },
 
             SetDisabled: function(disable) {
-                this.btnLanguage.setDisabled(disable || this.langMenu.items.length<1);
-                this.btnTurnReview && this.btnTurnReview.setDisabled(disable);
+                this._isDisabled = disable;
+                var isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly;
+                this.btnLanguage.setDisabled(disable || this.langMenu.items.length<1 || isProtected);
+                this.btnTurnReview && this.btnTurnReview.setDisabled(disable || isProtected);
+            },
+
+            onChangeProtectDocument: function(props) {
+                if (!props) {
+                    var docprotect = DE.getController('DocProtection');
+                    props = docprotect ? docprotect.getDocProps() : null;
+                }
+                if (props) {
+                    this._state.docProtection = props;
+                    this.SetDisabled(this._isDisabled);
+                }
+            },
+
+            onDocInfoShow: function() {
+                this.api && this.api.startGetDocInfo();
+            },
+
+            onGetDocInfoStart: function() {
+                this.infoObj = {PageCount: 0, WordsCount: 0, ParagraphCount: 0, SymbolsCount: 0, SymbolsWSCount:0};
+            },
+
+            onDocInfo: function(obj) {
+                if (obj && this.btnDocInfo && this.btnDocInfo.menu) {
+                    if (obj.get_PageCount()>-1)
+                        this.btnDocInfo.menu.items[0].options.value = obj.get_PageCount();
+                    if (obj.get_ParagraphCount()>-1)
+                        this.btnDocInfo.menu.items[1].options.value = obj.get_ParagraphCount();
+                    if (obj.get_WordsCount()>-1)
+                        this.btnDocInfo.menu.items[2].options.value = obj.get_WordsCount();
+                    if (obj.get_SymbolsCount()>-1)
+                        this.btnDocInfo.menu.items[3].options.value = obj.get_SymbolsCount();
+                    if (obj.get_SymbolsWSCount()>-1)
+                        this.btnDocInfo.menu.items[4].options.value = obj.get_SymbolsWSCount();
+                    if (!this.timerDocInfo) { // start timer for filling info
+                        var me = this;
+                        this.timerDocInfo = setInterval(function(){
+                            me.fillDocInfo();
+                        }, 300);
+                        this.fillDocInfo();
+                    }
+                }
+            },
+
+            onGetDocInfoEnd: function() {
+                clearInterval(this.timerDocInfo);
+                this.timerDocInfo = undefined;
+                this.fillDocInfo();
+            },
+
+            fillDocInfo:  function() {
+                if (!this.btnDocInfo || !this.btnDocInfo.menu || !this.btnDocInfo.menu.isVisible()) return;
+
+                this.btnDocInfo.menu.items.forEach(function(item){
+                    $(item.el).html(item.template({id: item.id, caption : item.caption, options : item.options}));
+                });
             },
 
             onApiCoAuthoringDisconnect: function() {
@@ -420,7 +526,13 @@ define([
             textTrackChanges    : 'Track Changes',
             textChangesPanel    : 'Changes panel',
             tipSelectTool       : 'Select tool',
-            tipHandTool         : 'Hand tool'
+            tipHandTool         : 'Hand tool',
+            txtWordCount: 'Word count',
+            txtPages: 'Pages',
+            txtWords: 'Words',
+            txtParagraphs: 'Paragraphs',
+            txtSymbols: 'Symbols',
+            txtSpaces: 'Symbols with spaces'
         }, DE.Views.Statusbar || {}));
     }
 );

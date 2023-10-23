@@ -286,6 +286,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../../apps/documenteditor/main/resources/css/app.css">
     <script src="../../../../../apps/common/main/lib/util/desktopinit.js?__inline=true"></script>
+    <script src="../../../../../apps/common/main/lib/util/themeinit.js?__inline=true"></script>
 </head>
 <body>
     <script src="../../../../../apps/common/main/lib/util/htmlutils.js?__inline=true"></script>
@@ -317,31 +318,15 @@
         };
     </script>
 
-    <inline src="resources/img/header/buttons.svg" />
-    <inline src="resources/img/doc-formats/docx.svg" />
-    <inline src="resources/img/doc-formats/dotx.svg" />
-    <inline src="resources/img/doc-formats/pdf.svg" />
-    <inline src="resources/img/doc-formats/pdfa.svg" />
-    <inline src="resources/img/doc-formats/txt.svg" />
-    <inline src="resources/img/doc-formats/odt.svg" />
-    <inline src="resources/img/doc-formats/ott.svg" />
-    <inline src="resources/img/doc-formats/rtf.svg" />
-    <inline src="resources/img/doc-formats/html.svg" />
-    <inline src="resources/img/doc-formats/fb2.svg" />
-    <inline src="resources/img/doc-formats/epub.svg" />
-    <inline src="resources/img/doc-formats/docm.svg" />
-    <inline src="resources/img/doc-formats/oform.svg" />
-    <inline src="resources/img/doc-formats/docxf.svg" />
-    <inline src="resources/img/doc-formats/djvu.svg" />
-    <inline src="resources/img/doc-formats/xps.svg" />
-    <inline src="resources/img/doc-formats/oxps.svg" />
-    <inline src="resources/img/toolbar/shapetypes.svg" />
-    <inline src="resources/img/toolbar/charttypes.svg" />
-    <inline src="resources/img/recent-file.svg" />
-    <inline src="resources/img/file-template.svg" />
-    <inline src="resources/img/blank.svg" />
-
+    <inline src="../../common/main/resources/img/header/icons.svg" />
+    <inline src="../../common/main/resources/img/toolbar/shapetypes.svg" />
+    <inline src="../../common/main/resources/img/toolbar/charttypes.svg" />
+    <inline src="../../common/main/resources/img/toolbar/equationicons.svg" />
+    <inline src="../../common/main/resources/img/right-panels/arrows.svg" />
+    <inline src="../../common/main/resources/img/combo-border-size/BorderSize.svg" />
+    <inline src="resources/img/form-points.svg" />
     <div id="viewport"></div>
+    <div class="inlined-svg"></div>
     <script data-main="app" src="../../../vendor/requirejs/require.js"></script>
 
 </body>

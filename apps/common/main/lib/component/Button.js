@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  Button.js
  *
@@ -187,8 +186,7 @@ define([
                 '<img src="<%= iconImg %>">' +
             '<% } else { %>' +
                 '<% if (/svgicon/.test(iconCls)) {' +
-                    'print(\'<svg class=\"icon\"><use class=\"zoom-int\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'\"></use>' +
-                                                    '<use class=\"zoom-grit\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'-150\"></use></svg>\');' +
+                    'print(\'<svg class=\"icon uni-scale\"><use class=\"zoom-int\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'\"></use></svg>\');' +
             '} else ' +
                     'print(\'<i class=\"icon \' + iconCls + \'\">&nbsp;</i>\'); %>' +
             '<% } %>';
@@ -210,8 +208,10 @@ define([
                     templateBtnIcon +
                 '</div>' +
                 '<div class="inner-box-caption">' +
-                    '<span class="caption"><%= caption %></span>' +
-                    '<i class="caret"></i>' +
+                    '<span class="caption"><%= caption %>' +
+                        '<i class="caret"></i>' +
+                    '</span>' +
+                    '<i class="caret compact-caret"></i>' +
                 '</div>' +
             '</button>' +
         '</div>';
@@ -225,11 +225,37 @@ define([
             '</button>' +
             '<button type="button" class="btn <%= cls %> inner-box-caption dropdown-toggle" data-toggle="dropdown" data-hint="<%= dataHint %>" data-hint-direction="<%= dataHintDirection %>" data-hint-offset="<%= dataHintOffset %>" <% if (dataHintTitle) { %> data-hint-title="<%= dataHintTitle %>" <% } %>>' +
                 '<span class="btn-fixflex-vcenter">' +
-                    '<span class="caption"><%= caption %></span>' +
-                    '<i class="caret"></i>' +
+                    '<span class="caption"><%= caption %>' +
+                        '<i class="caret"></i>' +
+                    '</span>' +
+                    '<i class="caret compact-caret"></i>' +
                 '</span>' +
             '</button>' +
         '</div>';
+
+    var getWidthOfCaption = function (txt) {
+        var el = document.createElement('span');
+        el.style.fontSize = document.documentElement.style.getPropertyValue("--font-size-base-app-custom") || '11px';
+        el.style.fontFamily = 'Arial, Helvetica, "Helvetica Neue", sans-serif';
+        el.style.position = "absolute";
+        el.style.top = '-1000px';
+        el.style.left = '-1000px';
+        el.innerHTML = txt;
+        document.body.appendChild(el);
+        var result = el.offsetWidth;
+        document.body.removeChild(el);
+        return result;
+    };
+
+    var getShortText = function (txt, max) {
+        var lastIndex = txt.length - 1,
+            word = txt;
+        while (getWidthOfCaption(word) > max) {
+            word = txt.slice(0, lastIndex).trim() + '...';
+            lastIndex--;
+        }
+        return word;
+    };
 
     Common.UI.Button = Common.UI.BaseView.extend({
         options : {
@@ -248,7 +274,8 @@ define([
             visible         : true,
             dataHint        : '',
             dataHintDirection: '',
-            dataHintOffset: '0, 0'
+            dataHintOffset: '0, 0',
+            scaling         : true,
         },
 
         template: _.template([
@@ -257,8 +284,7 @@ define([
                 // '<% if (iconCls != "") { print(\'<i class=\"icon \' + iconCls + \'\">&nbsp;</i>\'); }} %>',
                 '<% if (iconCls != "") { ' +
                     ' if (/svgicon/.test(iconCls)) {' +
-                        'print(\'<svg class=\"icon\"><use class=\"zoom-int\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'\"></use>' +
-                            '<use class=\"zoom-grit\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'-150\"></use></svg>\');' +
+                        'print(\'<svg class=\"icon uni-scale\"><use class=\"zoom-int\" xlink:href=\"#\' + /svgicon\\s(\\S+)/.exec(iconCls)[1] + \'\"></use></svg>\');' +
                     '} else ' +
                         'print(\'<i class=\"icon \' + iconCls + \'\">&nbsp;</i>\'); ' +
                 '}} %>',
@@ -314,10 +340,63 @@ define([
             me.style        = me.options.style;
             me.rendered     = false;
 
+            // if ( /(?<!-)svg-icon(?!-)/.test(me.options.iconCls) )
+            //     me.options.scaling = false;
+
+            if ( me.options.scaling === false && me.options.iconCls) {
+                me.iconCls = me.options.iconCls + ' scaling-off';
+            }
+
             if (me.options.el) {
                 me.render();
             } else if (me.options.parentEl)
                 me.render(me.options.parentEl);
+        },
+
+        getCaptionWithBreaks: function (caption) {
+            var words = caption.split(' '),
+                newCaption = null,
+                maxWidth = 160 - 4, //85 - 4
+                containAnd = words.indexOf('&');
+            if (containAnd > -1) { // add & to previous word
+                words[containAnd - 1] += ' &';
+                words.splice(containAnd, 1);
+            }
+            if (words.length > 1) {
+                maxWidth = !!this.menu || this.split === true ? maxWidth - 10 : maxWidth;
+                if (words.length < 3) {
+                    words[0] = getShortText(words[0], !!this.menu ? maxWidth + 10 : maxWidth);
+                    words[1] = getShortText(words[1], maxWidth);
+                    newCaption = words[0] + '<br>' + words[1];
+                } else {
+                    var otherWords = '';
+                    if (getWidthOfCaption(words[0] + ' ' + words[1]) < maxWidth) { // first and second words in first line
+                        for (var i = 2; i < words.length; i++) {
+                            otherWords += words[i] + ' ';
+                        }
+                        if (getWidthOfCaption(otherWords + (!!this.menu ? 10 : 0))*2 < getWidthOfCaption(words[0] + ' ' + words[1])) {
+                            otherWords = getShortText((words[1] + ' ' + otherWords).trim(), maxWidth);
+                            newCaption = words[0] + '<br>' + otherWords;
+                        } else {
+                            otherWords = getShortText(otherWords.trim(), maxWidth);
+                            newCaption = words[0] + ' ' + words[1] + '<br>' + otherWords;
+                        }
+                    } else { // only first word is in first line
+                        for (var j = 1; j < words.length; j++) {
+                            otherWords += words[j] + ' ';
+                        }
+                        otherWords = getShortText(otherWords.trim(), maxWidth);
+                        newCaption = words[0] + '<br>' + otherWords;
+                    }
+                }
+            } else {
+                var width = getWidthOfCaption(caption);
+                newCaption = width < maxWidth ? caption : getShortText(caption, maxWidth);
+                if (!!this.menu || this.split === true) {
+                    newCaption += '<br>';
+                }
+            }
+            return newCaption;
         },
 
         render: function(parentEl) {
@@ -340,6 +419,10 @@ define([
                             this.template = _.template(templateHugeMenuCaption);
                         } else {
                             this.template = _.template(templateHugeCaption);
+                        }
+                        var newCaption = this.getCaptionWithBreaks(this.caption);
+                        if (newCaption) {
+                            me.caption = newCaption;
                         }
                     }
 
@@ -543,6 +626,17 @@ define([
 
                 // Register the button in the toggle manager
                 Common.UI.ToggleManager.register(me);
+
+                if ( me.options.scaling !== false ) {
+                    el.attr('ratio', 'ratio');
+                    me.applyScaling(Common.UI.Scaling.currentRatio());
+
+                    el.on('app:scaling', function (e, info) {
+                        if ( me.options.scaling != info.ratio ) {
+                            me.applyScaling(info.ratio);
+                        }
+                    });
+                }
             }
 
             me.rendered = true;
@@ -651,24 +745,33 @@ define([
 
         setIconCls: function(cls) {
             var btnIconEl = $(this.el).find('.icon'),
-                oldCls = this.iconCls;
+                oldCls = this.iconCls,
+                svgIcon = btnIconEl.find('use.zoom-int');
 
             this.iconCls = cls;
             if (/svgicon/.test(this.iconCls)) {
                 var icon = /svgicon\s(\S+)/.exec(this.iconCls);
-                btnIconEl.find('use.zoom-int').attr('xlink:href', icon && icon.length>1 ? '#' + icon[1]: '');
-                btnIconEl.find('use.zoom-grit').attr('xlink:href', icon && icon.length>1 ? '#' + icon[1] + '-150' : '');
+                svgIcon.attr('xlink:href', icon && icon.length > 1 ? '#' + icon[1] : '');
+            } else if (svgIcon.length) {
+                var icon = /btn-[^\s]+/.exec(this.iconCls);
+                svgIcon.attr('href', icon ? '#' + icon[0]: '');
             } else {
                 btnIconEl.removeClass(oldCls);
                 btnIconEl.addClass(cls || '');
+                if (this.options.scaling === false) {
+                    btnIconEl.addClass('scaling-off');
+                }
             }
         },
 
         changeIcon: function(opts) {
-            var me = this;
-            if ( opts && (opts.curr || opts.next) && me.$icon) {
-                !!opts.curr && (me.$icon.removeClass(opts.curr));
-                !!opts.next && !me.$icon.hasClass(opts.next) && (me.$icon.addClass(opts.next));
+            var me = this,
+                btnIconEl = $(this.el).find('.icon');
+            if (opts && (opts.curr || opts.next) && btnIconEl) {
+                var svgIcon = btnIconEl.find('use.zoom-int');
+                !!opts.curr && (btnIconEl.removeClass(opts.curr));
+                !!opts.next && !btnIconEl.hasClass(opts.next) && (btnIconEl.addClass(opts.next));
+                svgIcon.length && !!opts.next && svgIcon.attr('href', '#' + opts.next);
 
                 if ( !!me.options.signals ) {
                     if ( !(me.options.signals.indexOf('icon:changed') < 0) ) {
@@ -691,7 +794,7 @@ define([
             return (this.cmpEl) ? this.cmpEl.is(":visible") : $(this.el).is(":visible");
         },
 
-        updateHint: function(hint) {
+        updateHint: function(hint, isHtml) {
             this.options.hint = hint;
 
             if (!this.rendered) return;
@@ -717,10 +820,12 @@ define([
                 this.btnMenuEl.removeData('bs.tooltip');
 
             this.btnEl.tooltip({
+                html: !!isHtml,
                 title       : (typeof hint == 'string') ? hint : hint[0],
                 placement   : this.options.hintAnchor||'cursor'
             });
             this.btnMenuEl && this.btnMenuEl.tooltip({
+                html: !!isHtml,
                 title       : hint[1],
                 placement   : this.options.hintAnchor||'cursor'
             });
@@ -748,15 +853,19 @@ define([
 
         setCaption: function(caption) {
             if (this.caption != caption) {
-                this.caption = caption;
+                if ( /icon-top/.test(this.cls) && !!this.caption && /huge/.test(this.cls) ) {
+                    var newCaption = this.getCaptionWithBreaks(caption);
+                    this.caption = newCaption || caption;
+                } else
+                    this.caption = caption;
 
                 if (this.rendered) {
                     var captionNode = this.cmpEl.find('.caption');
 
                     if (captionNode.length > 0) {
-                        captionNode.text(caption);
+                        captionNode.html(this.caption);
                     } else {
-                        this.cmpEl.find('button:first').addBack().filter('button').text(caption);
+                        this.cmpEl.find('button:first').addBack().filter('button').html(this.caption);
                     }
                 }
             }
@@ -768,6 +877,34 @@ define([
                 if (this.rendered)
                     this.menu.render(this.cmpEl);
             }
+        },
+
+        applyScaling: function (ratio) {
+            const me = this;
+            if ( me.options.scaling != ratio ) {
+                // me.cmpEl.attr('ratio', ratio);
+                me.options.scaling = ratio;
+
+                if (ratio > 2) {
+                    if (!me.$el.find('svg.icon').length) {
+                        const iconCls = me.iconCls || me.$el.find('i.icon').attr('class');
+                        const re_icon_name = /btn-[^\s]+/.exec(iconCls);
+                        const icon_name = re_icon_name ? re_icon_name[0] : "null";
+                        const svg_icon = '<svg class="icon"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name);
+
+                        me.$el.find('i.icon').after(svg_icon);
+                    }
+                } else {
+                    if (!me.$el.find('i.icon')) {
+                        const png_icon = '<i class="icon %cls">&nbsp;</i>'.replace('%cls', me.iconCls);
+                        me.$el.find('svg.icon').after(png_icon);
+                    }
+                }
+            }
+        },
+
+        focus: function() {
+            this.$el && this.$el.find('button').addBack().filter('button').focus();
         }
     });
 });

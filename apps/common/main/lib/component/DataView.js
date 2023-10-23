@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  DataView.js
  *
@@ -128,6 +127,7 @@ define([
             me.dataHint = me.options.dataHint || '';
             me.dataHintDirection = me.options.dataHintDirection || '';
             me.dataHintOffset = me.options.dataHintOffset || '';
+            me.scaling = me.options.scaling;
 
             me.listenTo(me.model, 'change', this.model.get('skipRenderOnChange') ? me.onChange : me.render);
             me.listenTo(me.model, 'change:selected',    me.onSelectChange);
@@ -165,6 +165,17 @@ define([
             if (tip) {
                 if (tip.dontShow===undefined && el.is(':hover'))
                     tip.dontShow = true;
+            }
+
+            if (this.scaling !== false && el.find('.options__icon').length) {
+                el.attr('ratio', 'ratio');
+                this.applyScaling(Common.UI.Scaling.currentRatio());
+
+                el.on('app:scaling', _.bind(function (e, info) {
+                    if ( this.scaling != info.ratio ) {
+                        this.applyScaling(info.ratio);
+                    }
+                }, this));
             }
 
             this.trigger('change', this, this.model);
@@ -209,6 +220,24 @@ define([
             this.trigger('change', this, this.model);
 
             return this;
+        },
+
+        applyScaling: function (ratio) {
+            this.scaling = ratio;
+
+            if (ratio > 2) {
+                var el = this.$el || $(this.el),
+                    icon = el.find('.options__icon');
+                if (icon.length > 0) {
+                    if (!el.find('svg.icon').length) {
+                        var iconCls = icon.attr('class'),
+                            re_icon_name = /btn-[^\s]+/.exec(iconCls),
+                            icon_name = re_icon_name ? re_icon_name[0] : "null",
+                            svg_icon = '<svg class="icon"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name);
+                        icon.after(svg_icon);
+                    }
+                }
+            }
         }
     });
 
@@ -223,6 +252,8 @@ define([
             listenStoreEvents: true,
             allowScrollbar: true,
             scrollAlwaysVisible: false,
+            minScrollbarLength: 40,
+            scrollYStyle: null,
             showLast: true,
             useBSKeydown: false,
             cls: ''
@@ -272,6 +303,8 @@ define([
             me.listenStoreEvents= (me.options.listenStoreEvents!==undefined) ? me.options.listenStoreEvents : true;
             me.allowScrollbar = (me.options.allowScrollbar!==undefined) ? me.options.allowScrollbar : true;
             me.scrollAlwaysVisible = me.options.scrollAlwaysVisible || false;
+            me.minScrollbarLength = me.options.minScrollbarLength || 40;
+            me.scrollYStyle    = me.options.scrollYStyle;
             me.tabindex = me.options.tabindex || 0;
             me.delayRenderTips = me.options.delayRenderTips || false;
             if (me.parentMenu)
@@ -285,6 +318,10 @@ define([
                 me.moveKeys = [Common.UI.Keys.LEFT, Common.UI.Keys.RIGHT];
             else
                 me.moveKeys = [Common.UI.Keys.UP, Common.UI.Keys.DOWN, Common.UI.Keys.LEFT, Common.UI.Keys.RIGHT];
+
+            if ( me.options.scaling === false) {
+                me.cls = me.options.cls + ' scaling-off';
+            }
 
             if (me.options.el)
                 me.render();
@@ -326,6 +363,10 @@ define([
                 if (this.listenStoreEvents) {
                     this.listenTo(this.store, 'add',    this.onAddItem);
                     this.listenTo(this.store, 'reset',  this.onResetItems);
+                    if (this.groups) {
+                        this.listenTo(this.groups, 'add',  this.onAddGroup);
+                        this.listenTo(this.groups, 'remove',  this.onRemoveGroup);
+                    }
                 }
                 this.onResetItems();
 
@@ -355,7 +396,8 @@ define([
                 this.scroller = new Common.UI.Scroller({
                     el: $(this.el).find('.inner').addBack().filter('.inner'),
                     useKeyboard: this.enableKeyEvents && !this.handleSelect,
-                    minScrollbarLength  : 40,
+                    minScrollbarLength  : this.minScrollbarLength,
+                    scrollYStyle: this.scrollYStyle,
                     wheelSpeed: 10,
                     alwaysVisibleY: this.scrollAlwaysVisible
                 });
@@ -390,18 +432,36 @@ define([
 
             if (suspendEvents)
                 this.suspendEvents();
-
-            if (!this.multiSelect) {
+            this.extremeSeletedRec = record;
+            if (!this.multiSelect || ( !this.pressedShift && !this.pressedCtrl) || !this.currentSelectedRec || (this.pressedShift && this.currentSelectedRec == record)) {
                 _.each(this.store.where({selected: true}), function(rec){
                     rec.set({selected: false});
                 });
 
                 if (record) {
                     record.set({selected: true});
+                    this.currentSelectedRec = record;
                 }
             } else {
-                if (record)
-                    record.set({selected: !record.get('selected')});
+                if (record) {
+                    if(this.pressedCtrl) {
+                        record.set({selected: !record.get('selected')});
+                        this.currentSelectedRec = record;
+                    }
+                    else if(this.pressedShift){
+                        var me =this;
+                        var inRange=false;
+                        _.each(me.store.models, function(rec){
+                            if(me.currentSelectedRec == rec || record == rec){
+                                inRange = !inRange;
+                                rec.set({selected: true});
+                            }
+                            else {
+                                rec.set({selected: (inRange)});
+                            }
+                        });
+                    }
+                }
             }
 
             if (suspendEvents)
@@ -435,6 +495,7 @@ define([
             var view = new Common.UI.DataViewItem({
                 template: this.itemTemplate,
                 model: record,
+                scaling: this.options.scaling,
                 dataHint: this.itemDataHint,
                 dataHintDirection: this.itemDataHintDirection,
                 dataHintOffset: this.itemDataHintOffset
@@ -474,12 +535,12 @@ define([
                     var me = this,
                         view_el = $(view.el),
                         tip = record.get('tip');
-                    if (tip) {
+                    if (tip!==undefined && tip!==null) {
                         if (this.delayRenderTips)
                             view_el.one('mouseenter', function(){ // hide tooltip when mouse is over menu
                                 view_el.attr('data-toggle', 'tooltip');
                                 view_el.tooltip({
-                                    title       : tip,
+                                    title       : record.get('tip'), // use actual tip, because it can be changed
                                     placement   : 'cursor',
                                     zIndex : me.tipZIndex
                                 });
@@ -488,7 +549,7 @@ define([
                         else {
                             view_el.attr('data-toggle', 'tooltip');
                             view_el.tooltip({
-                                title       : tip,
+                                title       : record.get('tip'), // use actual tip, because it can be changed
                                 placement   : 'cursor',
                                 zIndex : me.tipZIndex
                             });
@@ -506,9 +567,50 @@ define([
                         this.trigger('item:add', this, view, record);
                 }
             }
+            this._layoutParams = undefined;
+        },
+
+        onAddGroup: function(group) {
+            var el = $(_.template([
+                '<% if (group.headername !== undefined) { %>',
+                '<div class="header-name"><%= group.headername %></div>',
+                '<% } %>',
+                '<div class="grouped-data <% if (group.inline) { %> group.inline <% } %> <% if (!_.isEmpty(group.caption)) { %> margin <% } %>" id="<%= group.id %>">',
+                '<% if (!_.isEmpty(group.caption)) { %>',
+                    '<div class="group-description">',
+                        '<span><%= group.caption %></span>',
+                    '</div>',
+                '<% } %>',
+                    '<div class="group-items-container">',
+                    '</div>',
+                '</div>'
+            ].join(''))({
+                group: group.toJSON()
+            }));
+            var innerEl = $(this.el).find('.inner').addBack().filter('.inner');
+            if (innerEl) {
+                var idx = _.indexOf(this.groups.models, group);
+                var innerDivs = innerEl.find('.grouped-data');
+                if (idx > 0)
+                    $(innerDivs.get(idx - 1)).after(el);
+                else {
+                    (innerDivs.length > 0) ? $(innerDivs[idx]).before(el) : innerEl.append(el);
+                }
+            }
+        },
+
+        onRemoveGroup: function(group) {
+            var innerEl = $(this.el).find('.inner').addBack().filter('.inner');
+            if (innerEl) {
+                var div = innerEl.find('#' + group.get('id') + '.grouped-data');
+                div && div.remove();
+            }
+            this._layoutParams = undefined;
         },
 
         onResetItems: function() {
+            this.trigger('reset:before', this);
+
             _.each(this.dataViewItems, function(item) {
                 var tip = item.$el.data('bs.tooltip');
                 if (tip) {
@@ -548,7 +650,8 @@ define([
                 this.scroller = new Common.UI.Scroller({
                     el: $(this.el).find('.inner').addBack().filter('.inner'),
                     useKeyboard: this.enableKeyEvents && !this.handleSelect,
-                    minScrollbarLength  : 40,
+                    minScrollbarLength  : this.minScrollbarLength,
+                    scrollYStyle: this.scrollYStyle,
                     wheelSpeed: 10,
                     alwaysVisibleY: this.scrollAlwaysVisible
                 });
@@ -594,12 +697,21 @@ define([
             if (!this.isSuspendEvents) {
                 this.trigger('item:remove', this, view, record);
             }
+            this._layoutParams = undefined;
         },
 
         onClickItem: function(view, record, e) {
             if ( this.disabled ) return;
 
             window._event = e;  //  for FireFox only
+
+            if(this.multiSelect) {
+                if (e && e.ctrlKey) {
+                    this.pressedCtrl = true;
+                } else if (e && e.shiftKey) {
+                    this.pressedShift = true;
+                }
+            }
 
             if (this.showLast) {
                 if (!this.delaySelect) {
@@ -653,10 +765,10 @@ define([
             }
         },
 
-        scrollToRecord: function (record, force) {
+        scrollToRecord: function (record, force, offsetTop) {
             if (!record) return;
             var innerEl = $(this.el).find('.inner'),
-                inner_top = innerEl.offset().top,
+                inner_top = innerEl.offset().top + (offsetTop ? offsetTop : 0),
                 idx = _.indexOf(this.store.models, record),
                 div = (idx>=0 && this.dataViewItems.length>idx) ? $(this.dataViewItems[idx].el) : innerEl.find('#' + record.get('id'));
             if (div.length<=0) return;
@@ -676,13 +788,22 @@ define([
         onKeyDown: function (e, data) {
             if ( this.disabled ) return;
             if (data===undefined) data = e;
-            if (_.indexOf(this.moveKeys, data.keyCode)>-1 || data.keyCode==Common.UI.Keys.RETURN) {
+
+            if(this.multiSelect) {
+                if (data.keyCode == Common.UI.Keys.CTRL) {
+                    this.pressedCtrl = true;
+                } else if (data.keyCode == Common.UI.Keys.SHIFT) {
+                    this.pressedShift = true;
+                }
+            }
+
+                if (_.indexOf(this.moveKeys, data.keyCode)>-1 || data.keyCode==Common.UI.Keys.RETURN) {
                 data.preventDefault();
                 data.stopPropagation();
-                var rec = this.getSelectedRec();
-                if (this.lastSelectedRec===null)
+                var rec =(this.multiSelect) ? this.extremeSeletedRec : this.getSelectedRec();
+                if (this.lastSelectedRec === null)
                     this.lastSelectedRec = rec;
-                if (data.keyCode==Common.UI.Keys.RETURN) {
+                if (data.keyCode == Common.UI.Keys.RETURN) {
                     this.lastSelectedRec = null;
                     if (this.selectedBeforeHideRec) // only for ComboDataView menuPicker
                         rec = this.selectedBeforeHideRec;
@@ -692,6 +813,7 @@ define([
                     if (this.parentMenu)
                         this.parentMenu.hide();
                 } else {
+                    this.pressedCtrl=false;
                     var idx = _.indexOf(this.store.models, rec);
                     if (idx<0) {
                         if (data.keyCode==Common.UI.Keys.LEFT) {
@@ -772,12 +894,21 @@ define([
             }
         },
 
+        onKeyUp: function(e){
+            if(e.keyCode == Common.UI.Keys.SHIFT)
+                this.pressedShift = false;
+            if(e.keyCode == Common.UI.Keys.CTRL)
+                this.pressedCtrl = false;
+            this.trigger('item:keyup', this, e);
+        },
+
         attachKeyEvents: function() {
             if (this.enableKeyEvents && this.handleSelect) {
                 var el = $(this.el).find('.inner').addBack().filter('.inner');
                 el.addClass('canfocused');
                 el.attr('tabindex', this.tabindex.toString());
                 el.on((this.parentMenu && this.useBSKeydown) ? 'dataview:keydown' : 'keydown', _.bind(this.onKeyDown, this));
+                el.on((this.parentMenu && this.useBSKeydown) ? 'dataview:keyup' : 'keyup', _.bind(this.onKeyUp, this));
             }
         },
 
@@ -787,7 +918,11 @@ define([
                 this.scrollToRecord(this.lastSelectedRec);
                 this.lastSelectedRec = null;
             } else {
-                this.scrollToRecord(this.getSelectedRec());
+                var selectedRec = this.getSelectedRec();
+                if (!this.multiSelect)
+                    this.scrollToRecord(selectedRec);
+                else if(selectedRec && selectedRec.length > 0)
+                    this.scrollToRecord(selectedRec[selectedRec.length - 1]);
             }
         },
 
@@ -817,19 +952,21 @@ define([
                             : this.parentMenu.cmpEl.find('[role=menu]'),
                 docH = Common.Utils.innerHeight()-10,
                 innerEl = $(this.el).find('.inner').addBack().filter('.inner'),
-                parent = innerEl.parent(),
-                margins =  parseInt(parent.css('margin-top')) + parseInt(parent.css('margin-bottom')) + parseInt(menuRoot.css('margin-top')),
-                paddings = parseInt(menuRoot.css('padding-top')) + parseInt(menuRoot.css('padding-bottom')),
+                // parent = innerEl.parent(),
+                // margins =  parseInt(parent.css('margin-top')) + parseInt(parent.css('margin-bottom')) + parseInt(menuRoot.css('margin-top')),
+                // paddings = parseInt(menuRoot.css('padding-top')) + parseInt(menuRoot.css('padding-bottom')),
                 menuH = menuRoot.outerHeight(),
+                innerH = innerEl.height(),
+                diff = Math.max(menuH - innerH, 0),
                 top = parseInt(menuRoot.css('top')),
-                props = {minScrollbarLength  : 40};
+                props = {minScrollbarLength  : this.minScrollbarLength};
             this.scrollAlwaysVisible && (props.alwaysVisibleY = this.scrollAlwaysVisible);
 
             if (top + menuH > docH ) {
-                innerEl.css('max-height', (docH - top - paddings - margins) + 'px');
+                innerEl.css('max-height', (docH - top - diff) + 'px');
                 if (this.allowScrollbar) this.scroller.update(props);
-            } else if ( top + menuH < docH && innerEl.height() < this.options.restoreHeight ) {
-                innerEl.css('max-height', (Math.min(docH - top - paddings - margins, this.options.restoreHeight)) + 'px');
+            } else if ( top + menuH < docH && innerH < this.options.restoreHeight ) {
+                innerEl.css('max-height', (Math.min(docH - top - diff, this.options.restoreHeight)) + 'px');
                 if (this.allowScrollbar) this.scroller.update(props);
             }
         },
@@ -864,6 +1001,10 @@ define([
             }
             this._layoutParams.rows = this._layoutParams.itemsIndexes.length;
             this._layoutParams.columns++;
+        },
+
+        setMultiselectMode: function (multiselect) {
+            this.pressedCtrl = !!multiselect;
         },
 
         onResize: function() {
@@ -993,7 +1134,8 @@ define([
                 this.scroller = new Common.UI.Scroller({
                     el: $(this.el).find('.inner').addBack().filter('.inner'),
                     useKeyboard: this.enableKeyEvents && !this.handleSelect,
-                    minScrollbarLength  : 40,
+                    minScrollbarLength  : this.minScrollbarLength,
+                    scrollYStyle: this.scrollYStyle,
                     wheelSpeed: 10,
                     alwaysVisibleY: this.scrollAlwaysVisible
                 });
@@ -1085,7 +1227,8 @@ define([
             this.scroller = new Common.UI.Scroller({
                 el: $(this.el).find('.inner').addBack().filter('.inner'),
                 useKeyboard: this.enableKeyEvents && !this.handleSelect,
-                minScrollbarLength  : 40,
+                minScrollbarLength  : this.minScrollbarLength,
+                scrollYStyle: this.scrollYStyle,
                 wheelSpeed: 10,
                 alwaysVisibleY: this.scrollAlwaysVisible
             });
@@ -1293,15 +1436,33 @@ define([
                 paddings = parseInt(menuRoot.css('padding-top')) + parseInt(menuRoot.css('padding-bottom')),
                 menuH = menuRoot.outerHeight(),
                 top = parseInt(menuRoot.css('top')),
-                props = {minScrollbarLength  : 40};
+                props = {minScrollbarLength  : this.minScrollbarLength};
             this.scrollAlwaysVisible && (props.alwaysVisibleY = this.scrollAlwaysVisible);
 
-            if (top + menuH > docH ) {
-                innerEl.css('max-height', (docH - top - paddings - margins) + 'px');
-                this.scroller.update(props);
-            } else if ( top + menuH < docH && innerEl.height() < this.options.restoreHeight ) {
-                innerEl.css('max-height', (Math.min(docH - top - paddings - margins, this.options.restoreHeight)) + 'px');
-                this.scroller.update(props);
+            var menuUp = false;
+            if (this.parentMenu.menuAlign) {
+                var m = this.parentMenu.menuAlign.match(/^([a-z]+)-([a-z]+)/);
+                menuUp = (m[1]==='bl' || m[1]==='br');
+            }
+            if (menuUp) {
+                var bottom = top + menuH;
+                if (top<0) {
+                    innerEl.css('max-height', (bottom - paddings - margins) + 'px');
+                    menuRoot.css('top', 0);
+                    this.scroller.update(props);
+                } else if (top>0 && innerEl.height() < this.options.restoreHeight) {
+                    innerEl.css('max-height', (Math.min(bottom - paddings - margins, this.options.restoreHeight)) + 'px');
+                    menuRoot.css('top', bottom - menuRoot.outerHeight());
+                    this.scroller.update(props);
+                }
+            } else {
+                if (top + menuH > docH ) {
+                    innerEl.css('max-height', (docH - top - paddings - margins) + 'px');
+                    this.scroller.update(props);
+                } else if ( top + menuH < docH && innerEl.height() < this.options.restoreHeight ) {
+                    innerEl.css('max-height', (Math.min(docH - top - paddings - margins, this.options.restoreHeight)) + 'px');
+                    this.scroller.update(props);
+                }
             }
         },
 
@@ -1697,6 +1858,7 @@ define([
                 first = 0;
             while (!this.dataViewItems[first].el.is(":visible")) { // if first elem is hidden
                 first++;
+                if (!this.dataViewItems[first]) return;
                 el = this.dataViewItems[first].el;
             }
 

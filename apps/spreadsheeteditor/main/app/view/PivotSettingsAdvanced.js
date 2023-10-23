@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -50,8 +49,8 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
 
     SSE.Views.PivotSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
-            contentWidth: 300,
-            height: 395,
+            contentWidth: 310,
+            height: 440,
             toggleGroup: 'pivot-adv-settings-group',
             storageName: 'sse-pivot-adv-settings-category'
         },
@@ -148,6 +147,11 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
                 labelText: this.textShowHeaders
             });
 
+            this.chAutofitColWidth = new Common.UI.CheckBox({
+                el: $('#pivot-adv-chk-autofit-col-width'),
+                labelText: this.textAutofitColWidth
+            });
+
             this.txtDataRange = new Common.UI.InputFieldBtn({
                 el          : $('#pivot-adv-txt-range'),
                 name        : 'range',
@@ -183,7 +187,7 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
 
         getFocusedComponents: function() {
             return [
-                this.inputName, this.chRows, this.chCols, this.radioDown, this.radioOver, this.numWrap, this.chHeaders, // 0 tab
+                this.inputName, this.chRows, this.chCols, this.radioDown, this.radioOver, this.numWrap, this.chHeaders, this.chAutofitColWidth, // 0 tab
                 this.txtDataRange,  // 1 tab
                 this.inputAltTitle, this.textareaAltDescription  // 2 tab
             ];
@@ -234,6 +238,7 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
                 this.numWrap.setValue(props.asc_getPageWrap());
 
                 this.chHeaders.setValue(props.asc_getShowHeaders(), true);
+                this.chAutofitColWidth.setValue(props.asc_getUseAutoFormatting(), true);
 
                 var value = props.asc_getDataRef();
                 this.txtDataRange.setValue((value) ? value : '');
@@ -260,6 +265,7 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
             props.asc_setPageOverThenDown(this.radioOver.getValue());
             props.asc_setPageWrap(this.numWrap.getNumberValue());
             props.asc_setShowHeaders(this.chHeaders.getValue() == 'checked');
+            props.asc_setUseAutoFormatting(this.chAutofitColWidth.getValue() == 'checked');
             props.asc_setDataRef(this.txtDataRange.getValue());
 
             if (this.isAltTitleChanged)
@@ -340,7 +346,8 @@ define([    'text!spreadsheeteditor/main/app/template/PivotSettingsAdvanced.temp
         textWrapCol: 'Report filter fields per column',
         textWrapRow: 'Report filter fields per row',
         textHeaders: 'Field Headers',
-        textShowHeaders: 'Show field headers for rows and columns'
+        textShowHeaders: 'Show field headers for rows and columns',
+        textAutofitColWidth: 'Autofit column widths on update'
 
     }, SSE.Views.PivotSettingsAdvanced || {}))
 });

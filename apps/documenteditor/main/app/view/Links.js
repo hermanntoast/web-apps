@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -79,6 +78,13 @@ define([
                 setTimeout(function(){
                     me.fireEvent('links:update', [item.value, true]);
                 }, 10);
+            });
+
+            this.btnAddText.menu.on('item:click', function (menu, item, e) {
+                me.fireEvent('links:addtext', [item.value]);
+            });
+            this.btnAddText.menu.on('show:after', function (menu, e) {
+                me.fireEvent('links:addtext-open', [menu]);
             });
 
             this.btnsNotes.forEach(function(button) {
@@ -157,35 +163,56 @@ define([
                 this.btnsPrevEndNote = [];
                 this.btnsNextEndNote = [];
                 this.paragraphControls = [];
-
+                var _set = Common.enumLock;
                 var me = this,
                     $host = me.toolbar.$el;
 
-                this.btnsContents = Common.Utils.injectButtons($host.find('.btn-slot.btn-contents'), '', 'toolbar__icon btn-contents', me.capBtnInsContents, undefined, true, true, undefined, '1', 'bottom', 'small');
-                this.btnsNotes = Common.Utils.injectButtons($host.find('.btn-slot.slot-notes'), '', 'toolbar__icon btn-notes', me.capBtnInsFootnote, undefined, true, true, undefined, '1', 'bottom', 'small');
-                this.btnsHyperlink = Common.Utils.injectButtons($host.find('.btn-slot.slot-inshyperlink'), '', 'toolbar__icon btn-inserthyperlink', me.capBtnInsLink, undefined, undefined, undefined, undefined, '1', 'bottom', 'small');
+                this.btnsContents = Common.Utils.injectButtons($host.find('.btn-slot.btn-contents'), '', 'toolbar__icon btn-big-contents', me.capBtnInsContents,
+                    [_set.inHeader, _set.richEditLock, _set.plainEditLock, _set.richDelLock, _set.plainDelLock, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
+                    true, true, undefined, '1', 'bottom', 'small');
+                this.btnsNotes = Common.Utils.injectButtons($host.find('.btn-slot.slot-notes'), '', 'toolbar__icon btn-notes', me.capBtnInsFootnote,
+                    [_set.paragraphLock, _set.inEquation, _set.inImage, _set.inHeader, _set.controlPlain, _set.richEditLock, _set.plainEditLock, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
+                    true, true, undefined, '1', 'bottom', 'small');
+                this.btnsHyperlink = Common.Utils.injectButtons($host.find('.btn-slot.slot-inshyperlink'), '', 'toolbar__icon btn-inserthyperlink', me.capBtnInsLink,
+                    [_set.paragraphLock, _set.headerLock, _set.hyperlinkLock, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
+                    undefined, undefined, undefined, '1', 'bottom', 'small');
                 Array.prototype.push.apply(this.paragraphControls, this.btnsContents.concat(this.btnsNotes, this.btnsHyperlink));
 
                 this.btnContentsUpdate = new Common.UI.Button({
                     parentEl: $host.find('#slot-btn-contents-update'),
-                    cls: 'btn-toolbar x-huge icon-top',
+                    cls: 'btn-toolbar',
                     iconCls: 'toolbar__icon btn-update',
+                    lock: [ _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnContentsUpdate,
                     split: true,
                     menu: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
-                    dataHintOffset: 'small'
+                    dataHintOffset: '0, -8'
                 });
                 this.paragraphControls.push(this.btnContentsUpdate);
+
+                this.btnAddText = new Common.UI.Button({
+                    parentEl: $host.find('#slot-btn-add-text'),
+                    cls: 'btn-toolbar',
+                    iconCls: 'toolbar__icon btn-add-text',
+                    lock: [ _set.cantAddTextTOF, _set.inHeader, _set.inFootnote, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
+                    caption: this.capBtnAddText,
+                    menu: new Common.UI.Menu({
+                        items: []
+                    }),
+                    dataHint: '1',
+                    dataHintDirection: 'left',
+                    dataHintOffset: 'medium'
+                });
+                this.paragraphControls.push(this.btnAddText);
 
                 this.btnBookmarks = new Common.UI.Button({
                     parentEl: $host.find('#slot-btn-bookmarks'),
                     cls: 'btn-toolbar x-huge icon-top',
                     iconCls: 'toolbar__icon btn-bookmarks',
+                    lock: [_set.paragraphLock, _set.inHeader, _set.headerLock, _set.controlPlain, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnBookmarks,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
@@ -196,8 +223,8 @@ define([
                     parentEl: $host.find('#slot-btn-caption'),
                     cls: 'btn-toolbar x-huge icon-top',
                     iconCls: 'toolbar__icon btn-caption',
+                    lock: [_set.inHeader, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnCaption,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
@@ -208,8 +235,8 @@ define([
                     parentEl: $host.find('#slot-btn-crossref'),
                     cls: 'btn-toolbar x-huge icon-top',
                     iconCls: 'toolbar__icon btn-cross-reference',
+                    lock: [_set.paragraphLock, _set.headerLock, _set.controlPlain, _set.richEditLock, _set.plainEditLock, _set.contentLock, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnCrossRef,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
@@ -220,8 +247,8 @@ define([
                     parentEl: $host.find('#slot-btn-tof'),
                     cls: 'btn-toolbar',
                     iconCls: 'toolbar__icon btn-contents',
+                    lock: [_set.inHeader, _set.richEditLock, _set.plainEditLock, _set.richDelLock, _set.plainDelLock, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnTOF,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'medium'
@@ -232,16 +259,15 @@ define([
                     parentEl: $host.find('#slot-btn-tof-update'),
                     cls: 'btn-toolbar',
                     iconCls: 'toolbar__icon btn-update',
+                    lock: [_set.paragraphLock, _set.inHeader, _set.richEditLock, _set.plainEditLock, _set.richDelLock, _set.plainDelLock, _set.cantUpdateTOF, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.disableOnStart, _set.docLockView, _set.docLockForms, _set.docLockComments],
                     caption: this.capBtnContentsUpdate,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'medium'
                 });
                 this.paragraphControls.push(this.btnTableFiguresUpdate);
-
+                Common.Utils.lockControls(Common.enumLock.disableOnStart, true, {array: this.paragraphControls});
                 this._state = {disabled: false};
-                Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
             },
 
             render: function (el) {
@@ -288,6 +314,8 @@ define([
                         ]
                     }));
 
+                    me.btnAddText.updateHint(me.tipAddText);
+
                     me.contentsUpdateMenu = new Common.UI.Menu({
                         items: [
                             {caption: me.textUpdateAll, value: 'all'},
@@ -304,27 +332,47 @@ define([
                                 {caption: me.mniInsEndnote, value: 'ins_endnote'},
                                 {caption: '--'},
                                 new Common.UI.MenuItem({
-                                    template: _.template([
+                                    template: !Common.UI.isRTL() ? _.template([
                                         '<div class="menu-zoom" style="height: 26px;" ',
                                         '<% if(!_.isUndefined(options.stopPropagation)) { %>',
                                         'data-stopPropagation="true"',
                                         '<% } %>', '>',
-                                        '<label class="title">' + me.textGotoFootnote + '</label>',
-                                        '<button id="id-menu-goto-footnote-next-' + index + '" type="button" style="float:right; margin: 2px 5px 0 0;" class="btn small btn-toolbar"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
-                                        '<button id="id-menu-goto-footnote-prev-' + index + '" type="button" style="float:right; margin-top: 2px;" class="btn small btn-toolbar"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '<label class="title float-left">' + me.textGotoFootnote + '</label>',
+                                        '<button id="id-menu-goto-footnote-next-' + index + '" type="button" class="btn small btn-toolbar next float-right"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
+                                        '<button id="id-menu-goto-footnote-prev-' + index + '" type="button" class="btn small btn-toolbar prev float-right"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '</div>'
+                                    ].join('')) :
+                                    _.template([
+                                        '<div class="menu-zoom" style="height: 26px;" ',
+                                        '<% if(!_.isUndefined(options.stopPropagation)) { %>',
+                                        'data-stopPropagation="true"',
+                                        '<% } %>', '>',
+                                        '<label class="title float-left">' + me.textGotoFootnote + '</label>',
+                                        '<button id="id-menu-goto-footnote-prev-' + index + '" type="button" class="btn small btn-toolbar prev float-right"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '<button id="id-menu-goto-footnote-next-' + index + '" type="button" class="btn small btn-toolbar next float-right"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
                                         '</div>'
                                     ].join('')),
                                     stopPropagation: true
                                 }),
                                 new Common.UI.MenuItem({
-                                    template: _.template([
+                                    template: !Common.UI.isRTL() ? _.template([
                                         '<div class="menu-zoom" style="height: 26px;" ',
                                         '<% if(!_.isUndefined(options.stopPropagation)) { %>',
                                         'data-stopPropagation="true"',
                                         '<% } %>', '>',
-                                        '<label class="title">' + me.textGotoEndnote + '</label>',
-                                        '<button id="id-menu-goto-endnote-next-' + index + '" type="button" style="float:right; margin: 2px 5px 0 0;" class="btn small btn-toolbar"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
-                                        '<button id="id-menu-goto-endnote-prev-' + index + '" type="button" style="float:right; margin-top: 2px;" class="btn small btn-toolbar"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '<label class="title float-left">' + me.textGotoEndnote + '</label>',
+                                        '<button id="id-menu-goto-endnote-next-' + index + '" type="button" class="btn small btn-toolbar next float-right"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
+                                        '<button id="id-menu-goto-endnote-prev-' + index + '" type="button" class="btn small btn-toolbar prev float-right"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '</div>'
+                                    ].join('')) :
+                                    _.template([
+                                        '<div class="menu-zoom" style="height: 26px;" ',
+                                        '<% if(!_.isUndefined(options.stopPropagation)) { %>',
+                                        'data-stopPropagation="true"',
+                                        '<% } %>', '>',
+                                        '<label class="title float-left">' + me.textGotoEndnote + '</label>',
+                                        '<button id="id-menu-goto-endnote-prev-' + index + '" type="button" class="btn small btn-toolbar prev float-right"><i class="icon menu__icon btn-previtem">&nbsp;</i></button>',
+                                        '<button id="id-menu-goto-endnote-next-' + index + '" type="button" class="btn small btn-toolbar next float-right"><i class="icon menu__icon btn-nextitem">&nbsp;</i></button>',
                                         '</div>'
                                     ].join('')),
                                     stopPropagation: true
@@ -380,6 +428,27 @@ define([
                 });
             },
 
+            fillAddTextMenu: function(menu, endlevel, current) {
+                endlevel = Math.max(endlevel || 3, current+1);
+                menu.removeAll();
+                menu.addItem(new Common.UI.MenuItem({
+                    caption: this.txtDontShowTof,
+                    value: -1,
+                    checkable: true,
+                    checked: current<0,
+                    toggleGroup : 'addTextGroup'
+                }));
+                for (var i=0; i<endlevel; i++) {
+                    menu.addItem(new Common.UI.MenuItem({
+                        caption: this.txtLevel + ' ' + (i+1),
+                        value: i,
+                        checkable: true,
+                        checked: current===i,
+                        toggleGroup : 'addTextGroup'
+                    }));
+                }
+            },
+
             show: function () {
                 Common.UI.BaseView.prototype.show.call(this);
                 this.fireEvent('show', this);
@@ -431,7 +500,11 @@ define([
             tipTableFiguresUpdate: 'Refresh table of figures',
             tipTableFigures: 'Insert table of figures',
             confirmReplaceTOF: 'Do you want to replace the selected table of figures?',
-            titleUpdateTOF: 'Refresh Table of Figures'
+            titleUpdateTOF: 'Refresh Table of Figures',
+            capBtnAddText: 'Add Text',
+            tipAddText: 'Include heading in the Table of Contents',
+            txtDontShowTof: 'Do Not Show in Table of Contents',
+            txtLevel: 'Level'
         }
     }()), DE.Views.Links || {}));
 });

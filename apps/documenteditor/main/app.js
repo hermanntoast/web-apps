@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  app.js
  *
@@ -53,9 +52,7 @@ require.config({
         perfectscrollbar: 'common/main/lib/mods/perfect-scrollbar',
         jmousewheel     : '../vendor/perfect-scrollbar/src/jquery.mousewheel',
         xregexp         : '../vendor/xregexp/xregexp-all-min',
-        sockjs          : '../vendor/sockjs/sockjs.min',
-        jszip           : '../vendor/jszip/jszip.min',
-        jsziputils      : '../vendor/jszip-utils/jszip-utils.min',
+        socketio        : '../vendor/socketio/socket.io.min',
         allfonts        : '../../sdkjs/common/AllFonts',
         sdk             : '../../sdkjs/word/sdk-all-min',
         api             : 'api/documents/api',
@@ -106,12 +103,9 @@ require.config({
         sdk: {
             deps: [
                 'jquery',
-                'underscore',
                 'allfonts',
                 'xregexp',
-                'sockjs',
-                'jszip',
-                'jsziputils'
+                'socketio'
             ]
         },
         gateway: {
@@ -128,15 +122,16 @@ require.config({
 });
 
 require([
+    'sdk',
     'backbone',
     'bootstrap',
     'core',
-    'sdk',
-    'api',
     'analytics',
     'gateway',
     'locale'
-], function (Backbone, Bootstrap, Core) {
+], function (Sdk, Backbone, Bootstrap, Core) {
+    if (Backbone.History && Backbone.History.started)
+        return;
     Backbone.history.start();
 
     /**
@@ -158,15 +153,20 @@ require([
             'LeftMenu',
             'Main',
             'ViewTab',
+            'Search',
+            'DocProtection',
+            'Print',
             'Common.Controllers.Fonts',
             'Common.Controllers.History'
             /** coauthoring begin **/
             ,'Common.Controllers.Chat'
             ,'Common.Controllers.Comments'
+            ,'Common.Controllers.Draw'
             /** coauthoring end **/
             ,'Common.Controllers.Plugins'
             ,'Common.Controllers.ExternalDiagramEditor'
             ,'Common.Controllers.ExternalMergeEditor'
+            ,'Common.Controllers.ExternalOleEditor'
             ,'Common.Controllers.ReviewChanges'
             ,'Common.Controllers.Protection'
         ]
@@ -175,6 +175,10 @@ require([
     Common.Locale.apply(
         function() {
             require([
+                'common/main/lib/util/LocalStorage',
+                'common/main/lib/controller/Scaling',
+                'common/main/lib/controller/Themes',
+                'common/main/lib/controller/Desktop',
                 'documenteditor/main/app/controller/Viewport',
                 'documenteditor/main/app/controller/DocumentHolder',
                 'documenteditor/main/app/controller/Toolbar',
@@ -187,6 +191,9 @@ require([
                 'documenteditor/main/app/controller/LeftMenu',
                 'documenteditor/main/app/controller/Main',
                 'documenteditor/main/app/controller/ViewTab',
+                'documenteditor/main/app/controller/Search',
+                'documenteditor/main/app/controller/DocProtection',
+                'documenteditor/main/app/controller/Print',
                 'documenteditor/main/app/view/FileMenuPanels',
                 'documenteditor/main/app/view/ParagraphSettings',
                 'documenteditor/main/app/view/HeaderFooterSettings',
@@ -196,7 +203,6 @@ require([
                 'documenteditor/main/app/view/TextArtSettings',
                 'documenteditor/main/app/view/SignatureSettings',
                 'common/main/lib/util/utils',
-                'common/main/lib/util/LocalStorage',
                 'common/main/lib/controller/Fonts',
                 'common/main/lib/controller/History'
                 /** coauthoring begin **/
@@ -207,10 +213,10 @@ require([
                 ,'documenteditor/main/app/view/ChartSettings'
                 ,'common/main/lib/controller/ExternalDiagramEditor'
                 ,'common/main/lib/controller/ExternalMergeEditor'
+                ,'common/main/lib/controller/ExternalOleEditor'
                 ,'common/main/lib/controller/ReviewChanges'
                 ,'common/main/lib/controller/Protection'
-                ,'common/main/lib/controller/Themes'
-                ,'common/main/lib/controller/Desktop'
+                ,'common/main/lib/controller/Draw'
             ], function() {
                 app.start();
             });

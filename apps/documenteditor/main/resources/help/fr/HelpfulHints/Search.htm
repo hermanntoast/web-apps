@@ -3,8 +3,9 @@
 	<head>
 		<title>Fonctions de recherche et remplacement</title>
 		<meta charset="utf-8" />
-		<meta name="description" content="Description des fonctions de recherche et de remplacement de Document Editor" />
-		<link type="text/css" rel="stylesheet" href="../editor.css" />
+		<meta name="description" content="Description des fonctions de recherche et remplacement dans l'éditeur de documents" />
+		<link type="text/css" rel="stylesheet" href="../../../../../../common/main/resources/help/editor.css" />
+		<link type = "text/css" rel = "stylesheet" href = "../../images/sprite.css" />
         <script type="text/javascript" src="../callback.js"></script>
         <script type="text/javascript" src="../search/js/page-search.js"></script>
 	</head>
@@ -14,32 +15,27 @@
 				<input id="search" class="searchBar" placeholder="Rechercher" type="text" onkeypress="doSearch(event)">
 			</div>
 			<h1>Fonctions de recherche et remplacement</h1>
-			<p>Pour rechercher des caractères, des mots ou des phrases utilisés dans le document, cliquez sur l'icône <img alt="L'icône Rechercher" src="../images/searchicon.png" /> située sur la barre latérale gauche <a href="https://www.onlyoffice.com/en/document-editor.aspx" target="_blank" onclick="onhyperlinkclick(this)"><b>Document Editor</b></a> ou appuyez sur la combinaison de touches Ctrl+F.</p>
-			<p>La fenêtre <b>Rechercher et remplacer</b> s'affiche.</p>
+			<p>Pour rechercher des caractères nécessaires, des mots ou des phrases dans dans le document en cours de modification, cliquez sur l'icône <span class="icon icon-searchicon"></span> sur la barre latérale gauche de  <a href="https://www.onlyoffice.com/fr/document-editor.aspx" target="_blank" onclick="onhyperlinkclick(this)"><b>l'éditeur de documents</b></a>, l'icône <span class="icon icon-search_icon_header"></span> dans le coin supérieur droit ou appuyez sur la combinaison de touches <em>Ctrl+F</em> (<em>Commande+F</em> pour MacOS) pour ouvrir la petite barre de recherche ou sur la combinaison de touches <em>Ctrl+</em> <em>H</em> pour ouvrir le plein panneau de recherche.</p>
+			<p>Une petite barre <b>Recherche</b> apparaîtra dans le coin supérieur droit de l'espace de travail. La barre inclut le champ de saisie de la requête de recherche, affiche le nombre de résultats de recherche et les contrôles pour basculer entre le résultat précédent ou suivant et masquer la barre.</p>
+			<p><img alt="Petite barre Recherche" src="../../../../../../common/main/resources/help/fr/images/find_small.png" /></p>
+			<p>Pour accéder aux paramètres avancés, cliquez sur l'icône <span class="icon icon-search_advanced"></span> ou utilisez la combinaison de touches Ctrl+H.</p>
+			<p>Le panneau <b>Rechercher et remplacer</b> s'affiche.</p>
 			<p><img alt="Fenêtre Rechercher et remplacer" src="../images/search_window.png" /></p>
 			<ol>
-				<li>Saisissez votre enquête dans le champ correspondant.</li>
+				<li>Saisissez le texte à rechercher dans le champ de saisie <b>Rechercher</b>.</li>
+				<li>S'il vous faut <b>remplacer</b> une ou plusieurs occurrences des caractères trouvés, saisissez le texte de remplacement dans le champ de saisie <b>Remplacer par</b>. Vous pouvez remplacer une seule occurrence qui est mise en surbrillance ou toutes occurrences en cliquant sur le bouton correspondant <b>Remplacer</b> ou <b>Remplacer tout</b>.</li>
+				<li>Pour naviguer à travers des occurrences, cliquez sur les boutons fléchés. Le bouton <div class="icon icon-searchdownbutton"></div> affiche l'occurrence suivante et le bouton <div class="icon icon-searchupbutton"></div> affiche l'occurrence précédente.</li>
 				<li>
-					Spécifiez les paramètres de recherche en cliquant sur l'icône <img alt="icône Options de recherche" src="../images/search_options.png" /> et en cochant les options nécessaires :<ul>
-						<li><b>Respecter la casse</b> sert à trouver les occurrences saisies de la même casse (par exemple, si votre enquête est 'Editeur' et cette option est sélectionnée, les mots tels que 'éditeur' ou 'EDITEUR' etc. ne seront pas trouvés). Pour désactiver cette option décochez la case.</li>
-						<li><b>Surligner les résultats</b> sert à surligner toutes les occurrences trouvées à la fois. Pour désactiver cette option et supprimer le surlignage, décochez la case.</li>
+					Indiquez les paramètres de recherche en activant les options appropriées en dessous du champ de saisie:
+					<ul>
+						<li><b>Sensible aux caractères</b> sert à passer toutes les occurrences tenant compte de la casse (par exemple, quand vous rechercher le mot «Éditeur», les mots «éditeur» et «ÉDITEUR» ne sont pas affichés).</li>
+						<li><b>Mots entiers uniquement</b> set à mettre en surbrillance uniquement des mots entiers.</li>
 					</ul>
 				</li>
-				<li>
-					Cliquez sur un des <b>boutons à flèche</b> à droite. La recherche sera effectuée soit vers le début du document (si vous cliquez sur le bouton <img alt="Flèche gauche" src="../images/searchupbutton.png" />) ou vers la fin du document (si vous cliquez sur le bouton <img alt="Flèche droite" src="../images/searchdownbutton.png" />) à partir de la position actuelle.<p class="note"><b>Remarque</b>: si l'option <b>Surligner les résultats</b> est activée, utilisez ces boutons pour naviguer à travers les résultats surlignés.</p>
-				</li>
 			</ol>
-			<p>La première occurrence des caractères requis dans la direction choisie sera surlignée sur la page. Si ce n'est pas le mot que vous cherchez, cliquez sur le bouton à flèche encore une fois pour trouver l'occurrence suivante des caractères saisis.</p>
-			<p><b>Pour remplacer</b> une ou plusieurs occurrences des caractères saisis, cliquez sur le bouton <b>Remplacer</b> au-dessous du champ d'entrée. La fenêtre <b>Rechercher et remplacer</b> change :</p>
-			<p><img alt="Fenêtre Rechercher et remplacer" src="../images/search_replace_window.png" /></p>
-			<ol>
-				<li>Saisissez le texte du replacement dans le champ au-dessous.</li>
-				<li>Cliquez sur le bouton <b>Remplacer</b> pour remplacer l'occurrence actuellement sélectionnée ou le bouton <b>Remplacer tout</b> pour remplacer toutes occurrences trouvées.</li>
-			</ol>
-			<p>Pour masquer le champ remplacer, cliquez sur le lien <b>Masquer Remplacer</b>.</p>
-			<p><b>Document Editor</b> prend en charge la recherche de caractères spéciaux. Pour rechercher un caractère spécial, saisissez-le dans le champ de recherche.</p>
-			<details class="details-example">
-				<summary>La liste des caractères spéciaux qu'on peut utiliser dans une requête:</summary>
+			<p>Toutes les occurrences seront mises en surbrillance dans le fichier et seront affichés sous forme de liste sur le panneau <b>Recherche</b> de gauche. Utilisez la liste pour basculer vers l'occurrence recherchée ou utilisez les boutons de navigation  <span class="icon icon-searchupbutton"></span> et <span class="icon icon-searchdownbutton"></span>.</p>
+			<p><b>L'éditeur de documents</b> prend en charge la recherche de caractères spéciaux. Pour rechercher un caractère spécial, saisissez-le dans le champ de recherche.</p>
+			<details class="details-example"><summary>La liste des caractères spéciaux qu'on peut utiliser dans une requête:</summary>
 				<table>
 					<tr>
 						<td><b>Caractère spécial</b></td>
@@ -79,7 +75,7 @@
 					</tr>
 					<tr>
 						<td>^g</td>
-						<td>élément graphique</td>
+						<td>Élément graphique</td>
 					</tr>
 					<tr>
 						<td>^m</td>
@@ -95,7 +91,7 @@
 					</tr>
 					<tr>
 						<td>^^</td>
-						<td>échappement du caret lui-même</td>
+						<td>Échappement du caret lui-même</td>
 					</tr>
 					<tr>
 						<td>^w</td>
@@ -114,8 +110,7 @@
 						<td>Tout tiret</td>
 					</tr>
 				</table>
-			</details> <details class="details-example">
-				<summary>Les caractères qu'on peut utiliser pour remplacement:</summary>
+			</details> <details class="details-example"><summary>Les caractères qu'on peut utiliser pour remplacement:</summary>
 				<table>
 					<tr>
 						<td><b>Caractère spécial</b></td>

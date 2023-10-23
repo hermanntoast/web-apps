@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -36,7 +35,7 @@
     !common.controller && (common.controller = {});
 
     common.controller.modals = new(function() {
-        var $dlgShare, $dlgEmbed;
+        var $dlgShare, $dlgEmbed, $dlgPassword;
         var appConfig;
         var embedCode = '<iframe allowtransparency="true" frameborder="0" scrolling="no" src="{embed-url}" width="{width}" height="{height}"></iframe>',
             minEmbedWidth = 400,
@@ -57,6 +56,16 @@
 
             $dlgShare.find('#btn-copyshort').on('click', copytext.bind(this, $dlgShare.find('#id-short-url')));
             $dlgShare.find('.share-buttons > span').on('click', function(e){
+                if ( window.config ) {
+                    const key = $(e.target).attr('data-name');
+                    const btn = config.btnsShare[key];
+                    if ( btn && btn.getUrl ) {
+                        window.open(btn.getUrl(appConfig.shareUrl, appConfig.docTitle), btn.target || '',
+                            btn.features || 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=300,width=600');
+                        return;
+                    }
+                }
+
                 var _url;
                 switch ($(e.target).attr('data-name')) {
                     case 'facebook':
@@ -93,6 +102,40 @@
                     updateEmbedCode();
                 }
             });
+        };
+
+        var createDlgPassword = function (submitCallback) {
+            if(!$dlgPassword) {
+                var submit = function() {
+                    if (submitCallback) {
+                        $dlgPassword.modal('hide');
+                        $dlgPassword.find('#password-input').attr('disabled', true)
+                        $dlgPassword.find('#password-btn').attr('disabled', true)
+                        setTimeout(function() {
+                            submitCallback($dlgPassword.find('#password-input').val())
+                        }, 350);
+                    }
+                };
+                $dlgPassword = common.view.modals.create('password');
+                $dlgPassword.modal({backdrop: 'static', keyboard: false})  
+                $dlgPassword.modal('show');
+                $dlgPassword.find('#password-btn').on('click', function() {
+                    submit();
+                });
+                $dlgPassword.find('#password-input').keyup(function(e){ 
+                    if(e.key == "Enter") {
+                        submit();
+                    }
+                });
+            } else {
+                $dlgPassword.modal('show');
+                $dlgPassword.find('#password-input').attr('disabled', false).addClass('error').val('');
+                $dlgPassword.find('#password-label-error').addClass('error');
+                $dlgPassword.find('#password-btn').attr('disabled', false)
+            }
+            setTimeout(function() {
+                $dlgPassword.find('#password-input').focus();
+            }, 500);
         };
 
         function updateEmbedCode(){
@@ -136,8 +179,9 @@
         };
 
         return {
-            init: function(config) { appConfig = config; }
-            , attach: attachToView
+            init: function(config) { appConfig = config; }, 
+            attach: attachToView,
+            createDlgPassword: createDlgPassword
         };
     });
 }();

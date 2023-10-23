@@ -1,40 +1,51 @@
-.combo-arrow-style {
-    .form-control {
-        cursor: pointer;
-        background-color: white;
+#window-hyperlink-settings {
+    #id-dlg-hyperlink-external {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
 
-        &.image {
-            .background-ximage('@{common-image-path}/right-panels/Begin-EndStyle.png', '@{common-image-path}/right-panels/Begin-EndStyle@2x.png', 480px);
-            background-repeat: no-repeat;
-            background-position: 10px 0;
-            background-attachment: scroll;
-            background-color: white;
+        .rtl & {
+            .border-radius(@border-radius-small);
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+
         }
     }
 
-    .btn {
-        &:active:not(.disabled),
-        &.active:not(.disabled){
-            .caret {
-                background-position: @arrow-small-offset-x @arrow-small-offset-y;
-            }
+    #id-dlg-hyperlink-internal {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-left-width: 0;
+        .margin-left(-1px);
+
+        .rtl & {
+            border: @scaled-one-px-value solid @border-regular-control;
+            .border-radius(@border-radius-small);
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right-width: 0;
         }
     }
 }
 
-.item-arrow {
-    .background-ximage('@{common-image-path}/right-panels/Begin-EndStyle.png', '@{common-image-path}/right-panels/Begin-EndStyle@2x.png', 480px);
-    width:44px;
-    height:20px;
-}
+#window-grid-settings {
+    #grid-spacing-combo {
+        display: inline-block;
+        width:86px;
+    }
 
-.advanced-settings-dlg {
-    .div-category {
-        padding: 0 15px;
-        text-align: right;
-        font-weight: bold;
-        font-size: 11px;
+    #grid-spacing-spin {
+        display: inline-block;
     }
 }
 
+#window-header-footer {
+    #hf-dlg-btn-slide {
+        border-radius: 0;
+    }
+
+    #hf-dlg-btn-notes {
+        border-radius: 0;
+        .margin-left(-1px);
+    }
+}
 

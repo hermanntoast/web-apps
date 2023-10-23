@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -275,7 +274,7 @@ define([
             this.btnSelectData = new Common.UI.Button({
                 parentEl: $('#table-btn-select-data'),
                 cls         : 'btn-toolbar align-left',
-                iconCls     : 'toolbar__icon resize-table',
+                iconCls     : 'toolbar__icon btn-resize-table',
                 caption     : this.textResize,
                 style       : 'width: 100%;',
                 dataHint    : '1',
@@ -288,7 +287,7 @@ define([
             this.btnEdit = new Common.UI.Button({
                 parentEl: $('#table-btn-edit'),
                 cls         : 'btn-toolbar align-left',
-                iconCls     : 'toolbar__icon rows-and-columns',
+                iconCls     : 'toolbar__icon btn-rows-and-columns',
                 caption     : this.textEdit,
                 style       : 'width: 100%;',
                 menu: new Common.UI.Menu({
@@ -523,15 +522,15 @@ define([
                 this.btnTableTemplate = new Common.UI.Button({
                     cls         : 'btn-large-dataview sheet-template-table',
                     iconCls     : 'icon-template-table',
+                    scaling     : false,
                     menu        : new Common.UI.Menu({
-                        style: 'width: 505px;',
                         items: [
-                            { template: _.template('<div id="id-table-menu-template" class="menu-table-template"  style="margin: 5px 5px 5px 10px;"></div>') }
+                            { template: _.template('<div id="id-table-menu-template" class="menu-table-template"  style="margin: 0 4px;"></div>') }
                         ]
                     }),
                     dataHint    : '1',
                     dataHintDirection: 'bottom',
-                    dataHintOffset: 'big'
+                    dataHintOffset: 'big',
                 });
                 this.btnTableTemplate.on('render:after', function(btn) {
                     self.mnuTableTemplatePicker = new Common.UI.DataView({
@@ -540,11 +539,35 @@ define([
                         restoreHeight: 325,
                         groups: new Common.UI.DataViewGroupStore(),
                         store: new Common.UI.DataViewStore(),
-                        itemTemplate: _.template('<div id="<%= id %>" class="item"><img src="<%= imageUrl %>" height="44" width="60"></div>'),
+                        itemTemplate: _.template('<div id="<%= id %>" class="item-template"><img src="<%= imageUrl %>" height="44" width="60"></div>'),
                         style: 'max-height: 325px;',
+                        cls: 'classic',
                         delayRenderTips: true
                     });
                 });
+
+                this.btnTableTemplate.menu.on('show:before', function(menu) {
+                    if (menu && self.mnuTableTemplatePicker) {
+                        var picker = self.mnuTableTemplatePicker,
+                            columnCount = 7;
+        
+                        if (picker.cmpEl) {
+                            var itemEl = $(picker.cmpEl.find('.dataview.inner .item-template').get(0)).parent(),
+                                itemMargin = 8,
+                                itemWidth = itemEl.is(':visible') ? parseFloat(itemEl.css('width')) : 60;
+        
+                            var menuWidth = columnCount * (itemMargin + itemWidth) + 11, // for scroller
+                                menuMargins = parseFloat(picker.cmpEl.css('margin-left')) + parseFloat(picker.cmpEl.css('margin-right'));
+                            if (menuWidth + menuMargins>Common.Utils.innerWidth())
+                                menuWidth = Math.max(Math.floor((Common.Utils.innerWidth()-menuMargins-11)/(itemMargin + itemWidth)), 2) * (itemMargin + itemWidth) + 11;
+                            picker.cmpEl.css({
+                                'width': menuWidth
+                            });
+                            menu.alignPosition();
+                        }
+                    }
+                });
+
                 this.btnTableTemplate.render($('#table-btn-template'));
                 this.lockedControls.push(this.btnTableTemplate);
                 this.mnuTableTemplatePicker.on('item:click', _.bind(this.onTableTemplateSelect, this, this.btnTableTemplate));
@@ -555,26 +578,91 @@ define([
             var count = self.mnuTableTemplatePicker.store.length;
             if (count>0 && count==Templates.length) {
                 var data = self.mnuTableTemplatePicker.dataViewItems;
+                var findDataViewItem = function(template) {
+                    for(var i = 0; i < data.length; i++) {
+                        if(data[i].model.get('name') && data[i].model.get('name') === template.asc_getName()) return data[i];
+                        else if(data[i].model.get('caption') === template.asc_getDisplayName()) return data[i];
+                    }
+                    return undefined;
+                };
+
                 data && _.each(Templates, function(template, index){
                     var img = template.asc_getImage();
-                    data[index].model.set('imageUrl', img, {silent: true});
-                    $(data[index].el).find('img').attr('src', img);
+                    var dataViewItem = findDataViewItem(template);
+                    dataViewItem && dataViewItem.model.set('imageUrl', img, {silent: true});
+                    dataViewItem && $(dataViewItem.el).find('img').attr('src', img);
                 });
-            } else {
-                var arr = [];
-                _.each(Templates, function(template){
-                    arr.push({
+            } else {            
+                var templates = [];
+                var groups = [
+                    {id: 'menu-table-group-custom',    caption: self.txtGroupTable_Custom, templates: []},
+                    {id: 'menu-table-group-light',     caption: self.txtGroupTable_Light,  templates: []},
+                    {id: 'menu-table-group-medium',    caption: self.txtGroupTable_Medium, templates: []},
+                    {id: 'menu-table-group-dark',      caption: self.txtGroupTable_Dark,   templates: []},
+                    {id: 'menu-table-group-no-name',   caption: '&nbsp',                 templates: []},
+                ];
+                _.each(Templates, function(item){
+                    var tip = item.asc_getDisplayName(),
+                        groupItem = '',
+                        lastWordInTip = null;
+                    
+                    if (item.asc_getType()==0) {
+                        var arr = tip.split(' ');
+                        lastWordInTip = arr.pop();
+                            
+                        if(item.asc_getName() === null){
+                            groupItem = 'menu-table-group-light';
+                        }
+                        else {
+                            if(arr.length > 0){
+                                groupItem = 'menu-table-group-' + arr[arr.length - 1].toLowerCase();
+                            }
+                            if(groups.some(function(item) {return item.id === groupItem;}) == false) {
+                                groupItem = 'menu-table-group-no-name';
+                            }
+                        }
+                        arr = 'txtTable_' + arr.join('');
+                        tip = self[arr] ? self[arr] + ' ' + lastWordInTip : tip;
+                        lastWordInTip = parseInt(lastWordInTip);
+                    }
+                    else {
+                        groupItem = 'menu-table-group-custom'
+                    }                        
+                    groups.filter(function(item){ return item.id == groupItem; })[0].templates.push({
                         id          : Common.UI.getId(),
-                        name        : template.asc_getName(),
-                        caption     : template.asc_getDisplayName(),
-                        type        : template.asc_getType(),
-                        imageUrl    : template.asc_getImage(),
+                        name        : item.asc_getName(),
+                        caption     : item.asc_getDisplayName(),
+                        type        : item.asc_getType(),
+                        imageUrl    : item.asc_getImage(),
+                        group       : groupItem, 
                         allowSelected : true,
                         selected    : false,
-                        tip         : template.asc_getDisplayName()
+                        tip         : tip,
+                        numInGroup  : (lastWordInTip != null && !isNaN(lastWordInTip) ? lastWordInTip : null)
                     });
                 });
-                self.mnuTableTemplatePicker.store.reset(arr);
+
+                var sortFunc = function(a, b) {
+                    var aNum = a.numInGroup,
+                        bNum = b.numInGroup;
+                    return aNum - bNum;
+                };
+
+                groups[1].templates.sort(sortFunc);
+                groups[2].templates.sort(sortFunc);
+                groups[3].templates.sort(sortFunc);
+
+                groups = groups.filter(function(item, index){
+                    return item.templates.length > 0
+                });
+                
+                groups.forEach(function(item){
+                    templates = templates.concat(item.templates);
+                    delete item.templates;
+                });
+
+                self.mnuTableTemplatePicker.groups.reset(groups);
+                self.mnuTableTemplatePicker.store.reset(templates);
             }
         },
 
@@ -700,7 +788,15 @@ define([
         textRemDuplicates: 'Remove duplicates',
         textSlicer: 'Insert slicer',
         textPivot: 'Insert pivot table',
-        textActions: 'Table actions'
+        textActions: 'Table actions',
+        txtTable_TableStyleMedium: 'Table Style Medium',
+        txtTable_TableStyleDark: 'Table Style Dark',
+        txtTable_TableStyleLight: 'Table Style Light',
+        txtGroupTable_Custom: 'Custom',
+        txtGroupTable_Light: 'Light',
+        txtGroupTable_Medium: 'Medium',
+        txtGroupTable_Dark: 'Dark',
+        
         
     }, SSE.Views.TableSettings || {}));
 });

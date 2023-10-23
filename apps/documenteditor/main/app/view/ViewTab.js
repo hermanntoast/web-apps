@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2020
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -46,6 +45,59 @@ define([
     'use strict';
 
     DE.Views.ViewTab = Common.UI.BaseView.extend(_.extend((function(){
+        var template =
+        '<section class="panel" data-tab="view">' +
+            '<div class="group" data-layout-name="toolbar-view-navigation">' +
+                '<span class="btn-slot text x-huge" id="slot-btn-navigation"></span>' +
+            '</div>' +
+            '<div class="separator long" data-layout-name="toolbar-view-navigation"></div>' +
+            '<div class="group small">' +
+                '<div class="elset" style="display: flex;">' +
+                    '<span class="btn-slot" id="slot-field-zoom" style="flex-grow: 1;"></span>' +
+                '</div>' +
+                '<div class="elset" style="text-align: center;">' +
+                    '<span class="btn-slot text font-size-normal" id="slot-lbl-zoom" style="text-align: center;margin-top: 4px;"></span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="group small">' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-btn-ftp" style="text-align: center;"></span>' +
+                '</div>' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-btn-ftw" style="text-align: center;"></span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="separator long"></div>' +
+            '<div class="group">' +
+                '<span class="btn-slot text x-huge" id="slot-btn-interface-theme"></span>' +
+                '<span class="btn-slot text x-huge" id="slot-btn-dark-document"></span>' +
+            '</div>' +
+            '<div class="separator long separator-theme"></div>' +
+            '<div class="group small">' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-chk-toolbar"></span>' +
+                '</div>' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-chk-statusbar"></span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="group small">' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-chk-leftmenu"></span>' +
+                '</div>' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-chk-rightmenu"></span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="separator long separator-rulers"></div>' +
+            '<div class="group small">' +
+                '<div class="elset">' +
+                    '<span class="btn-slot text" id="slot-chk-rulers"></span>' +
+                '</div>' +
+                '<div class="elset"></div>' +
+            '</div>' +
+        '</section>';
+
         return {
             options: {},
 
@@ -69,6 +121,12 @@ define([
                 me.chRulers.on('change', _.bind(function (checkbox, state) {
                     me.fireEvent('rulers:change', [me.chRulers, state === 'checked']);
                 }, me));
+                me.chLeftMenu.on('change', _.bind(function (checkbox, state) {
+                    me.fireEvent('leftmenu:hide', [me.chLeftMenu, state === 'checked']);
+                }, me));
+                me.chRightMenu.on('change', _.bind(function (checkbox, state) {
+                    me.fireEvent('rightmenu:hide', [me.chRightMenu, state === 'checked']);
+                }, me));
                 me.btnDarkDocument.on('click', _.bind(function () {
                     me.fireEvent('darkmode:change');
                 }, me));
@@ -83,16 +141,15 @@ define([
 
                 this.lockedControls = [];
 
-                var me = this,
-                    $host = me.toolbar.$el;
+                var me = this;
+                var _set = Common.enumLock;
 
                 this.btnNavigation = new Common.UI.Button({
-                    parentEl: $host.find('#slot-btn-navigation'),
                     cls: 'btn-toolbar x-huge icon-top',
-                    iconCls: 'toolbar__icon btn-menu-navigation',
-                    caption: this.textNavigation,
+                    iconCls: 'toolbar__icon btn-big-menu-navigation',
+                    lock: [_set.lostConnect, _set.disableOnStart],
+                    caption: this.textOutline,
                     enableToggle: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
@@ -100,11 +157,10 @@ define([
                 this.lockedControls.push(this.btnNavigation);
 
                 this.cmbZoom = new Common.UI.ComboBox({
-                    el: $host.find('#slot-field-zoom'),
                     cls: 'input-group-nr',
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     menuStyle: 'min-width: 55px;',
                     editable: true,
-                    disabled: true,
                     data: [
                         { displayValue: "50%", value: 50 },
                         { displayValue: "75%", value: 75 },
@@ -124,16 +180,13 @@ define([
                 this.cmbZoom.setValue(100);
                 this.lockedControls.push(this.cmbZoom);
 
-                $host.find('#slot-lbl-zoom').text(this.textZoom);
-
                 this.btnFitToPage = new Common.UI.Button({
-                    parentEl: $host.find('#slot-btn-ftp'),
                     cls: 'btn-toolbar',
                     iconCls: 'toolbar__icon btn-ic-zoomtopage',
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     caption: this.textFitToPage,
                     toggleGroup: 'view-zoom',
                     enableToggle: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'medium'
@@ -141,13 +194,12 @@ define([
                 this.lockedControls.push(this.btnFitToPage);
 
                 this.btnFitToWidth = new Common.UI.Button({
-                    parentEl: $host.find('#slot-btn-ftw'),
                     cls: 'btn-toolbar',
                     iconCls: 'toolbar__icon btn-ic-zoomtowidth',
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     caption: this.textFitToWidth,
                     toggleGroup: 'view-zoom',
                     enableToggle: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'medium'
@@ -155,12 +207,11 @@ define([
                 this.lockedControls.push(this.btnFitToWidth);
 
                 this.btnInterfaceTheme = new Common.UI.Button({
-                    parentEl: $host.find('#slot-btn-interface-theme'),
                     cls: 'btn-toolbar x-huge icon-top',
-                    iconCls: 'toolbar__icon day',
+                    iconCls: 'toolbar__icon btn-day',
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     caption: this.textInterfaceTheme,
                     menu: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
@@ -168,22 +219,21 @@ define([
                 this.lockedControls.push(this.btnInterfaceTheme);
 
                 this.btnDarkDocument = new Common.UI.Button({
-                    parentEl: $host.find('#slot-btn-dark-document'),
                     cls: 'btn-toolbar x-huge icon-top',
-                    iconCls: 'toolbar__icon dark-mode',
+                    iconCls: 'toolbar__icon btn-dark-mode',
+                    lock: [_set.inLightTheme, _set.lostConnect, _set.disableOnStart],
                     caption: this.textDarkDocument,
                     enableToggle: true,
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'small'
                 });
+                this.lockedControls.push(this.btnDarkDocument);
 
                 this.chStatusbar = new Common.UI.CheckBox({
-                    el: $host.findById('#slot-chk-statusbar'),
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     labelText: this.textStatusBar,
                     value: !Common.localStorage.getBool("de-hidden-status"),
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'small'
@@ -191,32 +241,86 @@ define([
                 this.lockedControls.push(this.chStatusbar);
 
                 this.chToolbar = new Common.UI.CheckBox({
-                    el: $host.findById('#slot-chk-toolbar'),
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     labelText: this.textAlwaysShowToolbar,
                     value: !options.compactToolbar,
-                    disabled: true,
                     dataHint    : '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'small'
                 });
                 this.lockedControls.push(this.chToolbar);
 
+                this.chRightMenu = new Common.UI.CheckBox({
+                    lock: [_set.lostConnect, _set.disableOnStart],
+                    labelText: this.textRightMenu,
+                    dataHint    : '1',
+                    dataHintDirection: 'left',
+                    dataHintOffset: 'small'
+                });
+                this.lockedControls.push(this.chRightMenu);
+
+                this.chLeftMenu = new Common.UI.CheckBox({
+                    lock: [_set.lostConnect, _set.disableOnStart],
+                    labelText: this.textLeftMenu,
+                    dataHint    : '1',
+                    dataHintDirection: 'left',
+                    dataHintOffset: 'small'
+                });
+                this.lockedControls.push(this.chLeftMenu);
+
                 this.chRulers = new Common.UI.CheckBox({
-                    el: $host.findById('#slot-chk-rulers'),
+                    lock: [_set.lostConnect, _set.disableOnStart],
                     labelText: this.textRulers,
                     value: !Common.Utils.InternalSettings.get("de-hidden-rulers"),
-                    disabled: true,
                     dataHint: '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'small'
                 });
                 this.lockedControls.push(this.chRulers);
 
-                this.cmpEl = $host;
+                Common.Utils.lockControls(_set.disableOnStart, true, {array: this.lockedControls});
+                Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
             },
 
             render: function (el) {
+                if ( el ) el.html( this.getPanel() );
+
                 return this;
+            },
+
+            getPanel: function () {
+                this.$el = $(_.template(template)( {} ));
+                var $host = this.$el;
+
+                this.btnNavigation.render($host.find('#slot-btn-navigation'));
+                this.cmbZoom.render($host.find('#slot-field-zoom'));
+                $host.find('#slot-lbl-zoom').text(this.textZoom);
+                this.btnFitToPage.render($host.find('#slot-btn-ftp'));
+                this.btnFitToWidth.render($host.find('#slot-btn-ftw'));
+                this.btnInterfaceTheme.render($host.find('#slot-btn-interface-theme'));
+                this.btnDarkDocument.render($host.find('#slot-btn-dark-document'));
+                this.chStatusbar.render($host.find('#slot-chk-statusbar'));
+                this.chToolbar.render($host.find('#slot-chk-toolbar'));
+                this.chRulers.render($host.find('#slot-chk-rulers'));
+                this.chLeftMenu.render($host.find('#slot-chk-leftmenu'));
+                this.chRightMenu.render($host.find('#slot-chk-rightmenu'));
+                return this.$el;
+            },
+
+            onAppReady: function () {
+                this.btnNavigation.updateHint(this.tipHeadings);
+                this.btnFitToPage.updateHint(this.tipFitToPage);
+                this.btnFitToWidth.updateHint(this.tipFitToWidth);
+                this.btnInterfaceTheme.updateHint(this.tipInterfaceTheme);
+                this.btnDarkDocument.updateHint(this.tipDarkDocument);
+
+                var value = Common.UI.LayoutManager.getInitValue('leftMenu');
+                value = (value!==undefined) ? !value : false;
+                this.chLeftMenu.setValue(!Common.localStorage.getBool("de-hidden-leftmenu", value));
+
+                value = Common.UI.LayoutManager.getInitValue('rightMenu');
+                value = (value!==undefined) ? !value : false;
+                this.chRightMenu.setValue(!Common.localStorage.getBool("de-hidden-rightmenu", value));
             },
 
             show: function () {
@@ -236,14 +340,14 @@ define([
                         button.setDisabled(state);
                     }
                 }, this);
-                this.btnDarkDocument && this.btnDarkDocument.setDisabled(state);
             },
 
             turnNavigation: function (state) {
                 this.btnNavigation && this.btnNavigation.toggle(state, true);
             },
 
-            onComboOpen: function (needfocus, combo) {
+            onComboOpen: function (needfocus, combo, e, params) {
+                if (params && params.fromKeyDown) return;
                 _.delay(function() {
                     var input = $('input', combo.cmpEl).select();
                     if (needfocus) input.focus();
@@ -252,6 +356,7 @@ define([
             },
 
             textNavigation: 'Navigation',
+            textOutline: 'Headings',
             textZoom: 'Zoom',
             textFitToPage: 'Fit To Page',
             textFitToWidth: 'Fit To Width',
@@ -259,7 +364,14 @@ define([
             textStatusBar: 'Status Bar',
             textAlwaysShowToolbar: 'Always show toolbar',
             textRulers: 'Rulers',
-            textDarkDocument: 'Dark document'
+            textDarkDocument: 'Dark document',
+            tipHeadings: 'Headings',
+            tipFitToPage: 'Fit to page',
+            tipFitToWidth: 'Fit to width',
+            tipInterfaceTheme: 'Interface theme',
+            tipDarkDocument: 'Dark document',
+            textLeftMenu: 'Left panel',
+            textRightMenu: 'Right panel'
         }
     }()), DE.Views.ViewTab || {}));
 });

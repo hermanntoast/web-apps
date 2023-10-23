@@ -1,9 +1,6 @@
 
 import React, { Component } from 'react';
-import { Searchbar, Popover, Popup, View, Page, List, ListItem, Navbar, NavRight, Link } from 'framework7-react';
-import { Toggle } from 'framework7-react';
-import { f7 } from 'framework7-react';
-import { Dom7 } from 'framework7';
+import { Popover, Popup, View, f7 } from 'framework7-react';
 import { Device } from '../../../../common/mobile/utils/device';
 import { observable, runInAction } from "mobx";
 import { observer } from "mobx-react";
@@ -90,6 +87,7 @@ class SearchView extends Component {
             replaceQuery: ''
         };
 
+        this.refSearchbarInput = React.createRef();
         this.onSettingsClick = this.onSettingsClick.bind(this);
         this.onSearchClick = this.onSearchClick.bind(this);
         this.onReplaceClick = this.onReplaceClick.bind(this);
@@ -105,19 +103,23 @@ class SearchView extends Component {
         $editor.on('pointerdown', this.onEditorTouchStart);
         $editor.on('pointerup',   this.onEditorTouchEnd);
 
-        if( !this.searchbar ) {
-            this.searchbar = f7.searchbar.get('.searchbar');
-        }
-
-        if( !this.searchbar ) {
+        if(!this.searchbar) {
             this.searchbar = f7.searchbar.create({
                 el: '.searchbar',
                 customSearch: true,
                 expandable: true,
                 backdrop: false,
                 on: {
-                    search: (bar, curval, prevval) => {
+                    search: (sb, query, previousQuery) => {
+                        const api = Common.EditorApi.get();
+
+                        if(!query) {
+                            api.asc_selectSearchingResults(false);
+                        }
                     },
+                    searchbarEnable: (sb) => {
+                        this.refSearchbarInput.focus();
+                    }
                 }
             });
         }
@@ -233,6 +235,12 @@ class SearchView extends Component {
             replaceQuery: value
         });
     }
+    
+    onSearchKeyBoard(event) {
+        if(event.keyCode === 13) {
+            this.props.onSearchQuery(this.searchParams());
+        }
+    }
 
     render() {
         const usereplace = searchOptions.usereplace;
@@ -259,7 +267,8 @@ class SearchView extends Component {
                     <div className="searchbar-inner__center">
                         <div className="searchbar-input-wrap">
                             <input className="searchbar-input" value={searchQuery} placeholder={_t.textSearch} type="search" maxLength="255"
-                                onChange={e => {this.changeSearchQuery(e.target.value)}} />
+                                onKeyDown={e => this.onSearchKeyBoard(e)}
+                                onChange={e => {this.changeSearchQuery(e.target.value)}} ref={el => this.refSearchbarInput = el} />
                             {isIos ? <i className="searchbar-icon" /> : null}
                             <span className="input-clear-button" onClick={() => this.changeSearchQuery('')} />
                         </div>
@@ -279,9 +288,9 @@ class SearchView extends Component {
                             <a id="replace-all-link" className={"link " + (searchQuery.trim().length ? "" : "disabled")} style={!usereplace ? hidden: null} onClick={() => this.onReplaceAllClick()}>{_t.textReplaceAll}</a> */}
 
                             {isReplaceAll ? (
-                                <a id="replace-all-link" className={"link " + (replaceQuery.trim().length || searchQuery.trim().length ? "" : "disabled")} onClick={() => this.onReplaceAllClick()}>{_t.textReplaceAll}</a>
+                                <a id="replace-all-link" className={"link " + (searchQuery.trim().length ? "" : "disabled")} onClick={() => this.onReplaceAllClick()}>{_t.textReplaceAll}</a>
                             ) : usereplace ? (
-                                <a id="replace-link" className={"link " + (replaceQuery.trim().length || searchQuery.trim().length ? "" : "disabled")} onClick={() => this.onReplaceClick()}>{_t.textReplace}</a>
+                                <a id="replace-link" className={"link " + (searchQuery.trim().length ? "" : "disabled")} onClick={() => this.onReplaceClick()}>{_t.textReplace}</a>
                             ) : null}
                         </div>
                         <div className="buttons-row">

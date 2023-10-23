@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *    Main.js
  *
@@ -59,7 +58,8 @@ define([
     'spreadsheeteditor/main/app/controller/FormulaDialog',
     'common/main/lib/controller/FocusManager',
     'common/main/lib/controller/HintManager',
-    'common/main/lib/controller/LayoutManager'
+    'common/main/lib/controller/LayoutManager',
+    'common/main/lib/controller/ExternalUsers'
 ], function () {
     'use strict';
 
@@ -136,8 +136,8 @@ define([
                         'Grand Total': this.txtGrandTotal,
                         'Row Labels': this.txtRowLbls,
                         'Column Labels': this.txtColLbls,
-                        'Multi-Select (Alt+S)': this.txtMultiSelect,
-                        'Clear Filter (Alt+C)':  this.txtClearFilter,
+                        'Multi-Select (Alt+S)': this.txtMultiSelect + Common.Utils.String.platformKey('Alt+S', ' (' + (Common.Utils.isMac ? Common.Utils.String.textCtrl + '+' : '') + '{0})'),
+                        'Clear Filter (Alt+C)':  this.txtClearFilter + Common.Utils.String.platformKey('Alt+C', ' (' + (Common.Utils.isMac ? Common.Utils.String.textCtrl + '+' : '') + '{0})'),
                         '(blank)': this.txtBlank,
                         'Group': this.txtGroup,
                         'Seconds': this.txtSeconds,
@@ -148,7 +148,13 @@ define([
                         'Quarters': this.txtQuarters,
                         'Years': this.txtYears,
                         '%1 or %2': this.txtOr,
-                        'Qtr': this.txtQuarter
+                        'Qtr': this.txtQuarter,
+                        'Text': this.textText,
+                        'Sheet': this.txtSheet,
+                        'None': this.txtNone,
+                        'Slicer': this.txtSlicer,
+                        'Info': this.txtInfo,
+                        'Picture': this.txtPicture
                     };
 
                 styleNames.forEach(function(item){
@@ -197,6 +203,19 @@ define([
                 Common.Utils.InternalSettings.set("sse-settings-fontrender", value);
                 this.api.asc_setFontRenderingMode(parseInt(value));
 
+                value = Common.localStorage.getBool("sse-settings-show-alt-hints", true);
+                Common.Utils.InternalSettings.set("sse-settings-show-alt-hints", value);
+
+                if ( !Common.Utils.isIE ) {
+                    if ( /^https?:\/\//.test('{{HELP_CENTER_WEB_SSE}}') ) {
+                        const _url_obj = new URL('{{HELP_CENTER_WEB_SSE}}');
+                        if ( !!_url_obj.searchParams )
+                            _url_obj.searchParams.set('lang', Common.Locale.getCurrentLanguage());
+
+                        Common.Utils.InternalSettings.set("url-help-center", _url_obj.toString());
+                    }
+                }
+
                 this.api.asc_registerCallback('asc_onOpenDocumentProgress',  _.bind(this.onOpenDocument, this));
                 this.api.asc_registerCallback('asc_onEndAction',             _.bind(this.onLongActionEnd, this));
                 this.api.asc_registerCallback('asc_onError',                 _.bind(this.onError, this));
@@ -208,9 +227,11 @@ define([
                 this.api.asc_registerCallback('asc_onPrintUrl',              _.bind(this.onPrintUrl, this));
                 this.api.asc_registerCallback('asc_onMeta',                  _.bind(this.onMeta, this));
                 this.api.asc_registerCallback('asc_onSpellCheckInit',        _.bind(this.loadLanguages, this));
+                this.api.asc_registerCallback('asc_onOleEditorReady',        _.bind(this.onOleEditorReady, this));
                 Common.NotificationCenter.on('api:disconnect',               _.bind(this.onCoAuthoringDisconnect, this));
                 Common.NotificationCenter.on('goback',                       _.bind(this.goBack, this));
                 Common.NotificationCenter.on('namedrange:locked',            _.bind(this.onNamedRangeLocked, this));
+                Common.NotificationCenter.on('protectedrange:locked',        _.bind(this.onProtectedRangeLocked, this));
                 Common.NotificationCenter.on('download:cancel',              _.bind(this.onDownloadCancel, this));
                 Common.NotificationCenter.on('download:advanced',            _.bind(this.onAdvancedOptions, this));
                 Common.NotificationCenter.on('showmessage',                  _.bind(this.onExternalMessage, this));
@@ -230,7 +251,7 @@ define([
                     strongCompare   : this._compareActionWeak,
                     weakCompare     : this._compareActionWeak
                 });
-
+                this.stackMacrosRequests = [];
                 this.isShowOpenDialog = false;
 
                 // Initialize api gateway
@@ -274,7 +295,11 @@ define([
                             && (e.relatedTarget.localName != 'textarea' || /area_id/.test(e.relatedTarget.id))) /* Check if focus goes to textarea, but not to "area_id" */ {
                             if (Common.Utils.isIE && e.originalEvent && e.originalEvent.target && /area_id/.test(e.originalEvent.target.id) && (e.originalEvent.target === e.originalEvent.srcElement))
                                 return;
-                            me.api.asc_enableKeyEvents(true);
+                            if (Common.Utils.isLinux && me.appOptions && me.appOptions.isDesktopApp) {
+                                if (e.relatedTarget || !e.originalEvent || e.originalEvent.sourceCapabilities)
+                                    me.api.asc_enableKeyEvents(true);
+                            } else
+                                me.api.asc_enableKeyEvents(true);
                             if (/msg-reply/.test(e.target.className))
                                 me.dontCloseDummyComment = false;
                             else if (/textarea-control/.test(e.target.className))
@@ -293,6 +318,7 @@ define([
                     if (event.target ) {
                         var target = $(event.target);
                         if (target.closest('.combobox').length>0 || target.closest('.dropdown-menu').length>0 ||
+                            target.closest('.input-field').length>0 || target.closest('.spinner').length>0 || target.closest('.textarea-field').length>0 ||
                             target.closest('.ribtab').length>0 || target.closest('.combo-dataview').length>0) {
                             event.preventDefault();
                         }
@@ -376,14 +402,35 @@ define([
                     Common.Utils.InternalSettings.set("guest-username", value);
                     Common.Utils.InternalSettings.set("save-guest-username", !!value);
                 }
+                if (this.appOptions.customization.font) {
+                    if (this.appOptions.customization.font.name && typeof this.appOptions.customization.font.name === 'string') {
+                        var arr = this.appOptions.customization.font.name.split(',');
+                        for (var i=0; i<arr.length; i++) {
+                            var item = arr[i].trim();
+                            if (item && (/[\s0-9\.]/).test(item)) {
+                                arr[i] = "'" + item + "'";
+                            }
+                        }
+                        document.documentElement.style.setProperty("--font-family-base-custom", arr.join(','));
+                    }
+                    if (this.appOptions.customization.font.size) {
+                        var size = parseInt(this.appOptions.customization.font.size);
+                        !isNaN(size) && document.documentElement.style.setProperty("--font-size-base-app-custom", size + "px");
+                    }
+                }
+
                 this.editorConfig.user          =
                 this.appOptions.user            = Common.Utils.fillUserInfo(this.editorConfig.user, this.editorConfig.lang, value ? (value + ' (' + this.appOptions.guestName + ')' ) : this.textAnonymous,
                                                   Common.localStorage.getItem("guest-id") || ('uid-' + Date.now()));
                 this.appOptions.user.anonymous && Common.localStorage.setItem("guest-id", this.appOptions.user.id);
 
                 this.appOptions.isDesktopApp    = this.editorConfig.targetApp == 'desktop' || Common.Controllers.Desktop.isActive();
+                if( Common.Controllers.Desktop.isActive() ){
+                    !this.editorConfig.recent && (this.editorConfig.recent = []);
+                }
+
                 this.appOptions.canCreateNew    = this.editorConfig.canRequestCreateNew || !_.isEmpty(this.editorConfig.createUrl) || this.editorConfig.templates && this.editorConfig.templates.length;
-                this.appOptions.canOpenRecent   = this.editorConfig.recent !== undefined && !this.appOptions.isDesktopApp;
+                this.appOptions.canOpenRecent   = this.editorConfig.recent !== undefined;
                 this.appOptions.templates       = this.editorConfig.templates;
                 this.appOptions.recent          = this.editorConfig.recent;
                 this.appOptions.createUrl       = this.editorConfig.createUrl;
@@ -398,6 +445,7 @@ define([
                 this.appOptions.fileChoiceUrl   = this.editorConfig.fileChoiceUrl;
                 this.appOptions.isEditDiagram   = this.editorConfig.mode == 'editdiagram';
                 this.appOptions.isEditMailMerge = this.editorConfig.mode == 'editmerge';
+                this.appOptions.isEditOle       = this.editorConfig.mode == 'editole';
                 this.appOptions.canRequestClose = this.editorConfig.canRequestClose;
                 this.appOptions.canBackToFolder = (this.editorConfig.canBackToFolder!==false) && (typeof (this.editorConfig.customization) == 'object') && (typeof (this.editorConfig.customization.goback) == 'object')
                                                   && (!_.isEmpty(this.editorConfig.customization.goback.url) || this.editorConfig.customization.goback.requestClose && this.appOptions.canRequestClose);
@@ -413,8 +461,12 @@ define([
                 this.appOptions.canMakeActionLink = this.editorConfig.canMakeActionLink;
                 this.appOptions.canFeaturePivot = true;
                 this.appOptions.canFeatureViews = true;
-
-                if (this.appOptions.user.guest && this.appOptions.canRenameAnonymous && !this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge)
+                this.appOptions.uiRtl = false;
+                this.appOptions.canRequestReferenceData = this.editorConfig.canRequestReferenceData;
+                this.appOptions.canRequestOpen = this.editorConfig.canRequestOpen;
+                this.appOptions.canRequestReferenceSource = this.editorConfig.canRequestReferenceSource;
+                
+                if (this.appOptions.user.guest && this.appOptions.canRenameAnonymous && !this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge && !this.appOptions.isEditOle)
                     Common.NotificationCenter.on('user:rename', _.bind(this.showRenameUserDialog, this));
 
                 this.headerView = this.getApplication().getController('Viewport').getView('Common.Views.Header');
@@ -462,14 +514,18 @@ define([
                     value = parseInt(value);
                 Common.Utils.InternalSettings.set("sse-macros-mode", value);
 
+                value = Common.localStorage.getItem("sse-allow-macros-request");
+                Common.Utils.InternalSettings.set("sse-allow-macros-request", (value !== null) ? parseInt(value)  : 0);
+
                 this.appOptions.wopi = this.editorConfig.wopi;
-                
-                this.isFrameClosed = (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge);
+                this.headerView.setWopi(this.appOptions.wopi);
+
+                this.isFrameClosed = (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle);
                 Common.Controllers.Desktop.init(this.appOptions);
 
-                if (this.appOptions.isEditDiagram) {
+                //if (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) {
                     Common.UI.HintManager.setMode(this.appOptions);
-                }
+                //}
             },
 
             loadDocument: function(data) {
@@ -490,6 +546,7 @@ define([
                     docInfo = new Asc.asc_CDocInfo();
                     docInfo.put_Id(data.doc.key);
                     docInfo.put_Url(data.doc.url);
+                    docInfo.put_DirectUrl(data.doc.directUrl);
                     docInfo.put_Title(data.doc.title);
                     docInfo.put_Format(data.doc.fileType);
                     docInfo.put_VKey(data.doc.vkey);
@@ -501,6 +558,12 @@ define([
                     docInfo.put_EncryptedInfo(this.editorConfig.encryptionKeys);
                     docInfo.put_Lang(this.editorConfig.lang);
                     docInfo.put_Mode(this.editorConfig.mode);
+                    docInfo.put_ReferenceData(data.doc.referenceData);
+
+                    var coEditMode = !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object') ? 'fast' : // fast by default
+                                     this.editorConfig.mode === 'view' && this.editorConfig.coEditing.change!==false ? 'fast' : // if can change mode in viewer - set fast for using live viewer
+                                     this.editorConfig.coEditing.mode || 'fast';
+                    docInfo.put_CoEditingMode(coEditMode);
 
                     var enable = !this.editorConfig.customization || (this.editorConfig.customization.macros!==false);
                     docInfo.asc_putIsEnabledMacroses(!!enable);
@@ -513,6 +576,7 @@ define([
 
                 this.api.asc_registerCallback('asc_onGetEditorPermissions', _.bind(this.onEditorPermissions, this));
                 this.api.asc_registerCallback('asc_onLicenseChanged',       _.bind(this.onLicenseChanged, this));
+                this.api.asc_registerCallback('asc_onMacrosPermissionRequest', _.bind(this.onMacrosPermissionRequest, this));
                 this.api.asc_registerCallback('asc_onRunAutostartMacroses', _.bind(this.onRunAutostartMacroses, this));
                 this.api.asc_setDocInfo(docInfo);
                 this.api.asc_getEditorPermissions(this.editorConfig.licenseUrl, this.editorConfig.customerId);
@@ -565,7 +629,9 @@ define([
                         Asc.c_oAscFileType.PDFA,
                         Asc.c_oAscFileType.XLTX,
                         Asc.c_oAscFileType.OTS,
-                        Asc.c_oAscFileType.XLSM
+                        Asc.c_oAscFileType.XLSM,
+                        Asc.c_oAscFileType.JPG,
+                        Asc.c_oAscFileType.PNG
                     ];
 
                 if ( !_format || _supported.indexOf(_format) < 0 )
@@ -644,17 +710,29 @@ define([
 
             onEditComplete: function(cmp, opts) {
                 if (opts && opts.restorefocus && this.api.isCEditorFocused) {
-                    this.formulaInput.blur();
-                    this.formulaInput.focus();
+                    var me = this;
+                    setTimeout(function () {
+                            me.formulaInput.blur();
+                            me.formulaInput.focus();
+                        }, 0);
                 } else {
                     this.getApplication().getController('DocumentHolder').getView('DocumentHolder').focus();
                     this.api.isCEditorFocused = false;
+                }
+
+                var application = this.getApplication(),
+                    toolbarView = application.getController('Toolbar').getView('Toolbar'),
+                    rightMenu = application.getController('RightMenu').getView('RightMenu');
+                if (this.appOptions.isEdit && (toolbarView && toolbarView._isEyedropperStart || rightMenu && rightMenu._isEyedropperStart)) {
+                    toolbarView._isEyedropperStart ? toolbarView._isEyedropperStart = false : rightMenu._isEyedropperStart = false;
+                    this.api.asc_cancelEyedropper();
                 }
 
                 Common.UI.HintManager.clearHints(true);
             },
 
             onSelectionChanged: function(info){
+                if (!info) return;
                 if (!this._isChartDataReady && info.asc_getSelectionType() == Asc.c_oAscSelectionType.RangeChart) {
                     this._isChartDataReady = true;
                     Common.Gateway.internalMessage('chartDataReady');
@@ -705,6 +783,9 @@ define([
                 } else {
                     if (this.loadMask) {
                         if (this.loadMask.isVisible() && !this.dontCloseDummyComment && !this.inTextareaControl && !Common.Utils.ModalWindow.isVisible() && !this.inFormControl)
+                            if (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram || this.appOptions.isEditOle) {
+                                Common.UI.HintManager.setInternalEditorLoading(false);
+                            }
                             this.api.asc_enableKeyEvents(true);
                         this.loadMask.hide();
                     }
@@ -797,6 +878,7 @@ define([
                     case Asc.c_oAscAsyncAction['Disconnect']:
                         title    = this.textDisconnect;
                         text     = this.textDisconnect;
+                        Common.UI.Menu.Manager.hideAll();
                         this.disableEditing(true, true);
                         var me = this;
                         statusCallback = function() {
@@ -854,10 +936,12 @@ define([
                 me.hidePreloader();
                 me.onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
 
-                value = (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram) ? 100 : Common.localStorage.getItem("sse-settings-zoom");
+                value = (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram || this.appOptions.isEditOle) ? 100 : Common.localStorage.getItem("sse-settings-zoom");
                 Common.Utils.InternalSettings.set("sse-settings-zoom", value);
                 var zf = (value!==null) ? parseInt(value)/100 : (this.appOptions.customization && this.appOptions.customization.zoom ? parseInt(this.appOptions.customization.zoom)/100 : 1);
-                this.api.asc_setZoom(zf>0 ? zf : 1);
+                value = Common.localStorage.getItem("sse-last-zoom");
+                var lastZoom = (value!==null) ? parseInt(value)/100 : 1;
+                this.api.asc_setZoom(zf>0 ? zf : (zf < 0 && lastZoom > 0) ? lastZoom : 1);
 
                 /** coauthoring begin **/
                 this.isLiveCommenting = Common.localStorage.getBool("sse-settings-livecomment", true);
@@ -910,14 +994,15 @@ define([
                 leftMenuView.getMenu('file').loadDocument({doc:me.appOptions.spreadsheet});
                 leftmenuController.setMode(me.appOptions).createDelayedElements().setApi(me.api);
 
-                 if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram) {
+                 if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle) {
                      pluginsController.setApi(me.api);
                      this.api && this.api.asc_setFrozenPaneBorderType(Common.localStorage.getBool('sse-freeze-shadow', true) ? Asc.c_oAscFrozenPaneBorderType.shadow : Asc.c_oAscFrozenPaneBorderType.line);
+                     application.getController('Common.Controllers.ExternalOleEditor').setApi(this.api).loadConfig({config:this.editorConfig, customization: this.editorConfig.customization});
                  }
 
                 leftMenuView.disableMenu('all',false);
 
-                if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && me.appOptions.canBranding) {
+                if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle && me.appOptions.canBranding) {
                     me.getApplication().getController('LeftMenu').leftMenu.getMenu('about').setLicInfo(me.editorConfig.customization);
                 }
 
@@ -954,7 +1039,7 @@ define([
                     }
 
                     var timer_sl = setInterval(function(){
-                        if (window.styles_loaded || me.appOptions.isEditDiagram || me.appOptions.isEditMailMerge) {
+                        if (window.styles_loaded || me.appOptions.isEditDiagram || me.appOptions.isEditMailMerge || me.appOptions.isEditOle) {
                             clearInterval(timer_sl);
 
                             Common.NotificationCenter.trigger('comments:updatefilter', ['doc', 'sheet' + me.api.asc_getActiveWorksheetId()]);
@@ -963,13 +1048,15 @@ define([
                             toolbarController.createDelayedElements();
                             me.setLanguages();
 
-                            if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram) {
+                            if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle) {
                                 var shapes = me.api.asc_getPropertyEditorShapes();
                                 if (shapes)
                                     me.fillAutoShapes(shapes[0], shapes[1]);
 
                                 me.updateThemeColors();
                                 toolbarController.activateControls();
+                            } else if (me.appOptions.isEditOle) {
+                                me.updateThemeColors();
                             }
 
                             rightmenuController.createDelayedElements();
@@ -990,13 +1077,14 @@ define([
                         }
                     }, 50);
                 } else {
+                    var formulasDlgController = application.getController('FormulaDialog');
+                    formulasDlgController && formulasDlgController.setMode(me.appOptions).setApi(me.api);
                     documentHolderView.createDelayedElementsViewer();
                     Common.NotificationCenter.trigger('document:ready', 'main');
-                    if (me.editorConfig.mode !== 'view') // if want to open editor, but viewer is loaded
-                        me.applyLicense();
+                    me.applyLicense();
                 }
                 // TODO bug 43960
-                if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram) {
+                if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle) {
                     var dummyClass = ~~(1e6*Math.random());
                     $('.toolbar').prepend(Common.Utils.String.format('<div class="lazy-{0} x-huge"><div class="toolbar__icon" style="position: absolute; width: 1px; height: 1px;"></div>', dummyClass));
                     setTimeout(function() { $(Common.Utils.String.format('.toolbar .lazy-{0}', dummyClass)).remove(); }, 10);
@@ -1033,12 +1121,14 @@ define([
                 } else checkWarns();
 
                 Common.Gateway.documentReady();
-                if (this.appOptions.user.guest && this.appOptions.canRenameAnonymous && !this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge && (Common.Utils.InternalSettings.get("guest-username")===null))
+                if (this.appOptions.user.guest && this.appOptions.canRenameAnonymous && !this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge && !this.appOptions.isEditOle && (Common.Utils.InternalSettings.get("guest-username")===null))
                     this.showRenameUserDialog();
+                if (this._needToSaveAsFile) // warning received before document is ready
+                    this.getApplication().getController('LeftMenu').leftMenu.showMenu('file:saveas');
             },
 
             onLicenseChanged: function(params) {
-                if (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) return;
+                if (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) return;
 
                 var licType = params.asc_getLicenseType();
                 if (licType !== undefined && (this.appOptions.canEdit || this.appOptions.isRestrictedEdit) && this.editorConfig.mode !== 'view' &&
@@ -1046,19 +1136,38 @@ define([
                     || licType===Asc.c_oLicenseResult.SuccessLimit && (this.appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0))
                     this._state.licenseType = licType;
 
+                if (licType !== undefined && this.appOptions.canLiveView && (licType===Asc.c_oLicenseResult.ConnectionsLive || licType===Asc.c_oLicenseResult.ConnectionsLiveOS||
+                                                                             licType===Asc.c_oLicenseResult.UsersViewCount || licType===Asc.c_oLicenseResult.UsersViewCountOS))
+                    this._state.licenseType = licType;
+
                 if (this._isDocReady)
                     this.applyLicense();
             },
 
             applyLicense: function() {
-                if (this._state.licenseType) {
+                if (this.editorConfig.mode === 'view') {
+                    if (this.appOptions.canLiveView && (this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLive || this._state.licenseType===Asc.c_oLicenseResult.ConnectionsLiveOS ||
+                                                        this._state.licenseType===Asc.c_oLicenseResult.UsersViewCount || this._state.licenseType===Asc.c_oLicenseResult.UsersViewCountOS ||
+                                                        !this.appOptions.isAnonymousSupport && !!this.appOptions.user.anonymous)) {
+                        // show warning or write to log if Common.Utils.InternalSettings.get("sse-settings-coauthmode") was true ???
+                        this.disableLiveViewing(true);
+                    }
+                } else if (!this.appOptions.isAnonymousSupport && !!this.appOptions.user.anonymous) {
+                    this.disableEditing(true);
+                    this.api.asc_coAuthoringDisconnect();
+                    Common.NotificationCenter.trigger('api:disconnect');
+                    Common.UI.warning({
+                        title: this.notcriticalErrorTitle,
+                        msg  : this.warnLicenseAnonymous,
+                        buttons: ['ok']
+                    });
+                } else if (this._state.licenseType) {
                     var license = this._state.licenseType,
                         buttons = ['ok'],
                         primary = 'ok';
                     if ((this.appOptions.trialMode & Asc.c_oLicenseMode.Limited) !== 0 &&
-                        (license===Asc.c_oLicenseResult.SuccessLimit || license===Asc.c_oLicenseResult.ExpiredLimited || this.appOptions.permissionsLicense===Asc.c_oLicenseResult.SuccessLimit)) {
-                        (license===Asc.c_oLicenseResult.ExpiredLimited) && this.getApplication().getController('LeftMenu').leftMenu.setLimitMode();// show limited hint
-                        license = (license===Asc.c_oLicenseResult.ExpiredLimited) ? this.warnLicenseLimitedNoAccess : this.warnLicenseLimitedRenewed;
+                        (license===Asc.c_oLicenseResult.SuccessLimit || this.appOptions.permissionsLicense===Asc.c_oLicenseResult.SuccessLimit)) {
+                        license = this.warnLicenseLimitedRenewed;
                     } else if (license===Asc.c_oLicenseResult.Connections || license===Asc.c_oLicenseResult.UsersCount) {
                         license = (license===Asc.c_oLicenseResult.Connections) ? this.warnLicenseExceeded : this.warnLicenseUsersExceeded;
                     } else {
@@ -1069,6 +1178,7 @@ define([
 
                     if (this._state.licenseType!==Asc.c_oLicenseResult.SuccessLimit && (this.appOptions.isEdit || this.appOptions.isRestrictedEdit)) {
                         this.disableEditing(true);
+                        this.api.asc_coAuthoringDisconnect();
                         Common.NotificationCenter.trigger('api:disconnect');
                     }
 
@@ -1091,8 +1201,9 @@ define([
                             }
                         });
                     }
-                } else if (!this.appOptions.isDesktopApp && !this.appOptions.canBrandingExt && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) &&
-                    this.editorConfig && this.editorConfig.customization && (this.editorConfig.customization.loaderName || this.editorConfig.customization.loaderLogo)) {
+                } else if (!this.appOptions.isDesktopApp && !this.appOptions.canBrandingExt && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) &&
+                    this.editorConfig && this.editorConfig.customization && (this.editorConfig.customization.loaderName || this.editorConfig.customization.loaderLogo ||
+                    this.editorConfig.customization.font && (this.editorConfig.customization.font.size || this.editorConfig.customization.font.name))) {
                     Common.UI.warning({
                         title: this.textPaidFeature,
                         msg  : this.textCustomLoader,
@@ -1111,7 +1222,7 @@ define([
                     viewMode: disable,
                     allowSignature: false,
                     allowProtect: false,
-                    rightMenu: {clear: true, disable: true},
+                    rightMenu: {clear: !temp, disable: true},
                     statusBar: true,
                     leftMenu: {disable: true, previewMode: true},
                     fileMenu: {protect: true, history: temp},
@@ -1119,7 +1230,7 @@ define([
                     chat: true,
                     review: true,
                     viewport: true,
-                    documentHolder: true,
+                    documentHolder: {clear: !temp, disable: true},
                     toolbar: true,
                     celleditor: {previewMode: true}
                 }, temp ? 'reconnect' : 'disconnect');
@@ -1151,7 +1262,8 @@ define([
                     app.getController('Toolbar').DisableToolbar(disable, options.viewMode);
                 }
                 if (options.documentHolder) {
-                    app.getController('DocumentHolder').SetDisabled(disable, options.allowProtect);
+                    options.documentHolder.clear && app.getController('DocumentHolder').clearSelection();
+                    options.documentHolder.disable && app.getController('DocumentHolder').SetDisabled(disable, options.allowProtect);
                 }
                 if (options.leftMenu) {
                     if (options.leftMenu.disable)
@@ -1178,6 +1290,12 @@ define([
                 }
             },
 
+            disableLiveViewing: function(disable) {
+                this.appOptions.canLiveView = !disable;
+                this.api.asc_SetFastCollaborative(!disable);
+                Common.Utils.InternalSettings.set("sse-settings-coauthmode", !disable);
+            },
+
             onOpenDocument: function(progress) {
                 var elem = document.getElementById('loadmask-text');
                 var proc = (progress.asc_getCurrentFont() + progress.asc_getCurrentImage())/(progress.asc_getFontsCount() + progress.asc_getImagesCount());
@@ -1187,18 +1305,17 @@ define([
 
             onEditorPermissions: function(params) {
                 var licType = params ? params.asc_getLicenseType() : Asc.c_oLicenseResult.Error;
-                if ( params && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge)) {
-                    if (Asc.c_oLicenseResult.Expired === licType || Asc.c_oLicenseResult.Error === licType || Asc.c_oLicenseResult.ExpiredTrial === licType) {
+                if ( params && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle)) {
+                    if (Asc.c_oLicenseResult.Expired === licType || Asc.c_oLicenseResult.Error === licType || Asc.c_oLicenseResult.ExpiredTrial === licType ||
+                        Asc.c_oLicenseResult.NotBefore === licType || Asc.c_oLicenseResult.ExpiredLimited === licType) {
                         Common.UI.warning({
-                            title: this.titleLicenseExp,
-                            msg: this.warnLicenseExp,
+                            title: Asc.c_oLicenseResult.NotBefore === licType ? this.titleLicenseNotActive : this.titleLicenseExp,
+                            msg: Asc.c_oLicenseResult.NotBefore === licType ? this.warnLicenseBefore : this.warnLicenseExp,
                             buttons: [],
                             closable: false
                         });
                         return;
                     }
-                    if (Asc.c_oLicenseResult.ExpiredLimited === licType)
-                        this._state.licenseType = licType;
 
                     if ( this.onServerVersion(params.asc_getBuildVersion()) || !this.onLanguageLoaded() ) return;
 
@@ -1253,10 +1370,11 @@ define([
                 this.appOptions.canRequestEditRights = this.editorConfig.canRequestEditRights;
                 this.appOptions.canEdit        = this.permissions.edit !== false && // can edit
                                                  (this.editorConfig.canRequestEditRights || this.editorConfig.mode !== 'view'); // if mode=="view" -> canRequestEditRights must be defined
-                this.appOptions.isEdit         = (this.appOptions.canLicense || this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) && this.permissions.edit !== false && this.editorConfig.mode !== 'view';
+                this.appOptions.isEdit         = (this.appOptions.canLicense || this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) && this.permissions.edit !== false && this.editorConfig.mode !== 'view';
                 this.appOptions.canDownload    = (this.permissions.download !== false);
-                this.appOptions.canPrint       = (this.permissions.print !== false);
-                this.appOptions.canForcesave   = this.appOptions.isEdit && !this.appOptions.isOffline && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) &&
+                this.appOptions.canPrint       = (this.permissions.print !== false) && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle);
+                this.appOptions.canQuickPrint = this.appOptions.canPrint && !Common.Utils.isMac && this.appOptions.isDesktopApp;
+                this.appOptions.canForcesave   = this.appOptions.isEdit && !this.appOptions.isOffline && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) &&
                                                 (typeof (this.editorConfig.customization) == 'object' && !!this.editorConfig.customization.forcesave);
                 this.appOptions.forcesave      = this.appOptions.canForcesave;
                 this.appOptions.canEditComments= this.appOptions.isOffline || !this.permissions.editCommentAuthorOnly;
@@ -1267,21 +1385,26 @@ define([
                         this.appOptions.canEditComments = this.appOptions.canDeleteComments = this.appOptions.isOffline;
                 }
                 this.appOptions.isSignatureSupport= this.appOptions.isEdit && this.appOptions.isDesktopApp && this.appOptions.isOffline && this.api.asc_isSignaturesSupport() && (this.permissions.protect!==false)
-                                                    && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge);
+                                                    && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle);
                 this.appOptions.isPasswordSupport = this.appOptions.isEdit && this.api.asc_isProtectionSupport() && (this.permissions.protect!==false)
-                                                    && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge);
-                this.appOptions.canProtect     = (this.appOptions.isSignatureSupport || this.appOptions.isPasswordSupport);
+                                                    && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle);
+                this.appOptions.canProtect     = (this.permissions.protect!==false) && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle);
                 this.appOptions.canHelp        = !((typeof (this.editorConfig.customization) == 'object') && this.editorConfig.customization.help===false);
                 this.appOptions.isRestrictedEdit = !this.appOptions.isEdit && this.appOptions.canComments;
 
-                this.appOptions.canChangeCoAuthoring = this.appOptions.isEdit && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) && this.appOptions.canCoAuthoring &&
-                                                        !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object' && this.editorConfig.coEditing.change===false);
+                // change = true by default in editor
+                this.appOptions.canLiveView = !!params.asc_getLiveViewerSupport() && (this.editorConfig.mode === 'view'); // viewer: change=false when no flag canLiveViewer (i.g. old license), change=true by default when canLiveViewer==true
+                this.appOptions.canChangeCoAuthoring = this.appOptions.isEdit && !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge || this.appOptions.isEditOle) && this.appOptions.canCoAuthoring &&
+                                                       !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object' && this.editorConfig.coEditing.change===false) ||
+                                                       this.appOptions.canLiveView && !(this.editorConfig.coEditing && typeof this.editorConfig.coEditing == 'object' && this.editorConfig.coEditing.change===false);
+                this.appOptions.isAnonymousSupport = !!this.api.asc_isAnonymousSupport();
 
-                if (!this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge) {
+                if (!this.appOptions.isEditDiagram && !this.appOptions.isEditMailMerge && !this.appOptions.isEditOle) {
                     this.appOptions.canBrandingExt = params.asc_getCanBranding() && (typeof this.editorConfig.customization == 'object' || this.editorConfig.plugins);
                     this.getApplication().getController('Common.Controllers.Plugins').setMode(this.appOptions);
-                    this.appOptions.canBrandingExt && this.editorConfig.customization && Common.UI.LayoutManager.init(this.editorConfig.customization.layout);
+                    this.editorConfig.customization && Common.UI.LayoutManager.init(this.editorConfig.customization.layout, this.appOptions.canBrandingExt);
                     this.editorConfig.customization && Common.UI.FeaturesManager.init(this.editorConfig.customization.features, this.appOptions.canBrandingExt);
+                    Common.UI.ExternalUsers.init(this.appOptions.canRequestUsers);
                 }
 
                 this.appOptions.canUseHistory  = this.appOptions.canLicense && this.editorConfig.canUseHistory && this.appOptions.canCoAuthoring && !this.appOptions.isOffline;
@@ -1332,6 +1455,12 @@ define([
                     fastCoauth = (value===null || parseInt(value) == 1);
                 } else if (!this.appOptions.isEdit && this.appOptions.isRestrictedEdit) {
                     fastCoauth = true;
+                }  else if (this.appOptions.canLiveView && !this.appOptions.isOffline) { // viewer
+                    value = Common.localStorage.getItem("sse-settings-view-coauthmode");
+                    if (!this.appOptions.canChangeCoAuthoring || value===null) { // Use coEditing.mode or 'fast' by default
+                        value = this.editorConfig.coEditing && this.editorConfig.coEditing.mode==='strict' ? 0 : 1;
+                    }
+                    fastCoauth = (parseInt(value) == 1);
                 } else {
                     fastCoauth = false;
                     autosave = 0;
@@ -1356,7 +1485,7 @@ define([
                     statusbarView   = app.getController('Statusbar').getView('Statusbar');
 
                 if (this.headerView) {
-                    this.headerView.setVisible(!this.appOptions.isEditMailMerge && !this.appOptions.isDesktopApp && !this.appOptions.isEditDiagram);
+                    this.headerView.setVisible(!this.appOptions.isEditMailMerge && !this.appOptions.isDesktopApp && !this.appOptions.isEditDiagram && !this.appOptions.isEditOle);
                 }
 
                 viewport && viewport.setMode(this.appOptions, true);
@@ -1366,8 +1495,12 @@ define([
                 app.getController('Toolbar').setMode(this.appOptions);
                 app.getController('DocumentHolder').setMode(this.appOptions);
 
+                viewport && viewport.applyCommonMode();
+
                 if (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram) {
                     statusbarView.hide();
+                }
+                if (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram || this.appOptions.isEditOle) {
                     app.getController('LeftMenu').getView('LeftMenu').hide();
 
                     $(window)
@@ -1375,20 +1508,23 @@ define([
                             Common.Gateway.internalMessage('processMouse', {event: 'mouse:up'});
                         })
                         .mousemove($.proxy(function(e){
-                            if (this.isDiagramDrag) {
+                            if (this.isDiagramDrag || this.isDiagramResize) {
                                 Common.Gateway.internalMessage('processMouse', {event: 'mouse:move', pagex: e.pageX*Common.Utils.zoom(), pagey: e.pageY*Common.Utils.zoom()});
                             }
                         },this));
                 }
 
-                if (!this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram) {
+                if (!this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram && !this.appOptions.isEditOle) {
                     this.api.asc_registerCallback('asc_onSendThemeColors', _.bind(this.onSendThemeColors, this));
                     this.api.asc_registerCallback('asc_onDownloadUrl',     _.bind(this.onDownloadUrl, this));
                     this.api.asc_registerCallback('asc_onDocumentModifiedChanged', _.bind(this.onDocumentModifiedChanged, this));
 
                     var printController = app.getController('Print');
                     printController && this.api && printController.setApi(this.api).setMode(this.appOptions);
-
+                } else {
+                    this.api.asc_registerCallback('asc_sendFromFrameToGeneralEditor', _.bind(this.onSendFromFrameToGeneralEditor, this));
+                    if (this.appOptions.isEditOle)
+                        this.api.asc_registerCallback('asc_onSendThemeColors', _.bind(this.onSendThemeColors, this));
                 }
 
                 var celleditorController = this.getApplication().getController('CellEditor');
@@ -1403,6 +1539,7 @@ define([
                     commentsController.setConfig({
                             config      : this.editorConfig,
                             sdkviewname : '#ws-canvas-outer',
+                            fullInfoHintMode : true,
                             hintmode    : true},
                         this.api);
                 }
@@ -1418,14 +1555,12 @@ define([
                 Common.Utils.Metric.setCurrentMetric(value);
                 Common.Utils.InternalSettings.set("sse-settings-unit", value);
 
+                var toolbarController   = application.getController('Toolbar');
+                toolbarController   && toolbarController.setApi(me.api);
+
                 if (this.appOptions.isRestrictedEdit) {
-                    var toolbarController   = application.getController('Toolbar');
-                    toolbarController   && toolbarController.setApi(me.api);
                     application.getController('WBProtection').setMode(me.appOptions).setConfig({config: me.editorConfig}, me.api);
                 } else if (this.appOptions.isEdit) { // set api events for toolbar in the Restricted Editing mode
-                    var toolbarController   = application.getController('Toolbar');
-                    toolbarController   && toolbarController.setApi(me.api);
-
                     var statusbarController = application.getController('Statusbar'),
                         rightmenuController = application.getController('RightMenu'),
                         fontsControllers    = application.getController('Common.Controllers.Fonts');
@@ -1438,10 +1573,11 @@ define([
                     application.getController('WBProtection').setMode(me.appOptions).setConfig({config: me.editorConfig}, me.api);
 
                     if (statusbarController) {
-                        statusbarController.getView('Statusbar').changeViewMode(true);
+                        statusbarController.getView('Statusbar').changeViewMode(me.appOptions);
+                        me.appOptions.isEditOle && statusbarController.onChangeViewMode(null, true, true); // set compact status bar for ole editing mode
                     }
 
-                    if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && me.appOptions.canFeaturePivot)
+                    if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle && me.appOptions.canFeaturePivot)
                         application.getController('PivotTable').setMode(me.appOptions);
 
                     var viewport = this.getApplication().getController('Viewport').getView('Viewport');
@@ -1450,7 +1586,7 @@ define([
 
                     this.toolbarView = toolbarController.getView('Toolbar');
 
-                    if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram) {
+                    if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram && !me.appOptions.isEditOle) {
                         var options = {};
                         JSON.parse(Common.localStorage.getItem('sse-hidden-formula')) && (options.formula = true);
                         application.getController('Toolbar').hideElements(options);
@@ -1484,19 +1620,27 @@ define([
                 }
             },
 
-            onExternalMessage: function(msg) {
+            onExternalMessage: function(msg, options) {
                 if (msg && msg.msg) {
                     msg.msg = (msg.msg).toString();
-                    this.showTips([msg.msg.charAt(0).toUpperCase() + msg.msg.substring(1)]);
+                    this.showTips([msg.msg.charAt(0).toUpperCase() + msg.msg.substring(1)], options);
 
                     Common.component.Analytics.trackEvent('External Error');
                 }
             },
 
             onError: function(id, level, errData, callback) {
+                if (this.isFrameClosed) {
+                    this.lastFrameError = {id: id, level: level, errData: errData, callback: callback};
+                    return;
+                }
+
                 if (id == Asc.c_oAscError.ID.LoadingScriptError) {
                     this.showTips([this.scriptLoadError]);
                     this.tooltip && this.tooltip.getBSTip().$tip.css('z-index', 10000);
+                    return;
+                } else if (id == Asc.c_oAscError.ID.CanNotPasteImage) {
+                    this.showTips([this.errorCannotPasteImg], {timeout: 7000, hideCloseTip: true});
                     return;
                 }
 
@@ -1895,12 +2039,19 @@ define([
                     case Asc.c_oAscError.ID.FillAllRowsWarning:
                         var fill = errData[0],
                             have = errData[1],
-                            fillWithSeparator = fill.toLocaleString(this.appOptions.lang);
+                            lang = (this.appOptions.lang || 'en').replace('_', '-').toLowerCase(),
+                            fillWithSeparator;
+                        try {
+                            fillWithSeparator = fill.toLocaleString(lang);
+                        } catch (e) {
+                            lang = 'en';
+                            fillWithSeparator = fill.toLocaleString(lang);
+                        }
                         if (this.appOptions.isDesktopApp && this.appOptions.isOffline) {
                             config.msg = fill > have ? Common.Utils.String.format(this.textFormulaFilledAllRowsWithEmpty, fillWithSeparator) : Common.Utils.String.format(this.textFormulaFilledAllRows, fillWithSeparator);
                             config.buttons = [{caption: this.textFillOtherRows, primary: true, value: 'fillOther'}, 'close'];
                         } else {
-                            config.msg = fill >= have ? Common.Utils.String.format(this.textFormulaFilledFirstRowsOtherIsEmpty, fillWithSeparator) : Common.Utils.String.format(this.textFormulaFilledFirstRowsOtherHaveData, fillWithSeparator, (have - fill).toLocaleString(this.appOptions.lang));
+                            config.msg = fill >= have ? Common.Utils.String.format(this.textFormulaFilledFirstRowsOtherIsEmpty, fillWithSeparator) : Common.Utils.String.format(this.textFormulaFilledFirstRowsOtherHaveData, fillWithSeparator, (have - fill).toLocaleString(lang));
                             config.buttons = ['ok'];
                         }
                         config.maxwidth = 400;
@@ -1908,6 +2059,39 @@ define([
 
                     case Asc.c_oAscError.ID.CannotUseCommandProtectedSheet:
                         config.msg = this.errorCannotUseCommandProtectedSheet;
+                        break;
+
+                    case Asc.c_oAscError.ID.DirectUrl:
+                        config.msg = this.errorDirectUrl;
+                        break;
+
+                    case Asc.c_oAscError.ID.ConvertationOpenFormat:
+                        config.maxwidth = 600;
+                        if (Common.Utils.InternalSettings.get('import-xml-start'))
+                            config.msg = this.errorConvertXml;
+                        else if (errData === 'pdf')
+                            config.msg = this.errorInconsistentExtPdf.replace('%1', this.appOptions.spreadsheet.fileType || '');
+                        else if  (errData === 'docx')
+                            config.msg = this.errorInconsistentExtDocx.replace('%1', this.appOptions.spreadsheet.fileType || '');
+                        else if  (errData === 'xlsx')
+                            config.msg = this.errorInconsistentExtXlsx.replace('%1', this.appOptions.spreadsheet.fileType || '');
+                        else if  (errData === 'pptx')
+                            config.msg = this.errorInconsistentExtPptx.replace('%1', this.appOptions.spreadsheet.fileType || '');
+                        else
+                            config.msg = this.errorInconsistentExt;
+                        break;
+
+                    case Asc.c_oAscError.ID.ProtectedRangeByOtherUser:
+                        config.msg = this.errorProtectedRange;
+                        break;
+
+                    case Asc.c_oAscError.ID.TraceDependentsNoFormulas:
+                        config.msg = this.errorDependentsNoFormulas;
+                        break;
+
+                    case Asc.c_oAscError.ID.TracePrecedentsNoValidReference:
+                        config.msg = this.errorPrecedentsNoValidRef;
+                        config.maxwidth = 600;
                         break;
 
                     default:
@@ -1943,7 +2127,11 @@ define([
                     config.callback = _.bind(function(btn){
                         if (id == Asc.c_oAscError.ID.Warning && btn == 'ok' && this.appOptions.canDownload) {
                             Common.UI.Menu.Manager.hideAll();
-                            (this.appOptions.isDesktopApp && this.appOptions.isOffline) ? this.api.asc_DownloadAs() : this.getApplication().getController('LeftMenu').leftMenu.showMenu('file:saveas');
+                            if (this.appOptions.isDesktopApp && this.appOptions.isOffline)
+                                this.api.asc_DownloadAs();
+                            else {
+                                this._isDocReady ? this.getApplication().getController('LeftMenu').leftMenu.showMenu('file:saveas') : (this._needToSaveAsFile = true);
+                            }
                         } else if (id == Asc.c_oAscError.ID.EditingError) {
                             this.disableEditing(true);
                             Common.NotificationCenter.trigger('api:disconnect', true); // enable download and print
@@ -1970,17 +2158,30 @@ define([
                 this._state.isDisconnected = true;
             },
 
-            showTips: function(strings) {
+            showTips: function(strings, options) {
                 var me = this;
                 if (!strings.length) return;
                 if (typeof(strings)!='object') strings = [strings];
 
+                function closeTip(cmp){
+                    me.tipTimeout && clearTimeout(me.tipTimeout);
+                    setTimeout(showNextTip, 300);
+                }
+
                 function showNextTip() {
                     var str_tip = strings.shift();
                     if (str_tip) {
-                        str_tip += '\n' + me.textCloseTip;
-                        tooltip.setTitle(str_tip);
-                        tooltip.show();
+                        if (!(options && options.hideCloseTip))
+                            str_tip += '\n' + me.textCloseTip;
+                        me.tooltip.setTitle(str_tip);
+                        me.tooltip.show();
+                        me.tipTimeout && clearTimeout(me.tipTimeout);
+                        if (options && options.timeout) {
+                            me.tipTimeout = setTimeout(function () {
+                                me.tooltip.hide();
+                                closeTip();
+                            }, options.timeout);
+                        }
                     }
                 }
 
@@ -1992,12 +2193,8 @@ define([
                         cls: 'main-info',
                         offset: 30
                     });
+                    this.tooltip.on('tooltip:hideonclick',closeTip);
                 }
-
-                var tooltip = this.tooltip;
-                tooltip.on('tooltip:hide', function(){
-                    setTimeout(showNextTip, 300);
-                });
 
                 showNextTip();
             },
@@ -2067,7 +2264,7 @@ define([
             onBeforeUnload: function() {
                 Common.localStorage.save();
 
-                var isEdit = this.permissions.edit !== false && this.editorConfig.mode !== 'view' && this.editorConfig.mode !== 'editdiagram' && this.editorConfig.mode !== 'editmerge';
+                var isEdit = this.permissions.edit !== false && this.editorConfig.mode !== 'view' && this.editorConfig.mode !== 'editdiagram' && this.editorConfig.mode !== 'editmerge' && this.editorConfig.mode !== 'editole';
                 if (isEdit && this.api.asc_isDocumentModified()) {
                     var me = this;
                     this.api.asc_stopSaving();
@@ -2155,7 +2352,9 @@ define([
             onServerVersion: function(buildVersion) {
                 if (this.changeServerVersion) return true;
 
-                if (DocsAPI.DocEditor.version() !== buildVersion && !window.compareVersions) {
+                const cur_version = this.getApplication().getController('LeftMenu').leftMenu.getMenu('about').txtVersionNum;
+                const cropped_version = cur_version.match(/^(\d+.\d+.\d+)/);
+                if (!window.compareVersions && (!cropped_version || cropped_version[1] !== buildVersion)) {
                     this.changeServerVersion = true;
                     Common.UI.warning({
                         title: this.titleServerVersion,
@@ -2235,7 +2434,7 @@ define([
                 if (!this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram && window.editor_elements_prepared) {
                     this.application.getController('Statusbar').selectTab(index);
 
-                    if (this.appOptions.canViewComments && !this.dontCloseDummyComment) {
+                    if (!this.appOptions.isEditOle && this.appOptions.canViewComments && !this.dontCloseDummyComment) {
                         Common.NotificationCenter.trigger('comments:updatefilter', ['doc', 'sheet' + this.api.asc_getWorksheetId(index)], false ); //  hide popover
                     }
                 }
@@ -2243,57 +2442,102 @@ define([
 
             onConfirmAction: function(id, apiCallback, data) {
                 var me = this;
-                if (id == Asc.c_oAscConfirm.ConfirmReplaceRange || id == Asc.c_oAscConfirm.ConfirmReplaceFormulaInTable) {
-                    Common.UI.warning({
-                        title: this.notcriticalErrorTitle,
-                        msg: id == Asc.c_oAscConfirm.ConfirmReplaceRange ? this.confirmMoveCellRange : this.confirmReplaceFormulaInTable,
-                        buttons: ['yes', 'no'],
-                        primary: 'yes',
-                        callback: _.bind(function(btn) {
-                            if (apiCallback)  {
-                                apiCallback(btn === 'yes');
-                            }
-                            if (btn == 'yes') {
+                switch (id) {
+                    case Asc.c_oAscConfirm.ConfirmReplaceRange:
+                    case Asc.c_oAscConfirm.ConfirmReplaceFormulaInTable:
+                        Common.UI.warning({
+                            title: this.notcriticalErrorTitle,
+                            msg: id == Asc.c_oAscConfirm.ConfirmReplaceRange ? this.confirmMoveCellRange : this.confirmReplaceFormulaInTable,
+                            buttons: ['yes', 'no'],
+                            primary: 'yes',
+                            callback: _.bind(function(btn) {
+                                if (apiCallback)  {
+                                    apiCallback(btn === 'yes');
+                                }
+                                if (btn == 'yes') {
+                                    me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
+                                }
+                            }, this)
+                        });
+                        break;
+                    case Asc.c_oAscConfirm.ConfirmPutMergeRange:
+                        Common.UI.warning({
+                            closable: false,
+                            title: this.notcriticalErrorTitle,
+                            msg: this.confirmPutMergeRange,
+                            buttons: ['ok'],
+                            primary: 'ok',
+                            callback: _.bind(function(btn) {
+                                if (apiCallback)  {
+                                    apiCallback();
+                                }
+                                me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
+                            }, this)
+                        });
+                        break;
+                    case Asc.c_oAscConfirm.ConfirmChangeProtectRange:
+                        var win = new Common.Views.OpenDialog({
+                            title: this.txtUnlockRange,
+                            closable: true,
+                            type: Common.Utils.importTextType.DRM,
+                            warning: true,
+                            warningMsg: this.txtUnlockRangeWarning,
+                            txtOpenFile: this.txtUnlockRangeDescription,
+                            validatePwd: false,
+                            handler: function (result, value) {
+                                if (me.api && apiCallback)  {
+                                    if (result == 'ok') {
+                                        me.api.asc_checkProtectedRangesPassword(value.drmOptions.asc_getPassword(), data, function(res) {
+                                            apiCallback(res, false);
+                                        });
+                                    } else
+                                        apiCallback(false, true);
+                                }
                                 me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
                             }
-                        }, this)
-                    });
-                } else if (id == Asc.c_oAscConfirm.ConfirmPutMergeRange) {
-                    Common.UI.warning({
-                        closable: false,
-                        title: this.notcriticalErrorTitle,
-                        msg: this.confirmPutMergeRange,
-                        buttons: ['ok'],
-                        primary: 'ok',
-                        callback: _.bind(function(btn) {
-                            if (apiCallback)  {
-                                apiCallback();
-                            }
-                            me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
-                        }, this)
-                    });
-                } else if (id == Asc.c_oAscConfirm.ConfirmChangeProtectRange) {
-                    var win = new Common.Views.OpenDialog({
-                        title: this.txtUnlockRange,
-                        closable: true,
-                        type: Common.Utils.importTextType.DRM,
-                        warning: true,
-                        warningMsg: this.txtUnlockRangeWarning,
-                        txtOpenFile: this.txtUnlockRangeDescription,
-                        validatePwd: false,
-                        handler: function (result, value) {
-                            if (me.api && apiCallback)  {
-                                if (result == 'ok') {
-                                    me.api.asc_checkProtectedRangesPassword(value.drmOptions.asc_getPassword(), data, function(res) {
-                                        apiCallback(res, false);
-                                    });
-                                } else
-                                    apiCallback(false, true);
-                            }
-                            me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
-                        }
-                    });
-                    win.show();
+                        });
+                        win.show();
+                        break;
+                    case Asc.c_oAscConfirm.ConfirmAddCellWatches:
+                        Common.UI.warning({
+                            title: this.notcriticalErrorTitle,
+                            msg: (data>Asc.c_nAscMaxAddCellWatchesCount) ? Common.Utils.String.format(this.confirmAddCellWatchesMax, Asc.c_nAscMaxAddCellWatchesCount) : Common.Utils.String.format(this.confirmAddCellWatches, data),
+                            buttons: ['yes', 'no'],
+                            primary: 'yes',
+                            callback: _.bind(function(btn) {
+                                if (apiCallback)  {
+                                    apiCallback(btn === 'yes');
+                                }
+                            }, this)
+                        });
+                        break;
+                    case Asc.c_oAscConfirm.ConfirmMaxChangesSize:
+                        Common.UI.warning({
+                            title: this.notcriticalErrorTitle,
+                            msg: this.confirmMaxChangesSize,
+                            buttons: [{value: 'ok', caption: this.textUndo, primary: true}, {value: 'cancel', caption: this.textContinue}],
+                            maxwidth: 600,
+                            callback: _.bind(function(btn) {
+                                if (apiCallback)  {
+                                    apiCallback(btn === 'ok');
+                                }
+                                me.onEditComplete(me.application.getController('DocumentHolder').getView('DocumentHolder'));
+                            }, this)
+                        });
+                        break;
+                    case Asc.c_oAscConfirm.ConfirmReplaceHeaderFooterPicture:
+                        Common.UI.warning({
+                            title: this.notcriticalErrorTitle,
+                            msg: this.confirmReplaceHFPicture,
+                            buttons: [{value: 'ok', caption: this.textReplace, primary: true}, {value: 'cancel', caption: this.textKeep}],
+                            maxwidth: 600,
+                            callback: _.bind(function(btn) {
+                                if (apiCallback)  {
+                                    apiCallback(btn === 'ok');
+                                }
+                            }, this)
+                        });
+                        break;
                 }
             },
 
@@ -2457,7 +2701,7 @@ define([
 
             updateThemeColors: function() {
                 var me = this;
-                setTimeout(function(){
+                !me.appOptions.isEditOle && setTimeout(function(){
                     me.getApplication().getController('RightMenu').UpdateThemeColors();
                 }, 50);
 
@@ -2472,12 +2716,16 @@ define([
 
             onSendThemeColors: function(colors, standart_colors) {
                 Common.Utils.ThemeColor.setColors(colors, standart_colors);
-                if (window.styles_loaded && !this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram) {
-                    this.updateThemeColors();
-                    var me = this;
-                    setTimeout(function(){
-                        me.fillTextArt();
-                    }, 1);
+                if (window.styles_loaded) {
+                    if (!this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram)
+                        this.updateThemeColors();
+
+                    if (!this.appOptions.isEditMailMerge && !this.appOptions.isEditDiagram && !this.appOptions.isEditOle) {
+                        var me = this;
+                        setTimeout(function(){
+                            me.fillTextArt();
+                        }, 1);
+                    }
                 }
             },
 
@@ -2498,6 +2746,8 @@ define([
                     case 'clearChartData':  this.clearChartData(); break;
                     case 'setMergeData':    this.setMergeData(data.data); break;
                     case 'getMergeData':    this.getMergeData(); break;
+                    case 'setOleData':      this.setOleData(data.data); break;
+                    case 'getOleData':      this.getOleData(); break;
                     case 'setAppDisabled':
                         if (this.isAppDisabled===undefined && !data.data) { // first editor opening
                             Common.NotificationCenter.trigger('layout:changed', 'main');
@@ -2509,6 +2759,7 @@ define([
                         if (!Common.Utils.ModalWindow.isVisible()) {
                             this.isFrameClosed = true;
                             this.api.asc_closeCellEditor();
+                            this.appOptions.isEditOle && Common.NotificationCenter.trigger('oleedit:close');
                             Common.UI.Menu.Manager.hideAll();
                             Common.Gateway.internalMessage('canClose', {mr:data.data.mr, answer: true});
                         } else
@@ -2516,6 +2767,9 @@ define([
                         break;
                     case 'window:drag':
                         this.isDiagramDrag = data.data;
+                        break;
+                    case 'window:resize':
+                        this.isDiagramResize = data.data;
                         break;
                     case 'processmouse':
                         this.onProcessMouse(data.data);
@@ -2525,6 +2779,9 @@ define([
                             document.documentElement.className.replace(/theme-\w+\s?/, data.data);
                         this.api.asc_setSkin(data.data == "theme-dark" ? 'flatDark' : "flat");
                         break;
+                    case 'generalToFrameData':
+                        this.api.asc_getInformationBetweenFrameAndGeneralEditor(data.data);
+                        break;
                     }
                 }
             },
@@ -2533,6 +2790,10 @@ define([
                 if (typeof chart === 'object' && this.api) {
                     this.api.asc_addChartDrawingObject(chart);
                     this.isFrameClosed = false;
+                    if (this.lastFrameError) {
+                        this.onError(this.lastFrameError.id, this.lastFrameError.level, this.lastFrameError.errData, this.lastFrameError.callback);
+                        this.lastFrameError = undefined;
+                    }
                 }
             },
 
@@ -2552,10 +2813,40 @@ define([
                 this.api && this.api.asc_closeCellEditor();
             },
 
+            setOleData: function(obj) {
+                if ((typeof obj === 'object' || obj==="empty") && this.api) {
+                    this.api.asc_addTableOleObjectInOleEditor(typeof obj === 'object' ? obj : undefined);
+                    this.isFrameClosed = false;
+                    if (this.lastFrameError) {
+                        this.onError(this.lastFrameError.id, this.lastFrameError.level, this.lastFrameError.errData, this.lastFrameError.callback);
+                        this.lastFrameError = undefined;
+                    }
+                }
+            },
+
+            getOleData: function() {
+                if (this.api) {
+                    var oleData = this.api.asc_getBinaryInfoOleObject();
+                    if (typeof oleData === 'object') {
+                        Common.Gateway.internalMessage('oleData', {
+                            data: oleData
+                        });
+                    }
+                }
+            },
+
+            onOleEditorReady: function() {
+                Common.Gateway.internalMessage('oleEditorReady', {});
+            },
+
             setMergeData: function(merge) {
                 if (typeof merge === 'object' && this.api) {
                     this.api.asc_setData(merge);
                     this.isFrameClosed = false;
+                    if (this.lastFrameError) {
+                        this.onError(this.lastFrameError.id, this.lastFrameError.level, this.lastFrameError.errData, this.lastFrameError.callback);
+                        this.lastFrameError = undefined;
+                    }
                 }
             },
 
@@ -2569,6 +2860,10 @@ define([
                         });
                     }
                 }
+            },
+
+            onSendFromFrameToGeneralEditor: function(data) {
+                Common.Gateway.internalMessage('frameToGeneralData', data);
             },
 
             unitsChanged: function(m) {
@@ -2607,6 +2902,20 @@ define([
                 if ($('.asc-window.modal.alert:visible').length < 1) {
                     Common.UI.alert({
                         msg: this.errorCreateDefName,
+                        title: this.notcriticalErrorTitle,
+                        iconCls: 'warn',
+                        buttons: ['ok'],
+                        callback: _.bind(function(btn){
+                            this.onEditComplete();
+                        }, this)
+                    });
+                }
+            },
+
+            onProtectedRangeLocked: function() {
+                if ($('.asc-window.modal.alert:visible').length < 1) {
+                    Common.UI.alert({
+                        msg: this.errorCreateRange,
                         title: this.notcriticalErrorTitle,
                         iconCls: 'warn',
                         buttons: ['ok'],
@@ -2743,6 +3052,39 @@ define([
                 if (url) this.iframePrint.src = url;
             },
 
+            onPrintQuick: function() {
+                if (!this.appOptions.canQuickPrint) return;
+
+                var value = Common.localStorage.getBool("sse-hide-quick-print-warning"),
+                    me = this,
+                    handler = function () {
+                        var printopt = new Asc.asc_CAdjustPrint();
+                        printopt.asc_setNativeOptions({quickPrint: true});
+                        var opts = new Asc.asc_CDownloadOptions();
+                        opts.asc_setAdvancedOptions(printopt);
+                        me.api.asc_Print(opts);
+                        Common.component.Analytics.trackEvent('Print');
+                    };
+
+                if (value) {
+                    handler.call(this);
+                } else {
+                    Common.UI.warning({
+                        msg: this.textTryQuickPrint,
+                        buttons: ['yes', 'no'],
+                        primary: 'yes',
+                        dontshow: true,
+                        maxwidth: 500,
+                        callback: function(btn, dontshow){
+                            dontshow && Common.localStorage.setBool("sse-hide-quick-print-warning", true);
+                            if (btn === 'yes') {
+                                setTimeout(handler, 1);
+                            }
+                        }
+                    });
+                }
+            },
+
             warningDocumentIsLocked: function() {
                 var me = this;
                 Common.Utils.warningDocumentIsLocked({
@@ -2778,6 +3120,47 @@ define([
                             }
                         });
                     }
+                }
+            },
+
+            onMacrosPermissionRequest: function(url, callback) {
+                if (url && callback) {
+                    this.stackMacrosRequests.push({url: url, callback: callback});
+                    if (this.stackMacrosRequests.length>1) {
+                        return;
+                    }
+                } else if (this.stackMacrosRequests.length>0) {
+                    url = this.stackMacrosRequests[0].url;
+                    callback = this.stackMacrosRequests[0].callback;
+                } else
+                    return;
+
+                var me = this;
+                var value = Common.Utils.InternalSettings.get("sse-allow-macros-request");
+                if (value>0) {
+                    callback && callback(value === 1);
+                    this.stackMacrosRequests.shift();
+                    this.onMacrosPermissionRequest();
+                } else {
+                    Common.UI.warning({
+                        msg: this.textRequestMacros.replace('%1', url),
+                        buttons: ['yes', 'no'],
+                        primary: 'yes',
+                        dontshow: true,
+                        textDontShow: this.textRememberMacros,
+                        maxwidth: 600,
+                        callback: function(btn, dontshow){
+                            if (dontshow) {
+                                Common.Utils.InternalSettings.set("sse-allow-macros-request", (btn == 'yes') ? 1 : 2);
+                                Common.localStorage.setItem("sse-allow-macros-request", (btn == 'yes') ? 1 : 2);
+                            }
+                            setTimeout(function() {
+                                if (callback) callback(btn == 'yes');
+                                me.stackMacrosRequests.shift();
+                                me.onMacrosPermissionRequest();
+                            }, 1);
+                        }
+                    });
                 }
             },
 
@@ -2869,6 +3252,7 @@ define([
                     this.api.asc_coAuthoringDisconnect();
                     this.headerView.setCanRename(false);
                     this.headerView.getButton('users') && this.headerView.getButton('users').hide();
+                    this.headerView.getButton('share') && this.headerView.getButton('share').setVisible(false);
                     this.getApplication().getController('LeftMenu').getView('LeftMenu').showHistory();
                     this.disableEditing(true);
                     this._renameDialog && this._renameDialog.close();
@@ -3412,8 +3796,8 @@ define([
             txtColLbls: 'Column Labels',
             errNoDuplicates: 'No duplicate values found.',
             errRemDuplicates: 'Duplicate values found and deleted: {0}, unique values left: {1}.',
-            txtMultiSelect: 'Multi-Select (Alt+S)',
-            txtClearFilter: 'Clear Filter (Alt+C)',
+            txtMultiSelect: 'Multi-Select',
+            txtClearFilter: 'Clear Filter',
             txtBlank: '(blank)',
             textHasMacros: 'The file contains automatic macros.<br>Do you want to run macros?',
             textRemember: 'Remember my choice',
@@ -3476,7 +3860,38 @@ define([
             textFormulaFilledFirstRowsOtherIsEmpty: 'Formula filled only first {0} rows by memory save reason. Other rows in this sheet don\'t have data.',
             textFormulaFilledFirstRowsOtherHaveData: 'Formula filled only first {0} rows have data by memory save reason. There are other {1} rows have data in this sheet. You can fill them manually.',
             textReconnect: 'Connection is restored',
-            errorCannotUseCommandProtectedSheet: 'You cannot use this command on a protected sheet. To use this command, unprotect the sheet.<br>You might be requested to enter a password.'
+            errorCannotUseCommandProtectedSheet: 'You cannot use this command on a protected sheet. To use this command, unprotect the sheet.<br>You might be requested to enter a password.',
+            textRequestMacros: 'A macro makes a request to URL. Do you want to allow the request to the %1?',
+            textRememberMacros: 'Remember my choice for all macros',
+            confirmAddCellWatches: 'This action will add {0} cell watches.<br>Do you want to continue?',
+            confirmAddCellWatchesMax: 'This action will add only {0} cell watches by memory save reason.<br>Do you want to continue?',
+            confirmMaxChangesSize: 'The size of actions exceeds the limitation set for your server.<br>Press "Undo" to cancel your last action or press "Continue" to keep action locally (you need to download the file or copy its content to make sure nothing is lost).',
+            textUndo: 'Undo',
+            textContinue: 'Continue',
+            errorInconsistentExtDocx: 'An error has occurred while opening the file.<br>The file content corresponds to text documents (e.g. docx), but the file has the inconsistent extension: %1.',
+            errorInconsistentExtXlsx: 'An error has occurred while opening the file.<br>The file content corresponds to spreadsheets (e.g. xlsx), but the file has the inconsistent extension: %1.',
+            errorInconsistentExtPptx: 'An error has occurred while opening the file.<br>The file content corresponds to presentations (e.g. pptx), but the file has the inconsistent extension: %1.',
+            errorInconsistentExtPdf: 'An error has occurred while opening the file.<br>The file content corresponds to one of the following formats: pdf/djvu/xps/oxps, but the file has the inconsistent extension: %1.',
+            errorInconsistentExt: 'An error has occurred while opening the file.<br>The file content does not match the file extension.',
+            errorCannotPasteImg: 'We can\'t paste this image from the Clipboard, but you can save it to your device and \ninsert it from there, or you can copy the image without text and paste it into the spreadsheet.',
+            textTryQuickPrint: 'You have selected Quick print: the entire document will be printed on the last selected or default printer.<br>Do you want to continue?',
+            errorConvertXml: 'The file has an unsupported format.<br>Only XML Spreadsheet 2003 format can be used.',
+            textText: 'Text',
+            warnLicenseBefore: 'License not active.<br>Please contact your administrator.',
+            titleLicenseNotActive: 'License not active',
+            errorProtectedRange: 'This range is not allowed for editing.',
+            errorCreateRange: 'The existing ranges cannot be edited and the new ones cannot be created<br>at the moment as some of them are being edited.',
+            txtSheet: 'Sheet',
+            txtNone: 'None',
+            warnLicenseAnonymous: 'Access denied for anonymous users. This document will be opened for viewing only.',
+            txtSlicer: 'Slicer',
+            txtInfo: 'Info',
+            confirmReplaceHFPicture: 'Only one picture can be inserted in each section of the header.<br>Press \"Replace\" to replace existing picture.<br>Press \"Keep\" to keep existing picture.',
+            textReplace: 'Replace',
+            textKeep: 'Keep',
+            errorDependentsNoFormulas: 'The Trace Dependents command found no formulas that refer to the active cell.',
+            errorPrecedentsNoValidRef: 'The Trace Precedents command requires that the active cell contain a formula which includes a valid references.',
+            txtPicture: 'Picture'
         }
     })(), SSE.Controllers.Main || {}))
 });

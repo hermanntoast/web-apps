@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *    LeftMenu.js
  *
@@ -62,11 +61,13 @@ define([
                     'hide': _.bind(this.onHideChat, this)
                 },
                 'Common.Views.Header': {
-                    'file:settings': _.bind(this.clickToolbarSettings,this),
                     'history:show': function () {
                         if ( !this.leftMenu.panelHistory.isVisible() )
                             this.clickMenuFileItem('header', 'history');
-                    }.bind(this)
+                    }.bind(this),
+                    'rename': _.bind(function (value) {
+                        this.mode && this.mode.wopi && this.api ? this.api.asc_wopi_renameFile(value) : Common.Gateway.requestRename(value);
+                    }, this)
                 },
                 'Common.Views.Plugins': {
                     'plugin:open': _.bind(this.onPluginOpen, this),
@@ -82,8 +83,6 @@ define([
                     'comments:hide': _.bind(this.commentsShowHide, this, 'hide')
                 },
                 'FileMenu': {
-                    'menu:hide': _.bind(this.menuFilesShowHide, this, 'hide'),
-                    'menu:show': _.bind(this.menuFilesShowHide, this, 'show'),
                     'filemenu:hide': _.bind(this.menuFilesHide, this),
                     'item:click': _.bind(this.clickMenuFileItem, this),
                     'saveas:format': _.bind(this.clickSaveAsFormat, this),
@@ -98,15 +97,14 @@ define([
                     'file:close': this.clickToolbarTab.bind(this, 'other'),
                     'save:disabled' : this.changeToolbarSaveState.bind(this)
                 },
-                'SearchDialog': {
-                    'hide': _.bind(this.onSearchDlgHide, this),
-                    'search:back': _.bind(this.onQuerySearch, this, 'back'),
-                    'search:next': _.bind(this.onQuerySearch, this, 'next'),
-                    'search:replace': _.bind(this.onQueryReplace, this),
-                    'search:replaceall': _.bind(this.onQueryReplaceAll, this)
-                },
                 'Common.Views.ReviewChanges': {
                     'collaboration:chat': _.bind(this.onShowHideChat, this)
+                },
+                'SearchBar': {
+                    'search:show': _.bind(this.onShowHideSearch, this)
+                },
+                'ViewTab': {
+                    'leftmenu:hide': _.bind(this.onLeftMenuHide, this)
                 }
             });
             Common.NotificationCenter.on('leftmenu:change', _.bind(this.onMenuChange, this));
@@ -114,29 +112,27 @@ define([
                 if ( !this.leftMenu.panelHistory.isVisible() )
                     this.clickMenuFileItem(null, 'history');
             }, this));
+            Common.NotificationCenter.on('file:print', _.bind(this.clickToolbarPrint, this));
         },
 
         onLaunch: function() {
             this.leftMenu = this.createView('LeftMenu').render();
-            this.leftMenu.btnSearch.on('toggle', _.bind(this.onMenuSearch, this));
             this.leftMenu.btnThumbs.on('toggle', _.bind(this.onShowTumbnails, this));
-            this.isThumbsShown = true;
+            this.leftMenu.btnSearchBar.on('toggle', _.bind(this.onMenuSearchBar, this));
 
-            Common.util.Shortcuts.delegateShortcuts({
-                shortcuts: {
-                    'command+shift+s,ctrl+shift+s': _.bind(this.onShortcut, this, 'save'),
-                    'command+f,ctrl+f': _.bind(this.onShortcut, this, 'search'),
-                    'ctrl+h': _.bind(this.onShortcut, this, 'replace'),
-                    'alt+f': _.bind(this.onShortcut, this, 'file'),
-                    'esc': _.bind(this.onShortcut, this, 'escape'),
-                    /** coauthoring begin **/
-                    'alt+q': _.bind(this.onShortcut, this, 'chat'),
-                    'command+shift+h,ctrl+shift+h': _.bind(this.onShortcut, this, 'comments'),
-                    /** coauthoring end **/
-                    'f1': _.bind(this.onShortcut, this, 'help')
-                }
-            });
-
+            var keymap = {
+                'command+shift+s,ctrl+shift+s': _.bind(this.onShortcut, this, 'save'),
+                'command+f,ctrl+f': _.bind(this.onShortcut, this, 'search'),
+                'ctrl+h': _.bind(this.onShortcut, this, 'replace'),
+                'esc': _.bind(this.onShortcut, this, 'escape'),
+                /** coauthoring begin **/
+                'command+shift+h,ctrl+shift+h': _.bind(this.onShortcut, this, 'comments'),
+                /** coauthoring end **/
+                'f1': _.bind(this.onShortcut, this, 'help')
+            };
+            keymap[Common.Utils.isMac ? 'ctrl+alt+f' : 'alt+f'] = _.bind(this.onShortcut, this, 'file');
+            keymap[Common.Utils.isMac ? 'ctrl+alt+q' : 'alt+q'] = _.bind(this.onShortcut, this, 'chat');
+            Common.util.Shortcuts.delegateShortcuts({shortcuts:keymap});
             Common.util.Shortcuts.suspendEvents();
         },
 
@@ -146,7 +142,6 @@ define([
             this.api.asc_registerCallback('asc_onCoAuthoringDisconnect', _.bind(this.onApiServerDisconnect, this));
             Common.NotificationCenter.on('api:disconnect',               _.bind(this.onApiServerDisconnect, this));
             this.api.asc_registerCallback('asc_onDownloadUrl',           _.bind(this.onDownloadUrl, this));
-            this.api.asc_registerCallback('asc_onReplaceAll', _.bind(this.onApiTextReplaced, this));
             /** coauthoring begin **/
             if (this.mode.canCoAuthoring) {
                 if (this.mode.canChat)
@@ -170,7 +165,13 @@ define([
             this.leftMenu.getMenu('file').setApi(api);
             if (this.mode.canUseHistory)
                 this.getApplication().getController('Common.Controllers.History').setApi(this.api).setMode(this.mode);
-            this.leftMenu.btnThumbs.toggle(true);
+
+            var value = Common.UI.LayoutManager.getInitValue('leftMenu');
+            value = (value!==undefined) ? !value : false;
+            this.isThumbsShown = !Common.localStorage.getBool("pe-hidden-leftmenu", value);
+            this.leftMenu.btnThumbs.toggle(this.isThumbsShown);
+            this.getApplication().getController('Search').setApi(this.api).setMode(this.mode);
+            this.leftMenu.setOptionsPanel('advancedsearch', this.getApplication().getController('Search').getView('Common.Views.SearchPanel'));
             return this;
         },
 
@@ -183,7 +184,8 @@ define([
                 Common.util.Shortcuts.removeShortcuts({
                     shortcuts: {
                         'command+shift+s,ctrl+shift+s': _.bind(this.onShortcut, this, 'save'),
-                        'alt+f': _.bind(this.onShortcut, this, 'file')
+                        'alt+f': _.bind(this.onShortcut, this, 'file'),
+                        'ctrl+alt+f': _.bind(this.onShortcut, this, 'file')
                     }
                 });
 
@@ -277,6 +279,7 @@ define([
                             this.showHistory();
                     }
                     break;
+                case 'external-help': close_menu = true; break;
                 default: close_menu = false;
             }
 
@@ -338,10 +341,6 @@ define([
         },
 
         applySettings: function(menu) {
-            var value = Common.localStorage.getBool("pe-settings-inputmode");
-            Common.Utils.InternalSettings.set("pe-settings-inputmode", value);
-            this.api.SetTextBoxInputMode(value);
-
             var fast_coauth = Common.Utils.InternalSettings.get("pe-settings-coauthmode");
             /** coauthoring begin **/
             if (this.mode.isEdit && !this.mode.isOffline && this.mode.canCoAuthoring) {
@@ -350,10 +349,14 @@ define([
                     Common.Utils.InternalSettings.set("pe-settings-coauthmode", fast_coauth);
                     this.api.asc_SetFastCollaborative(fast_coauth);
                 }
+            } else if (this.mode.canLiveView && !this.mode.isOffline && this.mode.canChangeCoAuthoring) { // viewer
+                fast_coauth = Common.localStorage.getBool("pe-settings-view-coauthmode", false);
+                Common.Utils.InternalSettings.set("pe-settings-coauthmode", fast_coauth);
+                this.api.asc_SetFastCollaborative(fast_coauth);
             }
             /** coauthoring end **/
 
-            value = Common.localStorage.getBool("pe-settings-cachemode", true);
+            var value = Common.localStorage.getBool("pe-settings-cachemode", true);
             Common.Utils.InternalSettings.set("pe-settings-cachemode", value);
             this.api.asc_setDefaultBlitMode(value);
 
@@ -372,14 +375,24 @@ define([
                     value = Common.localStorage.getBool("pe-settings-spellcheck", true);
                     Common.Utils.InternalSettings.set("pe-settings-spellcheck", value);
                     this.api.asc_setSpellCheck(value);
+                    var spprops = new AscCommon.CSpellCheckSettings();
+                    value = Common.localStorage.getBool("pe-spellcheck-ignore-uppercase-words", true);
+                    Common.Utils.InternalSettings.set("pe-spellcheck-ignore-uppercase-words", value);
+                    spprops.put_IgnoreWordsInUppercase(value);
+                    value = Common.localStorage.getBool("pe-spellcheck-ignore-numbers-words", true);
+                    Common.Utils.InternalSettings.set("pe-spellcheck-ignore-numbers-words", value);
+                    spprops.put_IgnoreWordsWithNumbers(value);
+                    this.api.asc_setSpellCheckSettings(spprops);
                 }
 
                 value = parseInt(Common.localStorage.getItem("pe-settings-paste-button"));
                 Common.Utils.InternalSettings.set("pe-settings-paste-button", value);
                 this.api.asc_setVisiblePasteButton(!!value);
-            }
 
-            this.api.put_ShowSnapLines(Common.Utils.InternalSettings.get("pe-settings-showsnaplines"));
+                value = Common.localStorage.getBool("pe-settings-showsnaplines");
+                Common.Utils.InternalSettings.set("pe-settings-showsnaplines", value);
+                this.api.asc_setShowSmartGuides(value);
+            }
 
             menu.hide();
         },
@@ -436,66 +449,6 @@ define([
         },
         /** coauthoring end **/
 
-        onQuerySearch: function(d, w, opts) {
-            if (opts.textsearch && opts.textsearch.length) {
-                var me = this;
-                this.api.asc_findText(opts.textsearch, d != 'back', opts.matchcase, function(resultCount) {
-                    !resultCount && Common.UI.info({
-                        msg: me.textNoTextFound,
-                        callback: function() {
-                            me.dlgSearch.focus();
-                        }
-                    });
-                });
-            }
-        },
-
-        onQueryReplace: function(w, opts) {
-            if (!_.isEmpty(opts.textsearch)) {
-                if (!this.api.asc_replaceText(opts.textsearch, opts.textreplace, false, opts.matchcase)) {
-                    var me = this;
-                    Common.UI.info({
-                        msg: this.textNoTextFound,
-                        callback: function() {
-                            me.dlgSearch.focus();
-                        }
-                    });
-                }
-            }
-        },
-
-        onQueryReplaceAll: function(w, opts) {
-            if (!_.isEmpty(opts.textsearch)) {
-                this.api.asc_replaceText(opts.textsearch, opts.textreplace, true, opts.matchcase);
-            }
-        },
-
-        showSearchDlg: function(show,action) {
-            if ( !this.dlgSearch ) {
-                this.dlgSearch = (new Common.UI.SearchDialog({
-                    matchcase: true
-                }));
-                var me = this;
-                Common.NotificationCenter.on('preview:start', function() {
-                    me.dlgSearch.hide();
-                });
-            }
-
-            if (show) {
-                var mode = this.mode.isEdit && !this.viewmode ? (action || undefined) : 'no-replace';
-                if (this.dlgSearch.isVisible()) {
-                    this.dlgSearch.setMode(mode);
-                    this.dlgSearch.focus();
-                } else {
-                    this.dlgSearch.show(mode);
-                }
-            } else this.dlgSearch['hide']();
-        },
-
-        onMenuSearch: function(obj, show) {
-            this.showSearchDlg(show);
-        },
-
         onShowTumbnails: function(obj, show) {
             this.api.ShowThumbnails(show);
 
@@ -509,29 +462,11 @@ define([
             this.isThumbsShown = isShow;
         },
 
-        onSearchDlgHide: function() {
-            this.leftMenu.btnSearch.toggle(false, true);
-            $(this.leftMenu.btnSearch.el).blur();
-            this.api.asc_enableKeyEvents(true);
-//            this.api.asc_selectSearchingResults(false);
-        },
-
-        onApiTextReplaced: function(found,replaced) {
-            var me = this;
-            if (found) {
-                !(found - replaced > 0) ?
-                    Common.UI.info( {msg: Common.Utils.String.format(this.textReplaceSuccess, replaced)} ) :
-                    Common.UI.warning( {msg: Common.Utils.String.format(this.textReplaceSkipped, found-replaced)} );
-            } else {
-                Common.UI.info({msg: this.textNoTextFound});
-            }
-        },
-
         setPreviewMode: function(mode) {
             if (this.viewmode === mode) return;
             this.viewmode = mode;
 
-            this.dlgSearch && this.dlgSearch.setMode(this.viewmode ? 'no-replace' : 'search');
+            this.leftMenu.panelSearch && this.leftMenu.panelSearch.setSearchMode(this.viewmode ? 'no-replace' : 'search');
         },
 
         onApiServerDisconnect: function(enableDownload) {
@@ -545,10 +480,6 @@ define([
             this.leftMenu.btnPlugins.setDisabled(true);
 
             this.leftMenu.getMenu('file').setMode({isDisconnected: true, enableDownload: !!enableDownload});
-            if ( this.dlgSearch ) {
-                this.leftMenu.btnSearch.toggle(false, true);
-                this.dlgSearch['hide']();
-            }
         },
 
         onApiCountPages: function(count) {
@@ -620,15 +551,6 @@ define([
             }
         },
 
-        menuFilesShowHide: function(state) {
-            if ( this.dlgSearch ) {
-                if ( state == 'show' )
-                    this.dlgSearch.suspendKeyEvents();
-                else
-                    Common.Utils.asyncCall(this.dlgSearch.resumeKeyEvents, this.dlgSearch);
-            }
-        },
-
         onShortcut: function(s, e) {
             if (!this.mode) return;
 
@@ -640,10 +562,33 @@ define([
                     if ((!previewPanel || !previewPanel.isVisible()) && !this._state.no_slides)  {
                         Common.UI.Menu.Manager.hideAll();
                         var full_menu_pressed = this.leftMenu.btnAbout.pressed;
-                        this.showSearchDlg(true,s);
-                        this.leftMenu.btnSearch.toggle(true,true);
                         this.leftMenu.btnAbout.toggle(false);
                         full_menu_pressed && this.menuExpand(this.leftMenu.btnAbout, 'files', false);
+
+                        var selectedText = this.api.asc_GetSelectedText();
+                        if (this.isSearchPanelVisible()) {
+                            selectedText && this.leftMenu.panelSearch.setFindText(selectedText);
+                            this.leftMenu.panelSearch.focus(selectedText !== '' ? s : 'search');
+                            this.leftMenu.fireEvent('search:aftershow', this.leftMenu, selectedText ? selectedText : undefined);
+                            return false;
+                        } else if (this.getApplication().getController('Viewport').isSearchBarVisible()) {
+                            var viewport = this.getApplication().getController('Viewport');
+                            if (s === 'replace') {
+                                viewport.header.btnSearch.toggle(false);
+                                this.onShowHideSearch(true, viewport.searchBar.inputSearch.val());
+                            } else {
+                                selectedText && viewport.searchBar.setText(selectedText);
+                                viewport.searchBar.focus();
+                                return false;
+                            }
+                        } else if (s === 'search') {
+                            Common.NotificationCenter.trigger('search:show');
+                            return false;
+                        } else {
+                            this.onShowHideSearch(true, selectedText ? selectedText : undefined);
+                        }
+                        this.leftMenu.btnSearchBar.toggle(true,true);
+                        this.leftMenu.panelSearch.focus(selectedText ? s : 'search');
                     }
                     return false;
                 case 'save':
@@ -674,6 +619,9 @@ define([
                     return false;
                 case 'escape':
 //                        if (!this.leftMenu.isOpened()) return true;
+                    var btnSearch = this.getApplication().getController('Viewport').header.btnSearch;
+                    btnSearch.pressed && btnSearch.toggle(false);
+
                     // TODO:
                     if ( this.leftMenu.menuFile.isVisible() ) {
                         if (Common.UI.HintManager.needCloseFileMenu())
@@ -725,6 +673,7 @@ define([
         onPluginOpen: function(panel, type, action) {
             if (type == 'onboard') {
                 if (action == 'open') {
+                    this.tryToShowLeftMenu();
                     this.leftMenu.close();
                     this.leftMenu.btnThumbs.toggle(false, false);
                     this.leftMenu.panelPlugins.show();
@@ -747,6 +696,9 @@ define([
 
                     // focus to sdk
                     this.api.asc_enableKeyEvents(true);
+                } else if (this.leftMenu.btnSearchBar.isActive()) {
+                    this.leftMenu.btnSearchBar.toggle(false);
+                    this.leftMenu.onBtnMenuClick(this.leftMenu.btnSearchBar);
                 }
             }
         },
@@ -755,12 +707,36 @@ define([
             if (this.mode.canCoAuthoring && this.mode.canChat && !this.mode.isLightVersion) {
                 if (state) {
                     Common.UI.Menu.Manager.hideAll();
+                    this.tryToShowLeftMenu();
                     this.leftMenu.showMenu('chat');
                 } else {
                     this.leftMenu.btnChat.toggle(false, true);
                     this.leftMenu.onBtnMenuClick(this.leftMenu.btnChat);
                 }
             }
+        },
+
+        onShowHideSearch: function (state, findText) {
+            if (state) {
+                Common.UI.Menu.Manager.hideAll();
+                this.tryToShowLeftMenu();
+                this.leftMenu.showMenu('advancedsearch', undefined, true);
+                this.leftMenu.fireEvent('search:aftershow', this.leftMenu, findText);
+            } else {
+                this.leftMenu.btnSearchBar.toggle(false, true);
+                this.leftMenu.onBtnMenuClick(this.leftMenu.btnSearchBar);
+            }
+        },
+
+        onMenuSearchBar: function(obj, show) {
+            if (show) {
+                var mode = this.mode.isEdit && !this.viewmode ? undefined : 'no-replace';
+                this.leftMenu.panelSearch.setSearchMode(mode);
+            }
+        },
+
+        isSearchPanelVisible: function () {
+            return this.leftMenu && this.leftMenu.panelSearch && this.leftMenu.panelSearch.isVisible();
         },
 
         showHistory: function() {
@@ -801,7 +777,37 @@ define([
         isCommentsVisible: function() {
             return this.leftMenu && this.leftMenu.panelComments && this.leftMenu.panelComments.isVisible();
         },
-        
+
+        onLeftMenuHide: function (view, status) {
+            if (this.leftMenu) {
+                if (status) {
+                    this.leftMenu.show();
+                } else {
+                    this.menuExpand(this, 'thumbs', false);
+                    this.leftMenu.close();
+                    this.leftMenu.hide();
+                }
+                Common.localStorage.setBool('pe-hidden-leftmenu', !status);
+
+                !view && this.leftMenu.fireEvent('view:hide', [this, !status]);
+            }
+
+            Common.NotificationCenter.trigger('layout:changed', 'main');
+            Common.NotificationCenter.trigger('edit:complete', this.leftMenu);
+        },
+
+        tryToShowLeftMenu: function() {
+            if ((!this.mode.canBrandingExt || !this.mode.customization || this.mode.customization.leftMenu !== false) && Common.UI.LayoutManager.isElementVisible('leftMenu'))
+                this.onLeftMenuHide(null, true);
+        },
+
+        clickToolbarPrint: function () {
+            if (this.mode.canPreviewPrint)
+                this.leftMenu.showMenu('file:printpreview');
+            else if (this.mode.canPrint)
+                this.clickMenuFileItem(null, 'print');
+        },
+
         textNoTextFound         : 'Text not found',
         newDocumentTitle        : 'Unnamed document',
         requestEditRightsText   : 'Requesting editing rights...',

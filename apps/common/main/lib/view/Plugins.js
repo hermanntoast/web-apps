@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  * User: Julia.Radzhabova
  * Date: 17.05.16
@@ -60,11 +59,11 @@ define([
                 '</div>',
             '</div>',
             '<div id="current-plugin-box" class="layout-ct vbox hidden">',
+                '<div id="current-plugin-frame" class="">',
+                '</div>',
                 '<div id="current-plugin-header">',
                     '<label></label>',
-                    '<div id="id-plugin-close" class="tool close"></div>',
-                '</div>',
-                '<div id="current-plugin-frame" class="">',
+                    '<div id="id-plugin-close" class="close"></div>',
                 '</div>',
             '</div>',
             '<div id="plugins-mask" style="display: none;">'
@@ -74,14 +73,16 @@ define([
             _.extend(this, options);
             this._locked = false;
             this._state = {
-                DisabledControls: false
+                DisabledControls: false,
+                docProtection: {
+                    isReadOnly: false,
+                    isReviewOnly: false,
+                    isFormsOnly: false,
+                    isCommentsOnly: false
+                }
             };
             this.lockedControls = [];
             Common.UI.BaseView.prototype.initialize.call(this, arguments);
-
-            Common.NotificationCenter.on('app:ready', function (mode) {
-                Common.Utils.asyncCall(this._onAppReady, this, mode);
-            }.bind(this));
         },
 
         render: function(el) {
@@ -110,6 +111,13 @@ define([
             this.pluginsMask = $('#plugins-mask', this.$el);
             this.currentPluginPanel = $('#current-plugin-box');
             this.currentPluginFrame = $('#current-plugin-frame');
+
+            this.pluginClose = new Common.UI.Button({
+                parentEl: $('#id-plugin-close'),
+                cls: 'btn-toolbar',
+                iconCls: 'toolbar__icon btn-close',
+                hint: this.textClosePanel
+            });
 
             this.pluginMenu = new Common.UI.Menu({
                 menuAlign   : 'tr-br',
@@ -146,6 +154,7 @@ define([
             if ( !this.storePlugins.isEmpty() ) {
                 var me = this;
                 var _group = $('<div class="group"></div>');
+                var _set = Common.enumLock;
                 this.storePlugins.each(function (model) {
                     if (model.get('visible')) {
                         var modes = model.get('variations'),
@@ -160,6 +169,7 @@ define([
                                 split: modes && modes.length > 1,
                                 value: guid,
                                 hint: model.get('name'),
+                                lock: model.get('isDisplayedInViewer') ? [_set.viewMode, _set.previewReviewMode, _set.viewFormMode, _set.selRangeEdit, _set.editFormula] : [_set.viewMode, _set.previewReviewMode, _set.viewFormMode, _set.lostConnect, _set.docLockView, _set.docLockForms, _set.docLockComments, _set.selRangeEdit, _set.editFormula],
                                 dataHint: '1',
                                 dataHintDirection: 'bottom',
                                 dataHintOffset: 'small'
@@ -172,6 +182,10 @@ define([
                         me.lockedControls.push(btn);
                     }
                 });
+                var docProtection = me._state.docProtection
+                Common.Utils.lockControls(Common.enumLock.docLockView, docProtection.isReadOnly, {array: me.lockedControls});
+                Common.Utils.lockControls(Common.enumLock.docLockForms, docProtection.isFormsOnly, {array: me.lockedControls});
+                Common.Utils.lockControls(Common.enumLock.docLockComments, docProtection.isCommentsOnly, {array: me.lockedControls});
 
                 parent.html(_group);
                 $('<div class="separator long"></div>').prependTo(parent);
@@ -197,7 +211,17 @@ define([
             }
         },
 
-        openInsideMode: function(name, url, frameId) {
+        SetDisabled: function(disable, reviewMode, fillFormMode) {
+            if (reviewMode) {
+                Common.Utils.lockControls(Common.enumLock.previewReviewMode, disable, {array: this.lockedControls});
+            } else if (fillFormMode) {
+                Common.Utils.lockControls(Common.enumLock.viewFormMode, disable, {array: this.lockedControls});
+            } else {
+                Common.Utils.lockControls(Common.enumLock.viewMode, disable, {array: this.lockedControls});
+            }
+        },
+
+        openInsideMode: function(name, url, frameId, guid) {
             if (!this.pluginsPanel) return false;
 
             this.pluginsPanel.toggleClass('hidden', true);
@@ -224,7 +248,7 @@ define([
 
                 this.iframePlugin.src = url;
             }
-
+            this._state.insidePlugin = guid;
             this.fireEvent('plugin:open', [this, 'onboard', 'open']);
             return true;
         },
@@ -238,7 +262,7 @@ define([
             }
             this.currentPluginPanel.toggleClass('hidden', true);
             // this.pluginsPanel.toggleClass('hidden', false);
-
+            this._state.insidePlugin = undefined;
             this.fireEvent('plugin:open', [this, 'onboard', 'close']);
         },
 
@@ -280,9 +304,6 @@ define([
         _onLoad: function() {
             if (this.loadMask)
                 this.loadMask.hide();
-        },
-
-        _onAppReady: function (mode) {
         },
 
         parseIcons: function(icons) {
@@ -382,6 +403,7 @@ define([
                     });
             });
 
+            var _set = Common.enumLock;
             var btn = new Common.UI.Button({
                 cls: 'btn-toolbar x-huge icon-top',
                 iconImg: icon_url,
@@ -390,6 +412,7 @@ define([
                 split: _menu_items.length > 1,
                 value: guid,
                 hint: model.get('name'),
+                lock: model.get('isDisplayedInViewer') ? [_set.viewMode, _set.previewReviewMode, _set.viewFormMode, _set.selRangeEdit, _set.editFormula] : [_set.viewMode, _set.previewReviewMode, _set.viewFormMode, _set.docLockView, _set.docLockForms, _set.docLockComments, _set.selRangeEdit, _set.editFormula ],
                 dataHint: '1',
                 dataHintDirection: 'bottom',
                 dataHintOffset: 'small'
@@ -426,7 +449,8 @@ define([
         textLoading: 'Loading',
         textStart: 'Start',
         textStop: 'Stop',
-        groupCaption: 'Plugins'
+        groupCaption: 'Plugins',
+        textClosePanel: 'Close plugin'
 
     }, Common.Views.Plugins || {}));
 });

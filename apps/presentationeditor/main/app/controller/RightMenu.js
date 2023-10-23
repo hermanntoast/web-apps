@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  RightMenu.js
  *
@@ -56,10 +55,14 @@ define([
             this.editMode = true;
             this._state = {no_slides: undefined};
             this._initSettings = true;
+            this._priorityArr = [];
 
             this.addListeners({
                 'RightMenu': {
                     'rightmenuclick': this.onRightMenuClick
+                },
+                'ViewTab': {
+                    'rightmenu:hide': _.bind(this.onRightMenuHide, this)
                 }
             });
         },
@@ -95,8 +98,15 @@ define([
             this.editMode = mode.isEdit;
         },
 
-        onRightMenuClick: function(menu, type, minimized) {
+        onRightMenuClick: function(menu, type, minimized, event) {
             if (!minimized && this.editMode) {
+                if (event) { // user click event
+                    var idx = this._priorityArr.indexOf(type);
+                    if (idx>=0)
+                        this._priorityArr.splice(idx, 1);
+                    this._priorityArr.unshift(type);
+                }
+
                 var panel = this._settings[type].panel;
                 var props = this._settings[type].props;
                 if (props && panel)
@@ -106,11 +116,11 @@ define([
             this.rightmenu.fireEvent('editcomplete', this.rightmenu);
         },
 
-        onFocusObject: function(SelectedObjects, forceSignature) {
+        onFocusObject: function(SelectedObjects, forceSignature, forceOpen) {
             if (!this.editMode && !forceSignature)
                 return;
 
-            var open = this._initSettings ? !Common.localStorage.getBool("pe-hide-right-settings", this.rightmenu.defaultHideRightMenu) : false;
+            var open = this._initSettings ? !Common.localStorage.getBool("pe-hide-right-settings", this.rightmenu.defaultHideRightMenu) : !!forceOpen;
             this._initSettings = false;
 
             var needhide = true;
@@ -142,10 +152,14 @@ define([
                     this._settings[settingsType].lockedHeader = !!value.get_LockHeader && value.get_LockHeader();
                 } else {
                     this._settings[settingsType].locked = value.get_Locked();
-                    if (settingsType == Common.Utils.documentSettingsType.Shape && value.asc_getTextArtProperties()) {
-                        this._settings[Common.Utils.documentSettingsType.TextArt].props = value;
-                        this._settings[Common.Utils.documentSettingsType.TextArt].hidden = 0;
-                        this._settings[Common.Utils.documentSettingsType.TextArt].locked = value.get_Locked();
+                    if (settingsType == Common.Utils.documentSettingsType.Shape) {
+                        if (value.asc_getIsMotionPath()) {
+                            this._settings[settingsType].hidden = 1;
+                        } else if (value.asc_getTextArtProperties()) {
+                            this._settings[Common.Utils.documentSettingsType.TextArt].props = value;
+                            this._settings[Common.Utils.documentSettingsType.TextArt].hidden = 0;
+                            this._settings[Common.Utils.documentSettingsType.TextArt].locked = value.get_Locked();
+                        }
                     }
                 }
             }
@@ -190,6 +204,22 @@ define([
 
             if (!this.rightmenu.minimizedMode || open) {
                 var active;
+
+                if (priorityactive<0) {
+                    if (this._priorityArr.length>0) {
+                        for (i=0; i<this._priorityArr.length; i++) {
+                            var type = this._priorityArr[i],
+                                pnl = this._settings[type];
+                            if (pnl===undefined || pnl.btn===undefined || pnl.panel===undefined || pnl.hidden) continue;
+                            priorityactive = type;
+                            break;
+                        }
+                    } else if (this._lastVisibleSettings!==undefined) {
+                        var pnl = this._settings[this._lastVisibleSettings];
+                        if (pnl!==undefined && pnl.btn!==undefined && pnl.panel!==undefined && !pnl.hidden)
+                            priorityactive = this._lastVisibleSettings;
+                    }
+                }
 
                 if (priorityactive>-1) active = priorityactive;
                 else if (currentactive>=0) active = currentactive;
@@ -243,29 +273,50 @@ define([
                 } else {
                     var selectedElements = this.api.getSelectedElements();
                     if (selectedElements.length > 0)
-                        this.onFocusObject(selectedElements);
+                        this.onFocusObject(selectedElements, false, !Common.Utils.InternalSettings.get("pe-hide-right-settings") &&
+                                                                                 !Common.Utils.InternalSettings.get("pe-hidden-rightmenu"));
                 }
             }
         },
 
         onInsertTable:  function() {
-            this._settings[Common.Utils.documentSettingsType.Table].needShow = true;
+            // this._settings[Common.Utils.documentSettingsType.Table].needShow = true;
+            var idx = this._priorityArr.indexOf(Common.Utils.documentSettingsType.Table);
+            if (idx>=0)
+                this._priorityArr.splice(idx, 1);
+            this._priorityArr.unshift(Common.Utils.documentSettingsType.Table);
         },
 
         onInsertImage:  function() {
-            this._settings[Common.Utils.documentSettingsType.Image].needShow = true;
+            // this._settings[Common.Utils.documentSettingsType.Image].needShow = true;
+            var idx = this._priorityArr.indexOf(Common.Utils.documentSettingsType.Image);
+            if (idx>=0)
+                this._priorityArr.splice(idx, 1);
+            this._priorityArr.unshift(Common.Utils.documentSettingsType.Image);
         },
 
         onInsertChart:  function() {
-            this._settings[Common.Utils.documentSettingsType.Chart].needShow = true;
+            // this._settings[Common.Utils.documentSettingsType.Chart].needShow = true;
+            var idx = this._priorityArr.indexOf(Common.Utils.documentSettingsType.Chart);
+            if (idx>=0)
+                this._priorityArr.splice(idx, 1);
+            this._priorityArr.unshift(Common.Utils.documentSettingsType.Chart);
         },
 
         onInsertShape:  function() {
-            this._settings[Common.Utils.documentSettingsType.Shape].needShow = true;
+            // this._settings[Common.Utils.documentSettingsType.Shape].needShow = true;
+            var idx = this._priorityArr.indexOf(Common.Utils.documentSettingsType.Shape);
+            if (idx>=0)
+                this._priorityArr.splice(idx, 1);
+            this._priorityArr.unshift(Common.Utils.documentSettingsType.Shape);
         },
 
         onInsertTextArt:  function() {
-            this._settings[Common.Utils.documentSettingsType.TextArt].needShow = true;
+            // this._settings[Common.Utils.documentSettingsType.TextArt].needShow = true;
+            var idx = this._priorityArr.indexOf(Common.Utils.documentSettingsType.TextArt);
+            if (idx>=0)
+                this._priorityArr.splice(idx, 1);
+            this._priorityArr.unshift(Common.Utils.documentSettingsType.TextArt);
         },
 
         UpdateThemeColors:  function() {
@@ -342,6 +393,38 @@ define([
                 case Asc.c_oAscTypeSelectElement.Chart:
                     return Common.Utils.documentSettingsType.Chart;
             }
+        },
+
+        onRightMenuHide: function (view, status) {
+            if (this.rightmenu) {
+                if (!status)  { // remember last active pane
+                    var active = this.rightmenu.GetActivePane(),
+                        type;
+                    if (active) {
+                        for (var i=0; i<this._settings.length; i++) {
+                            if (this._settings[i] && this._settings[i].panelId === active) {
+                                type = i;
+                                break;
+                            }
+                        }
+                        this._lastVisibleSettings = type;
+                    }
+                    this.rightmenu.clearSelection();
+                    this.rightmenu.hide();
+                    this.rightmenu.signatureSettings && this.rightmenu.signatureSettings.hideSignatureTooltip();
+                } else {
+                    this.rightmenu.show();
+                    var selectedElements = this.api.getSelectedElements();
+                    if (selectedElements.length > 0)
+                        this.onFocusObject(selectedElements, false, !Common.Utils.InternalSettings.get("pe-hide-right-settings"));
+                    this._lastVisibleSettings = undefined;
+                }
+                Common.localStorage.setBool('pe-hidden-rightmenu', !status);
+                Common.Utils.InternalSettings.set("pe-hidden-rightmenu", !status);
+            }
+
+            Common.NotificationCenter.trigger('layout:changed', 'main');
+            Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
         }
     });
 });

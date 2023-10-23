@@ -32,9 +32,7 @@
                         "perfectscrollbar": "common/main/lib/mods/perfect-scrollbar",
                         "jmousewheel": "../vendor/perfect-scrollbar/src/jquery.mousewheel",
                         "xregexp": "empty:",
-                        "sockjs": "empty:",
-                        "jszip": "empty:",
-                        "jszip-utils": "empty:",
+                        "socketio": "empty:",
                         "coapisettings": "empty:",
                         "allfonts": "empty:",
                         "sdk": "empty:",
@@ -87,9 +85,7 @@
                                 "coapisettings",
                                 "allfonts",
                                 "xregexp",
-                                "sockjs",
-                                "jszip",
-                                "jszip-utils"
+                                "socketio"
                             ]
                         },
                         "gateway": {

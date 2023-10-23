@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *    Chat.js
  *
@@ -85,6 +84,14 @@ define([
                 storeUsers: this.getApplication().getCollection('Common.Collections.Users'),
                 storeMessages: this.getApplication().getCollection('Common.Collections.ChatMessages')
             });
+            this.panelChat.on('render:after', _.bind(this.onAfterRender, this));
+        },
+
+        onAfterRender: function(panel) {
+            var viewport = this.getApplication().getController('Viewport').getView('Viewport');
+            viewport.hlayout.on('layout:resizedrag',  _.bind(function () {
+                panel && panel.updateScrolls();
+            }, this));
         },
 
         setMode: function(mode) {
@@ -95,7 +102,7 @@ define([
                 if (this.mode.canCoAuthoring && this.mode.canChat)
                     this.api.asc_registerCallback('asc_onCoAuthoringChatReceiveMessage', _.bind(this.onReceiveMessage, this));
 
-                if ( !this.mode.isEditDiagram && !this.mode.isEditMailMerge ) {
+                if ( !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle ) {
                     this.api.asc_registerCallback('asc_onAuthParticipantsChanged', _.bind(this.onUsersChanged, this));
                     this.api.asc_registerCallback('asc_onConnectionStateChanged', _.bind(this.onUserConnection, this));
                     this.api.asc_coAuthoringGetUsers();

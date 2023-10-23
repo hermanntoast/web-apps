@@ -18,11 +18,11 @@ const PageTable = props => {
                     {!styles.length ?
                         Array.from({ length: 70 }).map((item,index) => (
                         <li className='skeleton-list' key={index}>    
-                            <SkeletonBlock  width='70px' height='8px'  effect='wave'/>
-                            <SkeletonBlock  width='70px' height='8px'  effect='wave' />
-                            <SkeletonBlock  width='70px' height='8px'  effect='wave' />
-                            <SkeletonBlock  width='70px' height='8px'  effect='wave' />
-                            <SkeletonBlock  width='70px' height='8px'  effect='wave' />
+                            <SkeletonBlock width='70px' height='8px' effect="fade" />
+                            <SkeletonBlock width='70px' height='8px' effect="fade" />
+                            <SkeletonBlock width='70px' height='8px' effect="fade" />
+                            <SkeletonBlock width='70px' height='8px' effect="fade" />
+                            <SkeletonBlock width='70px' height='8px' effect="fade" />
                         </li>
                         )) :
                             styles.map((style, index) => {
@@ -45,6 +45,8 @@ const AddOther = props => {
     const _t = t('View.Add', {returnObjects: true});
     const showInsertLink = props.storeLinkSettings.canAddLink && !props.storeFocusObjects.paragraphLocked;
     const hideAddComment = props.hideAddComment();
+    const isHyperLink = props.storeFocusObjects.settings.indexOf('hyperlink') > -1;
+
     return (
         <List>
             <ListItem title={_t.textTable} link={'/add-table/'} onClick = {() => props.onGetTableStylesPreviews()} routeProps={{
@@ -58,8 +60,14 @@ const AddOther = props => {
             }}>
                 <Icon slot="media" icon="icon-insert-comment"></Icon>
             </ListItem>}
+            <ListItem title={_t.textImage} link='/add-image/'>
+                <Icon slot="media" icon="icon-image"></Icon>
+            </ListItem>
             {showInsertLink &&
-                <ListItem title={_t.textLink} link={'/add-link/'}>
+                <ListItem title={_t.textLink} link={isHyperLink ? '/edit-link/' : '/add-link/'} routeProps={{
+                    onClosed: props.onCloseLinkSettings,
+                    isNavigate: true
+                }}>
                     <Icon slot="media" icon="icon-link"></Icon>
                 </ListItem>
             }

@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *  TableSettings.js
  *
@@ -341,7 +340,7 @@ define([
             this.btnEdit = new Common.UI.Button({
                 parentEl: $('#table-btn-edit'),
                 cls         : 'btn-toolbar align-left',
-                iconCls     : 'toolbar__icon rows-and-columns',
+                iconCls     : 'toolbar__icon btn-rows-and-columns',
                 caption     : this.textEdit,
                 style       : 'width: 100%;',
                 menu: new Common.UI.Menu({
@@ -649,16 +648,20 @@ define([
                     parentEl: $('#table-border-color-btn'),
                     color: 'auto',
                     auto: true,
+                    eyeDropper: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'big'
                 });
                 this.lockedControls.push(this.btnBorderColor);
                 this.borderColor = this.btnBorderColor.getPicker();
+                this.btnBorderColor.on('eyedropper:start', _.bind(this.onEyedropperStart, this));
+                this.btnBorderColor.on('eyedropper:end', _.bind(this.onEyedropperEnd, this));
 
                 this.btnBackColor = new Common.UI.ColorButton({
                     parentEl: $('#table-back-color-btn'),
                     transparent: true,
+                    eyeDropper: true,
                     dataHint: '1',
                     dataHintDirection: 'bottom',
                     dataHintOffset: 'big'
@@ -666,6 +669,8 @@ define([
                 this.lockedControls.push(this.btnBackColor);
                 this.colorsBack = this.btnBackColor.getPicker();
                 this.btnBackColor.on('color:select', _.bind(this.onColorsBackSelect, this));
+                this.btnBackColor.on('eyedropper:start', _.bind(this.onEyedropperStart, this));
+                this.btnBackColor.on('eyedropper:end', _.bind(this.onEyedropperEnd, this));
             }
             this.colorsBack.updateColors(Common.Utils.ThemeColor.getEffectColors(), Common.Utils.ThemeColor.getStandartColors());
             this.borderColor.updateColors(Common.Utils.ThemeColor.getEffectColors(), Common.Utils.ThemeColor.getStandartColors());
@@ -694,6 +699,14 @@ define([
             this._state.beginPreviewStyles = true;
             this._state.currentStyleFound = false;
             this._state.previewStylesCount = count;
+            this._state.groups = {
+                'menu-table-group-custom':  {id: 'menu-table-group-custom',    caption: this.txtGroupTable_Custom,  index: 0, templateCount: 0},
+                'menu-table-group-optimal': {id: 'menu-table-group-optimal',   caption: this.txtGroupTable_Optimal, index: 1, templateCount: 0},
+                'menu-table-group-light':   {id: 'menu-table-group-light',     caption: this.txtGroupTable_Light,   index: 2, templateCount: 0},
+                'menu-table-group-medium':  {id: 'menu-table-group-medium',    caption: this.txtGroupTable_Medium,  index: 3, templateCount: 0},
+                'menu-table-group-dark':    {id: 'menu-table-group-dark',      caption: this.txtGroupTable_Dark,    index: 4, templateCount: 0},
+                'menu-table-group-no-name': {id: 'menu-table-group-no-name',   caption: '&nbsp',                    index: 5, templateCount: 0},
+            };
         },
 
         onEndTableStylesPreview: function(){
@@ -707,28 +720,68 @@ define([
 
         onAddTableStylesPreview: function(Templates){
             var self = this;
-            var arr = [];
+
             _.each(Templates, function(template){
                 var tip = template.asc_getDisplayName();
+                var groupItem = '';
+
                 if (template.asc_getType()==0) {
+                    var arr = tip.split(' ');
+                    
+                    if(new RegExp('No Style|Themed Style', 'i').test(tip)){
+                        groupItem = 'menu-table-group-optimal';
+                    }
+                    else{
+                        if(arr[0]){
+                            groupItem = 'menu-table-group-' + arr[0].toLowerCase();
+                        }
+                        if(self._state.groups.hasOwnProperty(groupItem) == false) {
+                            groupItem = 'menu-table-group-no-name';
+                        }
+                    }
+
                     ['No Style', 'No Grid', 'Table Grid', 'Themed Style', 'Light Style', 'Medium Style', 'Dark Style', 'Accent'].forEach(function(item){
                         var str = 'txtTable_' + item.replace(' ', '');
                         if (self[str])
                             tip = tip.replace(new RegExp(item, 'g'), self[str]);
                     });
                 }
-                arr.push({
+                else {
+                    groupItem = 'menu-table-group-custom'
+                }   
+
+                var templateObj = {
                     imageUrl: template.asc_getImage(),
                     id     : Common.UI.getId(),
                     templateId: template.asc_getId(),
+                    group  : groupItem,
                     tip    : tip
-                });
+                };
+                var templateIndex = 0;
+
+                for(var group in self._state.groups) {
+                    if(self._state.groups[group].index <= self._state.groups[groupItem].index) {
+                        templateIndex += self._state.groups[group].templateCount;
+                    }
+                }
+
+                if (self._state.beginPreviewStyles) {
+                    self._state.beginPreviewStyles = false;
+                    self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.groups.reset(self._state.groups[groupItem]);
+                    self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.store.reset(templateObj);
+                    self.mnuTableTemplatePicker.groups.comparator = function(item) {
+                        return item.get('index');
+                    };
+                } 
+                else {
+                    if(self._state.groups[groupItem].templateCount == 0) {
+                        self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.groups.add(self._state.groups[groupItem]);
+                    } 
+                    self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.store.add(templateObj, {at: templateIndex});
+                }
+
+                self._state.groups[groupItem].templateCount += 1;
             });
-            if (this._state.beginPreviewStyles) {
-                this._state.beginPreviewStyles = false;
-                self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.store.reset(arr);
-            } else
-                self.mnuTableTemplatePicker && self.mnuTableTemplatePicker.store.add(arr);
             !this._state.currentStyleFound && this.selectCurrentTableStyle();
         },
 
@@ -747,11 +800,12 @@ define([
             if (!this.btnTableTemplate) {
                 this.btnTableTemplate = new Common.UI.Button({
                     cls         : 'btn-large-dataview template-table',
+                    scaling     : false,
                     iconCls     : 'icon-template-table',
                     menu        : new Common.UI.Menu({
                         style: 'width: 588px;',
                         items: [
-                            { template: _.template('<div id="id-table-menu-template" class="menu-table-template"  style="margin: 5px 5px 5px 10px;"></div>') }
+                            { template: _.template('<div id="id-table-menu-template" class="menu-table-template"></div>') }
                         ]
                     }),
                     dataHint: '1',
@@ -767,6 +821,7 @@ define([
                         store: new Common.UI.DataViewStore(),
                         itemTemplate: _.template('<div id="<%= id %>" class="item"><img src="<%= imageUrl %>" height="52" width="72"></div>'),
                         style: 'max-height: 350px;',
+                        cls: 'classic',
                         delayRenderTips: true
                     });
                 });
@@ -793,6 +848,7 @@ define([
                             (new PE.Views.TableSettingsAdvanced(
                             {
                                 tableProps: elValue,
+                                slideSize: PE.getController('Toolbar').currentPageSize,
                                 handler: function(result, value) {
                                     if (result == 'ok') {
                                         if (me.api) {
@@ -823,6 +879,15 @@ define([
                 });
                 this.linkAdvanced && this.linkAdvanced.toggleClass('disabled', disable);
             }
+        },
+
+        onEyedropperStart: function (btn) {
+            this.api.asc_startEyedropper(_.bind(btn.eyedropperEnd, btn));
+            this.fireEvent('eyedropper', true);
+        },
+
+        onEyedropperEnd: function () {
+            this.fireEvent('eyedropper', false);
         },
 
         textBorders:        'Border\'s Style',
@@ -877,7 +942,12 @@ define([
         txtTable_LightStyle: 'Light Style',
         txtTable_MediumStyle: 'Medium Style',
         txtTable_DarkStyle: 'Dark Style',
-        txtTable_Accent: 'Accent'
+        txtTable_Accent: 'Accent',
+        txtGroupTable_Custom: 'Custom',
+        txtGroupTable_Optimal: 'Best Match for Document',
+        txtGroupTable_Light: 'Light',
+        txtGroupTable_Medium: 'Medium',
+        txtGroupTable_Dark: 'Dark',
 
 }, PE.Views.TableSettings || {}));
 });

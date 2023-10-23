@@ -2,7 +2,6 @@ import React, {Component} from 'react';
 import { f7 } from 'framework7-react';
 import {Device} from '../../../../../common/mobile/utils/device';
 import { withTranslation} from 'react-i18next';
-
 import {AddOther} from '../../view/add/AddOther';
 
 // footnote converting metods
@@ -260,7 +259,8 @@ class AddOtherController extends Component {
                 richDelLock={this.props.richDelLock}
                 richEditLock={this.props.richEditLock}
                 plainDelLock={this.props.plainDelLock}
-                plainEditLock={this.props.plainEditLock}      
+                plainEditLock={this.props.plainEditLock}
+                isNavigate={this.props.isNavigate}
             />
         )
     }

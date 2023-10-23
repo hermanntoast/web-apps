@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2019
+ * (c) Copyright Ascensio System SIA 2010-2023
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,7 +28,7 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 PE.ApplicationController = new(function(){
     var me,
         api,
@@ -72,6 +71,7 @@ PE.ApplicationController = new(function(){
         embedConfig = $.extend(embedConfig, data.config.embedded);
 
         common.controller.modals.init(embedConfig);
+        common.controller.SearchBar.init(embedConfig);
 
         // Docked toolbar
         if (embedConfig.toolbarDocked === 'bottom') {
@@ -114,6 +114,7 @@ PE.ApplicationController = new(function(){
 
             docInfo.put_Id(docConfig.key);
             docInfo.put_Url(docConfig.url);
+            docInfo.put_DirectUrl(docConfig.directUrl);
             docInfo.put_Title(docConfig.title);
             docInfo.put_Format(docConfig.fileType);
             docInfo.put_VKey(docConfig.vkey);
@@ -264,28 +265,54 @@ PE.ApplicationController = new(function(){
         var zf = (config.customization && config.customization.zoom ? parseInt(config.customization.zoom) : -1);
         (zf == -1) ? api.zoomFitToPage() : ((zf == -2) ? api.zoomFitToWidth() : api.zoom(zf>0 ? zf : 100));
 
-        if ( permissions.print === false)
+        var dividers = $('#box-tools .divider');
+        var itemsCount = $('#box-tools a').length;
+
+        $('#idt-search').hide(); // TO DO: remove when search will be ready
+        itemsCount--;
+
+        if ( permissions.print === false) {
             $('#idt-print').hide();
+            itemsCount--;
+        }
 
-        if (!embedConfig.saveUrl || permissions.download === false)
+        if (!embedConfig.saveUrl || permissions.download === false) {
             $('#idt-download').hide();
+            itemsCount--;
+        }
 
-        if ( !embedConfig.shareUrl )
+        if ( !embedConfig.shareUrl ) {
             $('#idt-share').hide();
+            itemsCount--;
+        }
 
-        if (!config.canBackToFolder)
+        if (!config.canBackToFolder) {
             $('#idt-close').hide();
+            itemsCount--;
+        } else {
+            var text = config.customization.goback.text;
+            text && (typeof text == 'string') && $('#idt-close .caption').text(text);
+        }
 
-        if ( !embedConfig.embedUrl )
+        if (itemsCount < 7) {
+            $(dividers[0]).hide();
+            $(dividers[1]).hide();
+        }
+
+        if ( !embedConfig.embedUrl ) {
             $('#idt-embed').hide();
+            itemsCount--;
+        }
 
-        if ( !embedConfig.fullscreenUrl )
+        if ( !embedConfig.fullscreenUrl ) {
             $('#idt-fullscreen').hide();
+            itemsCount--;
+        }
 
-        if ( (!embedConfig.saveUrl || permissions.download === false) && permissions.print === false && !embedConfig.shareUrl && !embedConfig.embedUrl && !embedConfig.fullscreenUrl && !config.canBackToFolder)
+        if (itemsCount < 1)
             $('#box-tools').addClass('hidden');
         else if (!embedConfig.embedUrl && !embedConfig.fullscreenUrl)
-            $('#box-tools .divider').hide();
+            $(dividers[2]).hide();
 
         common.controller.modals.attach({
             share: '#idt-share',
@@ -343,6 +370,11 @@ PE.ApplicationController = new(function(){
                         }
                     }
                 }
+            });
+
+        PE.ApplicationView.tools.get('#idt-search')
+            .on('click', function(){
+                common.controller.SearchBar.show();
             });
 
         var $pagenum = $('#page-number');
@@ -464,6 +496,16 @@ PE.ApplicationController = new(function(){
     }
 
     function onEditorPermissions(params) {
+        var licType = params.asc_getLicenseType();
+        if (Asc.c_oLicenseResult.Expired === licType || Asc.c_oLicenseResult.Error === licType || Asc.c_oLicenseResult.ExpiredTrial === licType ||
+            Asc.c_oLicenseResult.NotBefore === licType || Asc.c_oLicenseResult.ExpiredLimited === licType) {
+            $('#id-critical-error-title').text(Asc.c_oLicenseResult.NotBefore === licType ? me.titleLicenseNotActive : me.titleLicenseExp);
+            $('#id-critical-error-message').html(Asc.c_oLicenseResult.NotBefore === licType ? me.warnLicenseBefore : me.warnLicenseExp);
+            $('#id-critical-error-close').parent().remove();
+            $('#id-critical-error-dialog').css('z-index', 20002).modal({backdrop: 'static', keyboard: false, show: true});
+            return;
+        }
+
         appOptions.canBranding  = params.asc_getCustomization();
         appOptions.canBranding && setBranding(config.customization);
 
@@ -511,6 +553,21 @@ PE.ApplicationController = new(function(){
     function onPlaySlideChanged(number) {
         if ( number++ < maxPages)
             $('#page-number').val(number);
+    }
+
+    function onAdvancedOptions(type, advOptions, mode, formatOptions) {
+        if (type == Asc.c_oAscAdvancedOptionsID.DRM) {
+            var isCustomLoader = !!config.customization.loaderName || !!config.customization.loaderLogo;
+            var submitPassword = function(val) {
+                api && api.asc_setAdvancedOptions(Asc.c_oAscAdvancedOptionsID.DRM, new Asc.asc_CDRMAdvancedOptions(val)); 
+                me.loadMask && me.loadMask.show();
+                if(!isCustomLoader) $('#loading-mask').removeClass("none-animation");
+            };
+            common.controller.modals.createDlgPassword(submitPassword);
+            if(isCustomLoader) hidePreloader();
+            else $('#loading-mask').addClass("none-animation");
+            onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
+        }
     }
 
     function onError(id, level, errData) {
@@ -583,6 +640,22 @@ PE.ApplicationController = new(function(){
             case Asc.c_oAscError.ID.KeyExpire:
                 message = me.errorTokenExpire;
                 break;
+
+            case Asc.c_oAscError.ID.ConvertationOpenFormat:
+                if (errData === 'pdf')
+                    message = me.errorInconsistentExtPdf.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'docx')
+                    message = me.errorInconsistentExtDocx.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'xlsx')
+                    message = me.errorInconsistentExtXlsx.replace('%1', docConfig.fileType || '');
+                else if  (errData === 'pptx')
+                    message = me.errorInconsistentExtPptx.replace('%1', docConfig.fileType || '');
+                else
+                    message = me.errorInconsistentExt;
+                break;
+
+            case Asc.c_oAscError.ID.SessionToken: // don't show error message
+                return;
 
             default:
                 message = me.errorDefaultMessage.replace('%1', id);
@@ -711,6 +784,7 @@ PE.ApplicationController = new(function(){
             api.asc_registerCallback('asc_onError',                 onError);
             api.asc_registerCallback('asc_onDocumentContentReady',  onDocumentContentReady);
             api.asc_registerCallback('asc_onOpenDocumentProgress',  onOpenDocument);
+            api.asc_registerCallback('asc_onAdvancedOptions',       onAdvancedOptions);
             api.asc_registerCallback('asc_onCountPages',            onCountPages);
             api.asc_registerCallback('asc_onCurrentPage',           onCurrentPage);
 
@@ -719,6 +793,8 @@ PE.ApplicationController = new(function(){
             Common.Gateway.on('opendocument',       loadDocument);
             Common.Gateway.on('showmessage',        onExternalMessage);
             Common.Gateway.appReady();
+
+            common.controller.SearchBar.setApi(api);
         }
 
         return me;
@@ -750,6 +826,15 @@ PE.ApplicationController = new(function(){
         errorForceSave: "An error occurred while saving the file. Please use the 'Download as' option to save the file to your computer hard drive or try again later.",
         errorLoadingFont: 'Fonts are not loaded.<br>Please contact your Document Server administrator.',
         errorTokenExpire: 'The document security token has expired.<br>Please contact your Document Server administrator.',
-        openErrorText: 'An error has occurred while opening the file'
+        openErrorText: 'An error has occurred while opening the file',
+        errorInconsistentExtDocx: 'An error has occurred while opening the file.<br>The file content corresponds to text documents (e.g. docx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtXlsx: 'An error has occurred while opening the file.<br>The file content corresponds to spreadsheets (e.g. xlsx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtPptx: 'An error has occurred while opening the file.<br>The file content corresponds to presentations (e.g. pptx), but the file has the inconsistent extension: %1.',
+        errorInconsistentExtPdf: 'An error has occurred while opening the file.<br>The file content corresponds to one of the following formats: pdf/djvu/xps/oxps, but the file has the inconsistent extension: %1.',
+        errorInconsistentExt: 'An error has occurred while opening the file.<br>The file content does not match the file extension.',
+        titleLicenseExp: 'License expired',
+        titleLicenseNotActive: 'License not active',
+        warnLicenseBefore: 'License not active. Please contact your administrator.',
+        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.'
     }
 })();
