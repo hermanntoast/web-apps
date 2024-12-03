@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  StatusBar View
  *
- *  Created by Maxim Kadushkin on 8 April 2014
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 8 April 2014
  *
  */
 
@@ -264,12 +263,16 @@ define([
                     restoreHeight: 285,
                     itemTemplate: _.template([
                         '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value.value %>" class="<% if (checked) { %> checked <% } %>">',
-                        '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
-                        '<%= caption %>',
+                            '<div>',
+                                '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
+                                '<%= caption %>',
+                            '</div>',
+                            '<label style="opacity: 0.6"><%= captionEn %></label>',
                         '</a>'
                     ].join('')),
                     menuAlign: 'bl-tl',
                     search: true,
+                    searchFields: ['caption', 'captionEn'],
                     focusToCheckedItem: true
                 });
 
@@ -277,7 +280,7 @@ define([
                     parentEl: $('#btn-cnt-lang', this.el),
                     cls         : 'btn-toolbar',
                     scaling     : false,
-                    caption     : 'English (United States)',
+                    caption     : 'English – United States',
                     hint: this.tipSetLang,
                     hintAnchor  : 'top-left',
                     disabled: true,
@@ -334,12 +337,23 @@ define([
                 this.getStatusLabel().text('');
             },
 
+            showSlideMasterStatus: function (show) {
+                if (show) {
+                    $('#status-label-pages').css('display', 'none');
+                    $('#status-label-slide-master').css('display', 'inline-block');
+                } else {
+                    $('#status-label-pages').css('display', 'inline-block');
+                    $('#status-label-slide-master').css('display', 'none');
+                }
+            },
+
             reloadLanguages: function(array) {
                 var arr = [],
                     saved = this.langMenu.saved;
                 _.each(array, function(item) {
                     arr.push({
                         caption     : item['displayValue'],
+                        captionEn   : item['displayValueEn'],
                         value       : {value: item['value'], code: item['code']},
                         checkable   : true,
                         checked     : saved == item['displayValue'],
@@ -405,7 +419,8 @@ define([
             tipSetLang      : 'Set Text Language',
             textShowBegin: 'Show from Beginning',
             textShowCurrent: 'Show from Current slide',
-            textShowPresenterView: 'Show presenter view'
+            textShowPresenterView: 'Show presenter view',
+            textSlideMaster: 'Slide master'
         }, PE.Views.Statusbar || {}));
     }
 );

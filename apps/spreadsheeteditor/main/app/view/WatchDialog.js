@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,13 @@
  *
  *  WatchDialog.js
  *
- *  Created by Julia.Radzhabova on 24.06.22
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 24.06.22
  *
  */
 
-define([  'text!spreadsheeteditor/main/app/template/WatchDialog.template',
+define([
+    'text!spreadsheeteditor/main/app/template/WatchDialog.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ListView'
 ], function (contentTemplate) {
     'use strict';
 
@@ -51,23 +50,17 @@ define([  'text!spreadsheeteditor/main/app/template/WatchDialog.template',
         options: {
             alias: 'WatchDialog',
             contentWidth: 560,
-            height: 294,
             modal: false,
-            buttons: null
+            separator: false,
+            buttons: ['close']
         },
 
         initialize: function (options) {
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                template: [
-                    '<div class="box" style="height:' + (this.options.height-85) + 'px;">',
-                    '<div class="content-panel" style="padding: 0;">' + _.template(contentTemplate)({scope: this}) + '</div>',
-                    '</div>',
-                    '<div class="footer center">',
-                    '<button class="btn normal dlg-btn" result="cancel" style="width: 86px;">' + this.closeButtonText + '</button>',
-                    '</div>'
-                ].join('')
+                contentStyle: 'padding: 0;',
+                contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -103,7 +96,7 @@ define([  'text!spreadsheeteditor/main/app/template/WatchDialog.template',
                         '<div class="padding-right-5" style="width:70px;"><%= Common.Utils.String.htmlEncode(name) %></div>',
                         '<div class="padding-right-5" style="width:70px;"><%= cell %></div>',
                         '<div class="padding-right-5" style="width:110px;" data-toggle="tooltip"><%= Common.Utils.String.htmlEncode(value) %></div>',
-                        '<div style="width:135px;" data-toggle="tooltip"><%= formula %></div>',
+                        '<div style="width:135px;" data-toggle="tooltip"><%= Common.Utils.String.htmlEncode(formula) %></div>',
                     '</div>'
                 ].join('')),
                 tabindex: 1
@@ -138,7 +131,8 @@ define([  'text!spreadsheeteditor/main/app/template/WatchDialog.template',
                             caption:  this.textDeleteAll,
                             value: 1
                         }]
-                })
+                }),
+                takeFocusOnClose: true
             });
             $(this.btnDelete.cmpEl.find('button')[0]).css('min-width', '87px');
             this.btnDelete.on('click', _.bind(this.onDeleteWatch, this));
@@ -231,9 +225,9 @@ define([  'text!spreadsheeteditor/main/app/template/WatchDialog.template',
                     me.show();
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 65, xy.top + 77);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : me.api.asc_getEscapeSheetName(me.api.asc_getWorksheetName(me.api.asc_getActiveWorksheetIndex())) + '!' + me.api.asc_getActiveRangeStr(Asc.referenceType.A),

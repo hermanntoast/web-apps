@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  DocumentPreview.js
  *
- *  Created by Julia Radzhabova on 4/18/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/18/14
  *
  */
 
@@ -42,7 +41,8 @@ define([
     'underscore',
     'backbone',
     'common/main/lib/component/BaseView',
-    'presentationeditor/main/app/model/Pages'
+    'presentationeditor/main/app/model/Pages',
+    'common/main/lib/component/InputField'
 ], function () {
     'use strict';
 
@@ -108,7 +108,8 @@ define([
             this.btnPrev = new Common.UI.Button({
                 el: $('#btn-preview-prev',this.el),
                 hint: this.txtPrev,
-                hintAnchor: 'top'
+                hintAnchor: 'top',
+                hintContainer: '#pe-preview'
             });
             this.btnPrev.on('click', _.bind(function() {
                 if (this.api) this.api.DemonstrationPrevSlide();
@@ -117,7 +118,8 @@ define([
             this.btnNext = new Common.UI.Button({
                 el: $('#btn-preview-next',this.el),
                 hint: this.txtNext,
-                hintAnchor: 'top'
+                hintAnchor: 'top',
+                hintContainer: '#pe-preview'
             });
             this.btnNext.on('click', _.bind(function() {
                 if (this.api) this.api.DemonstrationNextSlide();
@@ -126,7 +128,8 @@ define([
             this.btnPlay = new Common.UI.Button({
                 el: $('#btn-preview-play',this.el),
                 hint: this.txtPlay,
-                hintAnchor: 'top'
+                hintAnchor: 'top',
+                hintContainer: '#pe-preview'
             });
             this.btnPlay.on('click', _.bind(function(btn) {
                 var iconEl = $('.icon', this.btnPlay.cmpEl);
@@ -146,7 +149,8 @@ define([
             this.btnClose = new Common.UI.Button({
                 el: $('#btn-preview-close',this.el),
                 hint: this.txtClose,
-                hintAnchor: 'top'
+                hintAnchor: 'top',
+                hintContainer: '#pe-preview'
             });
             this.btnClose.on('click', _.bind(function() {
                 if (this.api) this.api.EndDemonstration();
@@ -155,7 +159,8 @@ define([
             this.btnFullScreen = new Common.UI.Button({
                 el: $('#btn-preview-fullscreen',this.el),
                 hint: this.txtFullScreen,
-                hintAnchor: 'top'
+                hintAnchor: 'top',
+                hintContainer: '#pe-preview'
             });
             this.btnFullScreen.on('click', _.bind(function(btn) {
                 this.toggleFullScreen();
@@ -375,54 +380,28 @@ define([
 
         onEndDemonstration: function( ) {
             this.hide();
-            this.fullScreenCancel();
+            Common.Utils.cancelFullscreen();
         },
 
         onDemonstrationStatus: function(status) {
-            var iconEl = $('.icon', this.btnPlay.cmpEl);
-            iconEl.toggleClass('btn-preivew-pause', status=="play");
-            iconEl.toggleClass('btn-preivew-play', status!=="play");
+            (status=="play") ? this.btnPlay.changeIcon({curr: 'btn-play', next: 'btn-preview-pause'}) :
+                               this.btnPlay.changeIcon({curr: 'btn-preview-pause', next: 'btn-play'});
             this.btnPlay.updateHint((status=="play") ? this.txtPause : this.txtPlay);
         },
 
         toggleFullScreen: function() {
             if (!document.fullscreenElement && !document.msFullscreenElement && 
-                !document.mozFullScreenElement && !document.webkitFullscreenElement) {
-                this.fullScreen(document.documentElement);
-            } else {
-                this.fullScreenCancel();
-            }
-        },
-
-        fullScreen: function(element) {
-            if (this.mode.isDesktopApp || Common.Utils.isIE11) return;
-            if (element) {
-                this.previewControls.css('display', 'none');
-                this.$el.css('cursor', 'none');
-                if(element.requestFullscreen) {
-                    element.requestFullscreen();
-                } else if(element.webkitRequestFullscreen) {
-                    element.webkitRequestFullscreen();
-                } else if(element.mozRequestFullScreen) {
-                    element.mozRequestFullScreen();
-                } else if(element.msRequestFullscreen) {
-                    element.msRequestFullscreen();
+                !document.mozFullScreenElement && !document.webkitFullscreenElement)
+            {
+                if (this.mode.isDesktopApp || Common.Utils.isIE11) return;
+                const elem = document.getElementById('pe-preview');
+                if ( elem ) {
+                    Common.Utils.startFullscreenForElement(elem);
+                    this.previewControls.css('display', 'none');
+                    this.$el.css('cursor', 'none');
                 }
-            }
-        },
-
-        fullScreenCancel: function () {
-            if (this.mode.isDesktopApp || Common.Utils.isIE11) return;
-            this.previewControls.css('display', 'none');
-            this.$el.css('cursor', 'none');
-            if(document.cancelFullScreen) {
-                document.cancelFullScreen();
-            } else if(document.webkitCancelFullScreen ) {
-                document.webkitCancelFullScreen();
-            } else if(document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if(document.msExitFullscreen) {
-                document.msExitFullscreen();
+            } else {
+                Common.Utils.cancelFullscreen();
             }
         },
 

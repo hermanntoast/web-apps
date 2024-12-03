@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,21 +32,20 @@
 /**
  *  TableSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 1/19/17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 1/19/17
  *
  */
 
-define([    'text!spreadsheeteditor/main/app/template/TableSettingsAdvanced.template',
+define([
+    'text!spreadsheeteditor/main/app/template/TableSettingsAdvanced.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/InputField'
 ], function (contentTemplate) {
     'use strict';
 
     SSE.Views.TableSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 300,
-            height: 342,
+            contentHeight: 257,
             toggleGroup: 'table-adv-settings-group',
             properties: null,
             storageName: 'sse-table-settings-adv-category'
@@ -96,7 +95,7 @@ define([    'text!spreadsheeteditor/main/app/template/TableSettingsAdvanced.temp
         },
 
         getFocusedComponents: function() {
-            return [ this.inputAltTitle, this.textareaAltDescription ];  // 0 tab
+            return this.btnsCategory.concat([ this.inputAltTitle, this.textareaAltDescription ]).concat(this.getFooterButtons());  // 0 tab
         },
 
         onCategoryClick: function(btn, index) {

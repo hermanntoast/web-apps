@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,14 +32,11 @@
 /**
  *  ProtectDialog.js
  *
- *  Created by Julia Radzhabova on 21.09.2022
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 21.09.2022
  *
  */
 
-define([
-    'common/main/lib/component/Window'
-], function () {
+define([], function () {
     'use strict';
 
     DE.Views.ProtectDialog = Common.UI.Window.extend(_.extend({
@@ -113,7 +110,7 @@ define([
                 maxLength: 15,
                 validateOnBlur: false,
                 repeatInput: this.repeatPwd,
-                showPwdOnClick: true,
+                showPwdOnClick: false,
                 validation  : function(value) {
                     return (value.length>15) ? me.txtLimit : true;
                 }
@@ -148,15 +145,16 @@ define([
                 value: Asc.c_oAscEDocProtect.Comments
             });
 
-            this.btnOk = new Common.UI.Button({
-                el: this.$window.find('.primary')
-            });
+
+            this.btnOk = _.find(this.getFooterButtons(), function (item) {
+                return (item.$el && item.$el.find('.primary').addBack().filter('.primary').length>0);
+            }) || new Common.UI.Button({ el: this.$window.find('.primary') });
 
             this.afterRender();
         },
 
         getFocusedComponents: function() {
-            return [this.inputPwd, this.repeatPwd, this.rbView, this.rbForms, this.rbReview, this.rbComments];
+            return [this.inputPwd, this.repeatPwd, this.rbView, this.rbForms, this.rbReview, this.rbComments].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *    CellEdit.js
  *
- *    Created by Maxim Kadushkin on 04 April 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 04 April 2014
  *
  */
 
@@ -70,6 +69,8 @@ define([
             this.$cellname = $('#ce-cell-name', this.el);
             this.$btnexpand = $('#ce-btn-expand', this.el);
             this.$btnfunc = $('#ce-func-label', this.el);
+            this.$cellcontent = $('#ce-cell-content', this.el);
+            this.$cellgroupname = this.$btnexpand.parent();
 
             var me = this;
             this.$cellname.on('focus', function(e){
@@ -109,6 +110,28 @@ define([
                 var icon_name = 'btn-function',
                     svg_icon = '<svg class="icon"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name);
                 this.$btnfunc.find('i.icon').after(svg_icon);
+            }
+        },
+
+        cellEditorTextChange: function (){
+            if (!this.$cellcontent) return;
+
+            var cellcontent = this.$cellcontent[0];
+
+            if (cellcontent.clientHeight != cellcontent.scrollHeight) {
+                if ( !this._isScrollShow ) {
+                    this._isScrollShow = true;
+                    var scrollBarWidth = cellcontent.offsetWidth - cellcontent.clientWidth;
+                    this.$cellgroupname.css({
+                        'right': Common.UI.isRTL() ? '' : scrollBarWidth + "px",
+                        'left': Common.UI.isRTL() ? scrollBarWidth + "px" : ''
+                    });
+                }
+            } else {
+                if ( this._isScrollShow ) {
+                    this._isScrollShow = false;
+                    this.$cellgroupname.css({'right': '', 'left': ''});
+                }
             }
         },
 

@@ -1,6 +1,5 @@
 /*
- *
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -13,7 +12,7 @@
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR  PURPOSE. For
  * details, see the GNU AGPL at: http://www.gnu.org/licenses/agpl-3.0.html
  *
- * You can contact Ascensio System SIA at 20A-12 Ernesta Birznieka-Upisha
+ * You can contact Ascensio System SIA at 20A-6 Ernesta Birznieka-Upish
  * street, Riga, Latvia, EU, LV-1050.
  *
  * The  interactive user interfaces in modified source and object code versions
@@ -29,19 +28,18 @@
  * Creative Commons Attribution-ShareAlike 4.0 International. See the License
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
-*/
+ */
 /**
  *
  *  ProtectedRangesManagerDlg.js
  *
- *  Created by Julia.Radzhabova on 01.02.23
- *  Copyright (c) 2023 Ascensio System SIA. All rights reserved.
+ *  Created on 01.02.23
  *
  */
 
-define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.template',
+define([
+    'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ListView'
 ], function (contentTemplate) {
     'use strict';
 
@@ -51,22 +49,16 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
         options: {
             alias: 'ProtectedRangesManagerDlg',
             contentWidth: 490,
-            height: 365,
-            buttons: null
+            separator: false,
+            buttons: ['close']
         },
 
         initialize: function (options) {
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                template: [
-                    '<div class="box" style="height:' + (this.options.height-85) + 'px;">',
-                    '<div class="content-panel" style="padding: 0;">' + _.template(contentTemplate)({scope: this}) + '</div>',
-                    '</div>',
-                    '<div class="footer center">',
-                    '<button class="btn normal dlg-btn" result="cancel" style="width: 86px;">' + this.closeButtonText + '</button>',
-                    '</div>'
-                ].join('')
+                contentStyle: 'padding: 0;',
+                contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -109,15 +101,15 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
                 headers: [
                     {name: this.textTitle,  width: 184},
                     {name: this.textRange,  width: 191},
-                    {name: this.textYouCan, width: 70},
+                    {name: this.txtAccess, width: 70},
                 ],
                 itemTemplate: _.template([
                     '<div id="<%= id %>" class="list-item" style="width: 100%;display:inline-block;<% if (!lock) { %>pointer-events:none;<% } %>">',
                     '<div class="padding-right-5" style="width:184px;"><%= Common.Utils.String.htmlEncode(name) %></div>',
-                    '<div class="padding-right-5" style="width:191px;"><%= range %></div>',
-                    '<div style="width:70px;"><% if (canEdit) { %>', me.txtEdit, '<% } else { %>', me.txtView, '<% } %></div>',
+                    '<div class="padding-right-5" style="width:191px;"><%= Common.Utils.String.htmlEncode(range) %></div>',
+                    '<div style="width:70px;"><% if (type===Asc.c_oSerUserProtectedRangeType.edit) { %>', me.txtEdit, '<% } else if (type===Asc.c_oSerUserProtectedRangeType.view) { %>', me.txtView, '<% } else { %>', me.txtDenied, '<% } %></div>',
                     '<% if (lock) { %>',
-                    '<div class="lock-user"><%=lockuser%></div>',
+                    '<div class="lock-user"><%=Common.Utils.String.htmlEncode(lockuser)%></div>',
                     '<% } %>',
                     '</div>'
                 ].join('')),
@@ -154,7 +146,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
         },
 
         getFocusedComponents: function() {
-            return [ this.cmbFilter, this.btnNewRange, this.btnEditRange, this.btnDeleteRange, this.rangeList];
+            return [ this.cmbFilter, this.btnNewRange, this.btnEditRange, this.btnDeleteRange, this.rangeList].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -180,14 +172,18 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
                     currentId = this.currentUser.id;
                 for (var i=0; i<ranges.length; i++) {
                     var id = ranges[i].asc_getIsLock(),
-                        users = ranges[i].asc_getUsers();
+                        users = ranges[i].asc_getUsers(),
+                        type = ranges[i].asc_getType(),
+                        user = _.find(users, function(item) { return (item.asc_getId()===currentId); })
+                    user && (type = user.asc_getType());
                     arr.push({
                         name: ranges[i].asc_getName() || '',
                         range: ranges[i].asc_getRef() || '',
                         rangeId: ranges[i].asc_getId() || '',
                         users: users,
                         props: ranges[i],
-                        canEdit: !!_.find(users, function(item) { return (item.asc_getId()===currentId); }),
+                        type: type,
+                        canEdit: type===Asc.c_oSerUserProtectedRangeType.edit,
                         lock: (id!==null && id!==undefined),
                         lockuser: (id) ? (this.isUserVisible(id) ? this.getUserName(id) : this.lockText) : this.guestText
                     });
@@ -259,7 +255,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
                 return;
             }
             var me = this,
-                xy = me.$window.offset(),
+                xy = Common.Utils.getOffset(me.$window),
                 rec = this.rangeList.getSelectedRec(),
                 props;
             if (isEdit) {
@@ -434,7 +430,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
         },
 
         txtTitle: 'Protected Ranges',
-        textRangesDesc: 'You can restrict editing ranges to selected people.',
+        textRangesDesc: 'You can restrict editing or viewing ranges to selected people.',
         textTitle: 'Title',
         textRange: 'Range',
         textNew: 'New',
@@ -453,7 +449,8 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectedRangesManagerDlg.te
         lockText: 'Locked',
         textFilter: 'Filter',
         textFilterAll: 'All',
-        textYouCan: 'You can'
+        txtDenied: 'Denied',
+        txtAccess: 'Access'
 
     }, SSE.Views.ProtectedRangesManagerDlg || {}));
 });

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,22 +33,18 @@
 /**
  *  MacroDialog.js
  *
- *  Created by Julia Radzhabova on 16.02.2021
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 16.02.2021
  *
  */
 
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/InputField',
-    'common/main/lib/view/AdvancedSettingsWindow'
+    'common/main/lib/view/AdvancedSettingsWindow',
 ], function () { 'use strict';
 
     SSE.Views.MacroDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 250,
-            height: 312
+            separator: false
         },
 
         initialize : function(options) {
@@ -56,10 +52,10 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                template: [
-                    '<div class="box" style="height:' + (me.options.height - 85) + 'px;">',
-                    '<div class="content-panel" style="padding: 0 5px;"><div class="inner-content">',
+                contentStyle: 'padding: 0 5px;',
+                contentTemplate: _.template([
                     '<div class="settings-panel active">',
+                    '<div class="inner-content">',
                         '<table cols="1" style="width: 100%;">',
                             '<tr>',
                                 '<td class="padding-extra-small">',
@@ -77,10 +73,8 @@ define([
                                 '</td>',
                             '</tr>',
                         '</table>',
-                    '</div></div>',
-                    '</div>',
-                    '</div>'
-                ].join('')
+                    '</div></div>'
+                ].join(''))({scope: this})
             }, options);
 
             this.handler    = options.handler;
@@ -111,7 +105,7 @@ define([
                 store: new Common.UI.DataViewStore(),
                 tabindex: 1,
                 cls: 'dbl-clickable',
-                itemTemplate: _.template('<div id="<%= id %>" class="list-item" style="overflow: hidden; text-overflow: ellipsis;"><%= value %></div>')
+                itemTemplate: _.template('<div id="<%= id %>" class="list-item" style="overflow: hidden; text-overflow: ellipsis;width:216px;"><%= Common.Utils.String.htmlEncode(value) %></div>')
             });
             this.macroList.on('item:dblclick', _.bind(this.onDblClickMacro, this));
             this.macroList.on('entervalue', _.bind(this.onPrimary, this));
@@ -121,7 +115,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.txtName, this.macroList];
+            return [this.txtName, this.macroList].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function() {

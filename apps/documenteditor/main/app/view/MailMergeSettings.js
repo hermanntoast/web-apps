@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,7 +30,6 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 20.02.15
  */
 
@@ -40,10 +39,7 @@ define([
     'underscore',
     'backbone',
     'common/main/lib/component/Button',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/view/SaveAsDlg',
-    'common/main/lib/view/SelectFileDlg',
-    'documenteditor/main/app/view/MailMergeEmailDlg'
+    'common/main/lib/component/CheckBox'
 ], function (menuTemplate, $, _, Backbone) {
     'use strict';
 
@@ -432,7 +428,7 @@ define([
                 if (this.btnInsField.menu.items.length<1) {
                     _.each(this._state.fieldsList, function(field, index) {
                         var mnu = new Common.UI.MenuItem({
-                            caption: '«' + Common.Utils.String.htmlEncode(field) + '»',
+                            caption: '«' + field + '»',
                             field: field
                         }).on('click', function(item, e) {
                             if (me.api) {
@@ -479,6 +475,7 @@ define([
         },
 
         onEditData: function() {
+            if (!Common.Controllers.LaunchController.isScriptLoaded()) return;
             var mergeEditor = DE.getController('Common.Controllers.ExternalMergeEditor').getView('Common.Views.ExternalMergeEditor');
             if (mergeEditor) {
                 mergeEditor.show();
@@ -639,9 +636,8 @@ define([
                     title: this.notcriticalErrorTitle,
                     msg: opts.data.error,
                     iconCls: 'warn',
-                    buttons: _.isEmpty(opts.data.createEmailAccountUrl) ? ['ok'] : ['custom', 'cancel'],
+                    buttons: _.isEmpty(opts.data.createEmailAccountUrl) ? ['ok'] : [{value: 'custom', caption: this.textGoToMail}, 'cancel'],
                     primary: _.isEmpty(opts.data.createEmailAccountUrl) ? ['ok'] : 'custom',
-                    customButtonText: this.textGoToMail,
                     callback: _.bind(function(btn){
                         if (btn == 'custom') {
                             window.open(opts.data.createEmailAccountUrl, "_blank");
@@ -840,6 +836,7 @@ define([
                 viewMode: disable,
                 reviewMode: false,
                 fillFormMode: false,
+                viewDocMode: false,
                 allowMerge: true,
                 allowSignature: false,
                 allowProtect: false,
@@ -855,7 +852,8 @@ define([
                 documentHolder: {clear: false, disable: true},
                 toolbar: true,
                 plugins: false,
-                protect: false
+                protect: false,
+                header: {docmode: true}
             }, 'mailmerge');
 
             this.lockControls(DE.enumLockMM.preview, disable, {array: [this.btnInsField, this.btnEditData]});
@@ -869,7 +867,7 @@ define([
         },
 
         openHelp: function(e) {
-            DE.getController('LeftMenu').getView('LeftMenu').showMenu('file:help', 'UsageInstructions\/UseMailMerge.htm');
+            Common.NotificationCenter.trigger('file:help', 'UsageInstructions\/UseMailMerge.htm');
         },
 
         disablePreviewMode: function() {

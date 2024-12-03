@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *  View
  *
- *  Created by Julia.Radzhabova on 06.27.17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 06.27.17
  *
  */
 
@@ -50,11 +49,11 @@ define([
 
     SSE.Views.PivotTable = Common.UI.BaseView.extend(_.extend((function(){
         var template =
-            '<section id="pivot-table-panel" class="panel" data-tab="pivot">' +
-                '<div class="group">' +
-                    '<span class="btn-slot text x-huge slot-add-pivot"></span>' +
-                '</div>' +
-                '<div class="separator long"></div>' +
+            '<section id="pivot-table-panel" class="panel" data-tab="pivot" role="tabpanel" aria-labelledby="pivot">' +
+                // '<div class="group">' +
+                //     '<span class="btn-slot text x-huge slot-add-pivot"></span>' +
+                // '</div>' +
+                // '<div class="separator long"></div>' +
                 '<div class="group">' +
                     '<span id="slot-btn-pivot-report-layout" class="btn-slot text x-huge"></span>' +
                     '<span id="slot-btn-pivot-blank-rows" class="btn-slot text x-huge"></span>' +
@@ -68,6 +67,15 @@ define([
                 '<div class="separator long"></div>' +
                 '<div class="group">' +
                     '<span id="slot-btn-select-pivot" class="btn-slot text x-huge"></span>' +
+                '</div>' +
+                '<div class="separator long"></div>' +
+                '<div class="group small">' +
+                    '<div class="elset">' +
+                        '<span class="btn-slot text" id="slot-btn-expand-field"></span>' +
+                    '</div>' +
+                    '<div class="elset">' +
+                        '<span class="btn-slot text" id="slot-btn-collapse-field"></span>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="separator long"></div>' +
                 '<div class="group small">' +
@@ -127,6 +135,14 @@ define([
 
             this.btnSelectPivot.on('click', function (e) {
                 me.fireEvent('pivottable:select');
+            });
+
+            this.btnExpandField.on('click', function (e) {
+                me.fireEvent('pivottable:expand');
+            });
+
+            this.btnCollapseField.on('click', function (e) {
+                me.fireEvent('pivottable:collapse');
             });
 
             this.chRowHeader.on('change', function (field, value) {
@@ -276,6 +292,28 @@ define([
                 });
                 this.lockedControls.push(this.btnSelectPivot);
 
+                this.btnExpandField = new Common.UI.Button({
+                    cls: 'btn-toolbar',
+                    iconCls: 'toolbar__icon btn-expand-field',
+                    caption: this.txtExpandEntire,
+                    lock        : [_set.lostConnect, _set.coAuth, _set.noPivot, _set.selRangeEdit, _set.pivotLock, _set.pivotExpandLock, _set['FormatCells'], _set['PivotTables']],
+                    dataHint    : '1',
+                    dataHintDirection: 'bottom',
+                    dataHintOffset: 'small'
+                });
+                this.lockedControls.push(this.btnExpandField);
+
+                this.btnCollapseField = new Common.UI.Button({
+                    cls: 'btn-toolbar',
+                    iconCls: 'toolbar__icon btn-collapse-field',
+                    caption: this.txtCollapseEntire,
+                    lock        : [_set.lostConnect, _set.coAuth, _set.noPivot, _set.selRangeEdit, _set.pivotLock, _set.pivotExpandLock, _set['FormatCells'], _set['PivotTables']],
+                    dataHint    : '1',
+                    dataHintDirection: 'bottom',
+                    dataHintOffset: 'small'
+                });
+                this.lockedControls.push(this.btnCollapseField);
+
                 this.pivotStyles = new Common.UI.ComboDataView({
                     cls             : 'combo-pivot-template',
                     style           : 'min-width: 103px; max-width: 517px;',
@@ -301,7 +339,7 @@ define([
                             menu.menuAlignEl = cmp.cmpEl;
                             menu.menuAlign = 'tl-tl';
                             var menuWidth = columnCount * (itemMargin + itemWidth) + 17, // for scroller
-                                buttonOffsetLeft = cmp.openButton.$el.offset().left;
+                                buttonOffsetLeft = Common.Utils.getOffset(cmp.openButton.$el).left;
                             if (menuWidth>Common.Utils.innerWidth())
                                 menuWidth = Math.max(Math.floor((Common.Utils.innerWidth()-17)/(itemMargin + itemWidth)), 2) * (itemMargin + itemWidth) + 17;
                             var offset = cmp.cmpEl.width() - cmp.openButton.$el.width() - Math.min(menuWidth, buttonOffsetLeft) - 1;
@@ -406,6 +444,8 @@ define([
 
                 this.btnRefreshPivot.render(this.$el.find('#slot-btn-refresh-pivot'));
                 this.btnSelectPivot.render(this.$el.find('#slot-btn-select-pivot'));
+                this.btnExpandField.render(this.$el.find('#slot-btn-expand-field'));
+                this.btnCollapseField.render(this.$el.find('#slot-btn-collapse-field'));
                 this.btnPivotLayout.render(this.$el.find('#slot-btn-pivot-report-layout'));
                 this.btnPivotBlankRows.render(this.$el.find('#slot-btn-pivot-blank-rows'));
                 this.btnPivotSubtotals.render(this.$el.find('#slot-btn-pivot-subtotals'));
@@ -463,6 +503,8 @@ define([
             tipGrandTotals: 'Show or hide grand totals',
             tipSubtotals: 'Show or hide subtotals',
             txtSelect: 'Select',
+            txtExpandEntire: 'Expand Entire Field',
+            txtCollapseEntire: 'Collapse Entire Field',
             tipSelect: 'Select entire pivot table',
             txtPivotTable: 'Pivot Table',
             txtTable_PivotStyleMedium: 'Pivot Table Style Medium',

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  CellRangeDialog.js
  *
- *  Created by Julia Radzhabova on 6/3/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 6/3/14
  *
  */
 
@@ -41,10 +40,7 @@
 if (Common === undefined)
     var Common = {};
 
-define([
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.CellRangeDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -203,7 +199,10 @@ define([
         },
 
         show: function () {
-            Common.UI.Window.prototype.show.call(this);
+            if (arguments.length>1 && typeof arguments[0] === 'object' && typeof arguments[1] === 'object') { // parent window and offset
+                Common.UI.Window.prototype.show.apply(this, [arguments[1].left + (arguments[0].outerWidth() - this.options.width)/2, arguments[1].top + (arguments[0].outerHeight() - 150)/2]);
+            } else
+                Common.UI.Window.prototype.show.apply(this, arguments);
             SSE.getController('RightMenu').SetDisabled(true);
         },
 

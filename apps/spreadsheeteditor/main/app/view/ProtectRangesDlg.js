@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,13 @@
  *
  *  ProtectRangesDlg.js
  *
- *  Created by Julia.Radzhabova on 22.06.21
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 22.06.21
  *
  */
 
-define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
+define([
+    'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ListView'
 ], function (contentTemplate) {
     'use strict';
 
@@ -50,7 +49,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
         options: {
             alias: 'ProtectRangesDlg',
             contentWidth: 480,
-            height: 333,
+            separator: false,
             id: 'window-protect-ranges'
         },
 
@@ -58,18 +57,8 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                template: [
-                    '<div class="box" style="height:' + (this.options.height-85) + 'px;">',
-                    '<div class="content-panel" style="padding: 0;">' + _.template(contentTemplate)({scope: this}) + '</div>',
-                    '</div>',
-                ].join(''),
-                buttons: [
-                // {
-                //     value: 'protect-sheet',
-                //     caption: this.textProtect
-                // },
-                    'ok','cancel']
-                // primary: 'protect-sheet'
+                contentStyle: 'padding: 0;',
+                contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -108,7 +97,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
                             '<div class="padding-right-5" style="width:180px;"><%= range %></div>',
                             '<div style="width:70px;"><% if (pwd) { %>', me.txtYes, '<% } else { %>', me.txtNo, '<% } %></div>',
                             '<% if (lock) { %>',
-                                '<div class="lock-user"><%=lockuser%></div>',
+                                '<div class="lock-user"><%=Common.Utils.String.htmlEncode(lockuser)%></div>',
                             '<% } %>',
                         '</div>'
                 ].join('')),
@@ -144,7 +133,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
         },
 
         getFocusedComponents: function() {
-            return [this.btnNewRange, this.btnEditRange, this.btnDeleteRange, this.rangeList];
+            return [this.btnNewRange, this.btnEditRange, this.btnDeleteRange, this.rangeList].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -247,7 +236,7 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
                 return;
             }
             var me = this,
-                xy = me.$window.offset(),
+                xy = Common.Utils.getOffset(me.$window),
                 rec = this.rangeList.getSelectedRec(),
                 props;
             if (isEdit)
@@ -323,10 +312,6 @@ define([  'text!spreadsheeteditor/main/app/template/ProtectRangesDlg.template',
                 item.get('rangeChanged') && arr.push(item.get('props'));
             });
             return {arr: arr, deletedArr: this.deletedArr};
-        },
-
-        onPrimary: function() {
-            return true;
         },
 
         onDlgBtnClick: function(event) {

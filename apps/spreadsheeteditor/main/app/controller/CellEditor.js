@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,15 +34,13 @@
  *
  *    CellEditor Controller
  *
- *    Created by Maxim Kadushkin on 08 April 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 08 April 2014
  *
  */
 
 define([
     'core',
     'spreadsheeteditor/main/app/view/CellEditor',
-    'spreadsheeteditor/main/app/view/NameManagerDlg'
 ], function (Viewport) {
     'use strict';
 
@@ -83,6 +81,7 @@ define([
             this.api.isCEditorFocused = false;
             this.api.asc_registerCallback('asc_onSelectionNameChanged', _.bind(this.onApiCellSelection, this));
             this.api.asc_registerCallback('asc_onEditCell', _.bind(this.onApiEditCell, this));
+            this.api.asc_registerCallback('asc_onEditorSelectionChanged', _.bind(this.onCellEditorTextChange, this));
             this.api.asc_registerCallback('asc_onCoAuthoringDisconnect', _.bind(this.onApiDisconnect,this));
             Common.NotificationCenter.on('api:disconnect', _.bind(this.onApiDisconnect, this));
             Common.NotificationCenter.on('cells:range', _.bind(this.onCellsRange, this));
@@ -128,8 +127,13 @@ define([
 
             this.editor.btnNamedRanges.menu.on('item:click', _.bind(this.onNamedRangesMenu, this))
                                            .on('show:before', _.bind(this.onNameBeforeShow, this));
+            $(window).on('resize', _.bind(this.onCellEditorTextChange, this));
             this.namedrange_locked = false;
             this.isUserProtected = false;
+        },
+
+        onCellEditorTextChange:function (){
+            this.editor.cellEditorTextChange();
         },
 
         onApiEditCell: function(state) {
@@ -154,7 +158,7 @@ define([
 
         onApiSelectionChanged: function(info) {
             if (this.viewmode || !info) return; // signed file
-
+            this.onCellEditorTextChange();
             var seltype = info.asc_getSelectionType(),
                 coauth_disable = (!this.mode.isEditMailMerge && !this.mode.isEditDiagram && !this.mode.isEditOle) ? (info.asc_getLocked() === true || info.asc_getLockedTable() === true || info.asc_getLockedPivotTable()===true) : false;
 
@@ -203,6 +207,7 @@ define([
                     this.editor.$btnexpand['removeClass']('btn-collapse');
                     o && Common.localStorage.setBool('sse-celleditor-expand', false);
                 }
+                this.onCellEditorTextChange();
             }
         },
 
@@ -246,7 +251,7 @@ define([
                 this.editor.$btnexpand['addClass']('btn-collapse');
                 Common.localStorage.setBool('sse-celleditor-expand', true);
             }
-            
+            this.onCellEditorTextChange();
             Common.NotificationCenter.trigger('layout:changed', 'celleditor');
             Common.NotificationCenter.trigger('edit:complete', this.editor, {restorefocus:true});
         },

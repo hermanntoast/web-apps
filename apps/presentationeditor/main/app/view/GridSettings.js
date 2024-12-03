@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  GridSettings.js
  *
- *  Created by Julia Radzhabova on 09/30/22
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 09/30/22
  *
  */
 
@@ -59,14 +58,13 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="height: 55px;">',
+                '<div class="box">',
                     '<div class="input-row">',
                         '<label class="text">' + this.textSpacing + '</label>',
                     '</div>',
-                    '<div id="grid-spacing-combo" class="input-group-nr"></div>',
-                    '<div id="grid-spacing-spin" class="margin-left-10"></div>',
-                '</div>',
-                '<div class="separator horizontal"></div>'
+                    '<div id="grid-spacing-combo" class="input-group-nr" style="margin-bottom:10px;"></div>',
+                    '<div id="grid-spacing-spin" class="margin-left-10" style="margin-bottom:10px;"></div>',
+                '</div>'
             ].join('');
 
             this.options.tpl = _.template(this.template)(this.options);
@@ -132,7 +130,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [ this.cmbGridSpacing, this.spnSpacing ];
+            return [ this.cmbGridSpacing, this.spnSpacing ].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

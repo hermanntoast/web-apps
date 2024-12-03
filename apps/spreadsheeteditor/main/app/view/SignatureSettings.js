@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  SignatureSettings.js
  *
- *  Created by Julia Radzhabova on 5/24/17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 5/24/17
  *
  */
 
@@ -208,7 +207,7 @@ define([
                 menu.hide();
             }
 
-            var offsetParent = $(this.el).offset(),
+            var offsetParent = Common.Utils.getOffset($(this.el)),
                 showPoint = [e.clientX*Common.Utils.zoom() - offsetParent.left + 5, e.clientY*Common.Utils.zoom() - offsetParent.top + 5];
 
             this.showSignatureMenu(record, showPoint);
@@ -234,8 +233,8 @@ define([
                 }
 
                 var currentTarget = $(e.currentTarget),
-                    offset = currentTarget.offset(),
-                    offsetParent = $(this.el).offset(),
+                    offset = Common.Utils.getOffset(currentTarget),
+                    offsetParent = Common.Utils.getOffset($(this.el)),
                     showPoint = [offset.left - offsetParent.left + currentTarget.width(), offset.top - offsetParent.top + currentTarget.height()/2];
 
                 this.showSignatureMenu(record, showPoint);
@@ -360,7 +359,7 @@ define([
                     text    : tipText,
                     showLink: showLink,
                     textLink: this.txtContinueEditing,
-                    placement: 'left-bottom'
+                    placement: Common.UI.isRTL() ? 'right-bottom' : 'left-bottom'
                 });
                 tip.on({
                     'dontshowclick': function() {

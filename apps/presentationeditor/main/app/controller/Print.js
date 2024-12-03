@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,9 +30,7 @@
  *
  */
 define([
-    'core',
-    'presentationeditor/main/app/view/FileMenuPanels',
-    'presentationeditor/main/app/view/HeaderFooterDialog'
+    'core'
 ], function () {
     'use strict';
 
@@ -44,7 +42,9 @@ define([
         initialize: function() {
             this.adjPrintParams = new Asc.asc_CAdjustPrint();
 
-            this._state = {};
+            this._state = {
+                isLockedSlideHeaderAppyToAll: false
+            };
             this._paperSize = undefined;
             this._navigationPreview = {
                 pageCount: false,
@@ -61,10 +61,16 @@ define([
                     'openheader': _.bind(this.onOpenHeaderSettings, this)
                 }
             });
+            Common.NotificationCenter.on('script:loaded', _.bind(this.onPostLoadComplete, this));
         },
 
         onLaunch: function() {
+        },
+
+        onPostLoadComplete: function() {
+            this.views = this.getApplication().getClasseRefs('view', ['PrintWithPreview']);
             this.printSettings = this.createView('PrintWithPreview');
+            this.setMode(this.mode);
         },
 
         onAfterRender: function(view) {
@@ -141,6 +147,8 @@ define([
             this.api = o;
             this.api.asc_registerCallback('asc_onCountPages',   _.bind(this.onCountPages, this));
             this.api.asc_registerCallback('asc_onCurrentPage',  _.bind(this.onCurrentPage, this));
+            this.api.asc_registerCallback('asc_onLockSlideHdrFtrApplyToAll', _.bind(this.onLockSlideHdrFtrApplyToAll, this, true));
+            this.api.asc_registerCallback('asc_onUnLockSlideHdrFtrApplyToAll', _.bind(this.onLockSlideHdrFtrApplyToAll, this, false));
 
             return this;
         },
@@ -160,14 +168,14 @@ define([
         onCountPages: function(count) {
             this._navigationPreview.pageCount = count;
 
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 this.printSettings.$previewBox.toggleClass('hidden', !this._navigationPreview.pageCount);
                 this.printSettings.$previewEmpty.toggleClass('hidden', !!this._navigationPreview.pageCount);
             }
             if (!!this._navigationPreview.pageCount) {
                 if (this._navigationPreview.currentPreviewPage > count - 1)
                     this._navigationPreview.currentPreviewPage = Math.max(0, count - 1);
-                if (this.printSettings.isVisible()) {
+                if (this.printSettings && this.printSettings.isVisible()) {
                     this.api.asc_drawPrintPreview(this._navigationPreview.currentPreviewPage, this._paperSize);
                     this.updateNavigationButtons(this._navigationPreview.currentPreviewPage, count);
                 }
@@ -176,10 +184,14 @@ define([
 
         onCurrentPage: function(number) {
             this._navigationPreview.currentPreviewPage = number;
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 this.api.asc_drawPrintPreview(this._navigationPreview.currentPreviewPage, this._paperSize);
                 this.updateNavigationButtons(this._navigationPreview.currentPreviewPage, this._navigationPreview.pageCount);
             }
+        },
+
+        onLockSlideHdrFtrApplyToAll: function(isLocked) {
+            this._state.isLockedSlideHeaderAppyToAll = isLocked;
         },
 
         onShowMainSettingsPrint: function() {
@@ -344,7 +356,8 @@ define([
                 api: this.api,
                 lang: this.api.asc_getDefaultLanguage(),
                 props: this.api.asc_getHeaderFooterProperties(),
-                type: 1,
+                type: this._state.isLockedSlideHeaderAppyToAll ? 0 : 1,
+                isLockedApplyToAll: this._state.isLockedSlideHeaderAppyToAll, 
                 handler: function(result, value) {
                     if (result == 'ok' || result == 'all') {
                         if (me.api) {
@@ -357,7 +370,7 @@ define([
         },
 
         SetDisabled: function() {
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var disable = !this.mode.isEdit;
             }
         },

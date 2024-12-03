@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,20 +33,13 @@
 /**
  *  DataTab.js
  *
- *  Created by Julia Radzhabova on 30.05.2019
- *  Copyright (c) 2019 Ascensio System SIA. All rights reserved.
+ *  Created on 30.05.2019
  *
  */
 
 define([
     'core',
-    'spreadsheeteditor/main/app/view/DataTab',
-    'spreadsheeteditor/main/app/view/SortDialog',
-    'spreadsheeteditor/main/app/view/RemoveDuplicatesDialog',
-    'spreadsheeteditor/main/app/view/DataValidationDialog',
-    'spreadsheeteditor/main/app/view/ExternalLinksDlg',
-    'spreadsheeteditor/main/app/view/ImportFromXmlDialog',
-    'common/main/lib/view/OptionsDialog'
+    'spreadsheeteditor/main/app/view/DataTab'
 ], function () {
     'use strict';
 
@@ -83,6 +76,7 @@ define([
                 this.api.asc_registerCallback('asc_onSelectionChanged',     _.bind(this.onSelectionChanged, this));
                 this.api.asc_registerCallback('asc_onWorksheetLocked',      _.bind(this.onWorksheetLocked, this));
                 this.api.asc_registerCallback('asc_onChangeProtectWorkbook',_.bind(this.onChangeProtectWorkbook, this));
+                this.api.asc_registerCallback('asc_onGoalSeekUpdate',       _.bind(this.onUpdateGoalSeekStatus, this));
                 this.api.asc_registerCallback('asc_onCoAuthoringDisconnect',_.bind(this.onCoAuthoringDisconnect, this));
                 Common.NotificationCenter.on('api:disconnect', _.bind(this.onCoAuthoringDisconnect, this));
                 Common.NotificationCenter.on('protect:wslock',              _.bind(this.onChangeProtectSheet, this));
@@ -108,7 +102,8 @@ define([
                     'data:remduplicates': this.onRemoveDuplicates,
                     'data:datavalidation': this.onDataValidation,
                     'data:fromtext': this.onDataFromText,
-                    'data:externallinks': this.onExternalLinks
+                    'data:externallinks': this.onExternalLinks,
+                    'data:goalseek': this.onGoalSeek
                 },
                 'Statusbar': {
                     'sheet:changed': this.onApiSheetChanged
@@ -254,7 +249,7 @@ define([
                 Common.NotificationCenter.trigger('edit:complete', this.toolbar);
             } else if (type === 'url') {
                 (new Common.Views.ImageFromUrlDialog({
-                    title: me.txtUrlTitle,
+                    label: me.txtUrlTitle,
                     handler: function(result, value) {
                         if (result == 'ok') {
                             if (me.api) {
@@ -358,7 +353,7 @@ define([
                             title: this.toolbar.txtSorting,
                             msg: this.toolbar.txtExpandSort,
                             buttons: [  {caption: this.toolbar.txtExpand, primary: true, value: 'expand'},
-                                {caption: this.toolbar.txtSortSelected, primary: true, value: 'sort'},
+                                {caption: this.toolbar.txtSortSelected, value: 'sort'},
                                 'cancel'],
                             callback: function(btn){
                                 if (btn == 'expand' || btn == 'sort') {
@@ -433,7 +428,7 @@ define([
                         title: this.txtRemDuplicates,
                         msg: this.txtExpandRemDuplicates,
                         buttons: [  {caption: this.txtExpand, primary: true, value: 'expand'},
-                            {caption: this.txtRemSelected, primary: true, value: 'remove'},
+                            {caption: this.txtRemSelected, value: 'remove'},
                             'cancel'],
                         callback: function(btn){
                             if (btn == 'expand' || btn == 'remove') {
@@ -532,6 +527,41 @@ define([
             this.externalLinksDlg.show()
         },
 
+        onGoalSeek: function() {
+            var me = this;
+            (new SSE.Views.GoalSeekDlg({
+                api: me.api,
+                handler: function(result, settings) {
+                    if (result == 'ok' && settings) {
+                        me.api.asc_StartGoalSeek(settings.formulaCell, settings.expectedValue, settings.changingCell);
+                    }
+                    Common.NotificationCenter.trigger('edit:complete');
+                }
+            })).show();
+        },
+
+        onUpdateGoalSeekStatus: function (targetValue, currentValue, iteration, cellName) {
+            var me = this;
+            if (!this.GoalSeekStatusDlg) {
+                this.GoalSeekStatusDlg = new SSE.Views.GoalSeekStatusDlg({
+                    api: me.api,
+                    handler: function (result) {
+                        me.api.asc_CloseGoalClose(result == 'ok');
+                        me.GoalSeekStatusDlg = undefined;
+                        Common.NotificationCenter.trigger('edit:complete');
+                    }
+                });
+                this.GoalSeekStatusDlg.on('close', function() {
+                    if (me.GoalSeekStatusDlg !== undefined) {
+                        me.api.asc_CloseGoalClose(false);
+                        me.GoalSeekStatusDlg = undefined;
+                    }
+                });
+                this.GoalSeekStatusDlg.show();
+            }
+            this.GoalSeekStatusDlg.setSettings({targetValue: targetValue, currentValue: currentValue, iteration: iteration, cellName: cellName});
+        },
+
         onUpdateExternalReference: function(arr, callback) {
             if (this.toolbar.mode.isEdit && this.toolbar.editMode) {
                 var me = this;
@@ -554,7 +584,8 @@ define([
                         case Asc.c_oAscExternalReferenceType.referenceData:
                             data = {
                                 referenceData: item.asc_getData(),
-                                path: item.asc_getPath()
+                                path: item.asc_getPath(),
+                                link: item.asc_getLink()
                             };
                             break;
                     }

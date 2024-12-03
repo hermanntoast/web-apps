@@ -114,6 +114,10 @@
     border-radius: 3px;
     overflow: hidden;
     box-shadow: 0 5px 15px -5px rgba(0, 0, 0, 0.2);
+    .ie &,
+    .winxp & {
+        overflow: visible;
+    }
 }
 
 #equation-container {
@@ -121,7 +125,7 @@
         height: 30px;
     }
     &.has-open-menu {
-        z-index: @zindex-navbar + 1;
+        z-index: @zindex-navbar + 3;
     }
     .btn-toolbar {
         display: flex;
@@ -141,9 +145,16 @@
 }
 
 #slot-field-fontname {
-    width: 89px;
+    width: 111px;
 }
 
 #slot-field-fontsize {
     width: 40px;
+}
+
+.menu-insert-placeholder {
+    min-width: auto;
+    &.dropdown-menu li > a {
+        line-height: 22px;
+    }
 }

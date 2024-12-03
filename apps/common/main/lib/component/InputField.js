@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  InputField.js
  *
- *  Created by Alexander Yuzhin on 4/10/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/10/14
  *
  */
 
@@ -74,7 +73,8 @@ define([
                 validateOnChange: false,
                 validateOnBlur: true,
                 disabled: false,
-                editable: true
+                editable: true,
+                hideErrorOnInput: false
             },
 
             template: _.template([
@@ -111,10 +111,11 @@ define([
                 this.editable       = me.options.editable;
                 this.disabled       = me.options.disabled;
                 this.spellcheck     = me.options.spellcheck;
-                this.blankError     = me.options.blankError || 'This field is required';
+                this.blankError     = me.options.blankError || me.txtEmpty;
                 this.validateOnChange = me.options.validateOnChange;
                 this.validateOnBlur = me.options.validateOnBlur;
                 this.maxLength      = me.options.maxLength;
+                this.hideErrorOnInput = me.options.hideErrorOnInput;
 
                 me.rendered         = me.options.rendered || false;
 
@@ -177,6 +178,10 @@ define([
                             Common.NotificationCenter.off({'modal:close': onModalClose});
                         };
                         Common.NotificationCenter.on({'modal:close': onModalClose});
+
+                    var ariaLabel = this.options.ariaLabel ? this.options.ariaLabel : this.placeHolder;
+                    if (ariaLabel)
+                        this._input.attr('aria-label', ariaLabel);
                 }
 
                 me.rendered = true;
@@ -290,7 +295,7 @@ define([
                 disabled = !!disabled;
                 this.disabled = disabled;
                 $(this.el).toggleClass('disabled', disabled);
-                if (this.rendered) {
+                if (this._input) {
                     disabled
                         ? this._input.attr('disabled', true)
                         : this._input.removeAttr('disabled');
@@ -358,7 +363,12 @@ define([
                         if (modalParents.length > 0) {
                             errorBadge.data('bs.tooltip').tip().css('z-index', parseInt(modalParents.css('z-index')) + 10);
                         }
-
+                        if (me.hideErrorOnInput) {
+                            var onInputChanging = function() {
+                                me.showError();
+                            };
+                            me._input.one('input', onInputChanging);
+                        }
                         return errors;
                     }
                 } else {
@@ -388,6 +398,12 @@ define([
                     if (modalParents.length > 0) {
                         errorBadge.data('bs.tooltip').tip().css('z-index', parseInt(modalParents.css('z-index')) + 10);
                     }
+                    if (me.hideErrorOnInput) {
+                        var onInputChanging = function() {
+                            me.showError();
+                        };
+                        me._input.one('input', onInputChanging);
+                    }
                 } else {
                     me.cmpEl.removeClass('error');
                     me.cmpEl.removeClass('warning');
@@ -396,7 +412,9 @@ define([
 
             showWarning: function(errors) {
                 this.showError(errors, true);
-            }
+            },
+
+            txtEmpty: 'This field is required'
         }
     })());
 
@@ -506,6 +524,10 @@ define([
                             Common.NotificationCenter.off({'modal:close': onModalClose});
                         };
                     Common.NotificationCenter.on({'modal:close': onModalClose});
+
+                    var ariaLabel = this.options.ariaLabel ? this.options.ariaLabel : this.placeHolder;
+                    if (ariaLabel)
+                        this._input.attr('aria-label', ariaLabel);
                 }
 
                 me.rendered = true;
@@ -570,7 +592,7 @@ define([
 
             initialize : function(options) {
                 options = options || {};
-                options.btnHint = options.btnHint || this.textHintShowPwd;
+                options.btnHint = options.btnHint || (options.showPwdOnClick ? this.textHintShowPwd : this.textHintHold);
                 options.iconCls = options.showCls || this.options.showCls;
 
                 Common.UI.InputFieldBtn.prototype.initialize.call(this, options);
@@ -658,7 +680,8 @@ define([
                 }
             },
             textHintShowPwd: 'Show password',
-            textHintHidePwd: 'Hide password'
+            textHintHidePwd: 'Hide password',
+            textHintHold: 'Press and hold to show password'
         }
     })(), Common.UI.InputFieldBtnPassword || {}));
 
@@ -691,6 +714,8 @@ define([
                 options.btnHint = options.btnHint || this.textDate;
 
                 Common.UI.InputFieldBtn.prototype.initialize.call(this, options);
+
+                this.dateValue = undefined;
             },
 
             render: function (parentEl) {
@@ -715,18 +740,29 @@ define([
                             firstday: 1
                         });
                         me.cmpCalendar.on('date:click', function (cmp, date) {
+                            me.dateValue = date;
                             me.trigger('date:click', me, date);
                             menu.hide();
                         });
+                        me.dateValue && me.cmpCalendar.setDate(me.dateValue);
                         menu.alignPosition();
                     }
                     me.cmpCalendar.focus();
-                })
+                });
+                this._input.on('input', function() {
+                    me.dateValue = undefined;
+                });
             },
 
             setDate: function(date) {
-                if (this.cmpCalendar && date && date instanceof Date && !isNaN(date))
+                if (date && date instanceof Date && !isNaN(date)) {
                     this.cmpCalendar && this.cmpCalendar.setDate(date);
+                    this.dateValue = date;
+                }
+            },
+
+            getDate: function() {
+                return this.dateValue;
             },
 
             textDate: 'Select date'
@@ -741,6 +777,8 @@ define([
                 style       : '',
                 value       : '',
                 fixedValue  : '',
+                fixedWidth  : '',
+                fixedCls    : '',
                 type        : 'text',
                 name        : '',
                 validation  : null,
@@ -776,12 +814,20 @@ define([
 
             initialize : function(options) {
                 this.fixedValue = options.fixedValue;
+                this.fixedWidth = options.fixedWidth || 'calc(50% + 4px)';
+                this.fixedCls = options.fixedCls || '';
 
                 Common.UI.InputField.prototype.initialize.call(this, options);
             },
 
             render : function(parentEl) {
                 Common.UI.InputField.prototype.render.call(this, parentEl);
+
+                this._input.css({
+                    'padding-left': Common.UI.isRTL() ? this.fixedWidth : 0,
+                    'padding-right': Common.UI.isRTL() ? 0: this.fixedWidth,
+                });
+                this.cmpEl.find('input.fixed-text').css({'width': this.fixedWidth}).addClass(this.fixedCls);
 
                 if (this.fixedValue)
                     this.setFixedValue(this.fixedValue);
@@ -801,7 +847,7 @@ define([
                 disabled = !!disabled;
                 this.disabled = disabled;
                 $(this.el).toggleClass('disabled', disabled);
-                if (this.rendered) {
+                if (this.cmpEl) {
                     var inputs = this.cmpEl.find('input').addBack().filter('input')
                     disabled
                         ? inputs.attr('disabled', true)

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -29,6 +29,8 @@
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
  */
+const isIE = /msie|trident/i.test(navigator.userAgent);
+
 var checkLocalStorage = (function () {
     try {
         var storage = window['localStorage'];
@@ -39,12 +41,34 @@ var checkLocalStorage = (function () {
     }
 })();
 
-if ( checkLocalStorage && localStorage.getItem("ui-rtl") === '1' ) {
+if (!window.lang) {
+    window.lang = (/(?:&|^)lang=([^&]+)&?/i).exec(window.location.search.substring(1));
+    window.lang = window.lang ? window.lang[1] : '';
+}
+window.lang && (window.lang = window.lang.split(/[\-\_]/)[0].toLowerCase());
+
+var isLangRtl = function (lang) {
+    return lang.lastIndexOf('ar', 0) === 0 || lang.lastIndexOf('he', 0) === 0;
+}
+
+var ui_rtl = false;
+if ( window.nativeprocvars && window.nativeprocvars.rtl !== undefined ) {
+    ui_rtl = window.nativeprocvars.rtl;
+} else {
+    if ( isLangRtl(lang) )
+        if ( checkLocalStorage && localStorage.getItem("ui-rtl") !== null )
+            ui_rtl = localStorage.getItem("ui-rtl") === '1';
+        else ui_rtl = true;
+}
+
+if ( ui_rtl && !isIE ) {
     document.body.setAttribute('dir', 'rtl');
     document.body.classList.add('rtl');
 }
-
-const isIE = /msie|trident/i.test(navigator.userAgent);
+if ( isLangRtl(lang) ) {
+    document.body.classList.add('rtl-font');
+}
+document.body.setAttribute('applang', lang);
 
 function checkScaling() {
     var matches = {
@@ -115,7 +139,7 @@ window.Common = {
     }
 }
 
-checkScaling();
+!params.skipScaling && checkScaling();
 
 if ( !!params.uitheme ) {
     if ( params.uitheme == 'default-dark' ) {

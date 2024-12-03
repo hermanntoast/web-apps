@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,8 +33,7 @@
 /**
  *  ListSettingsDialog.js
  *
- *  Created by Julia Radzhabova on 03.12.2019
- *  Copyright (c) 2019 Ascensio System SIA. All rights reserved.
+ *  Created on 03.12.2019
  *
  */
 
@@ -42,12 +41,6 @@ if (Common === undefined)
     var Common = {};
 
 define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/ThemeColorPalette',
-    'common/main/lib/component/ColorButton',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/view/SymbolTableDialog',
     'documenteditor/main/app/view/ListTypesAdvanced'
 ], function () { 'use strict';
     var nMaxRecent = 5;
@@ -196,7 +189,7 @@ define([
                 '</td>',
                 '<% if (type == 2) { %>',
                 '<td style="width: ' + this.rightPanelWidth + 'px;vertical-align: top;">',
-                    '<div id="id-dlg-panel-more-settings" class="padding-left-20" style="width: ' + this.rightPanelWidth + 'px;">',
+                    '<div id="id-dlg-panel-more-settings" class="padding-left-5 padding-right-15" style="width: ' + this.rightPanelWidth + 'px;">',
                     '<table cols="2" style="width: 100%;">',
                         '<tr>',
                             '<td colspan="2">',
@@ -296,12 +289,12 @@ define([
 
             this.btnColor = new Common.UI.ButtonColored({
                 parentEl: $window.find('#id-dlg-bullet-color'),
-                cls         : 'btn-toolbar move-focus',
+                cls         : 'btn-toolbar',
                 iconCls     : 'toolbar__icon btn-fontcolor',
                 hint        : this.txtColor,
                 menu: true,
                 takeFocusOnClose: true,
-                additionalItems: [{
+                additionalItemsBefore: [{
                         id: 'id-dlg-bullet-text-color',
                         caption: this.txtLikeText,
                         checkable: true,
@@ -711,12 +704,12 @@ define([
         getFocusedComponents: function() {
             switch (this.type) {
                 case 0:
-                    return [this.cmbFormat, this.cmbAlign, this.cmbSize, this.btnBold, this.btnItalic, this.btnColor];
+                    return [this.cmbFormat, this.cmbAlign, this.cmbSize, this.btnBold, this.btnItalic, this.btnColor].concat(this.getFooterButtons());
                 case 1:
-                    return [this.cmbFormat, this.cmbAlign, this.txtNumFormat, this.cmbFonts, this.btnBold, this.btnItalic, this.btnColor, this.cmbSize];
+                    return [this.cmbFormat, this.cmbAlign, this.txtNumFormat, this.cmbFonts, this.btnBold, this.btnItalic, this.btnColor, this.cmbSize].concat(this.getFooterButtons());
                 case 2:
                     return [this.cmbFormat, this.cmbSize, this.btnBold, this.btnItalic, this.btnColor, this.txtNumFormat, this.btnMore, this.levelsList,
-                            this.cmbFonts, this.cmbLevel, this.spnStart, this.chRestart, this.cmbAlign, this.spnAlign, this.spnIndents, this.cmbFollow, this.chTabStop, this.spnTabStop];
+                            this.cmbFonts, this.cmbLevel, this.spnStart, this.chRestart, this.cmbAlign, this.spnAlign, this.spnIndents, this.cmbFollow, this.chTabStop, this.spnTabStop].concat(this.getFooterButtons());
             }
             return [];
         },
@@ -945,19 +938,8 @@ define([
             this.btnColor.menu.items[0].setChecked(color===undefined, true);
             this.btnColor.menu.items[1].setChecked(!!color && color.get_auto(), true);
             if (color && !color.get_auto()) {
-                if ( typeof(color) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == color.effectValue ) {
-                            this.colors.select(color,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colors.clearSelection();
-                    color = Common.Utils.ThemeColor.getHexColor(color.get_r(), color.get_g(), color.get_b());
-                } else
-                    this.colors.select(color,true);
+                Common.Utils.ThemeColor.selectPickerColorByEffect(color, this.colors);
+                ( typeof(color) == 'object' ) && (color = Common.Utils.ThemeColor.getHexColor(color.get_r(), color.get_g(), color.get_b()));
             } else {
                 this.colors.clearSelection();
                 color = '000000';
@@ -970,7 +952,7 @@ define([
                 }
                 var store = [this._itemNoneBullet].concat(this._arrNumbers);
                 this.recentNumTypes.forEach(function(item) {
-                    if (item) {
+                    if (item!==null && item!==undefined) {
                         item = parseInt(item);
                         store.push({ displayValue: AscCommon.IntToNumberFormat(1, item, me.lang) + ', ' + AscCommon.IntToNumberFormat(2, item, me.lang) + ', ' + AscCommon.IntToNumberFormat(3, item, me.lang) + ',...', value: item });
                     }
@@ -978,6 +960,8 @@ define([
                 store.push(this._itemMoreTypes);
                 this.cmbFormat.setData(store);
                 this.cmbFormat.setValue((format!==undefined) ? format : '');
+                if (levelProps.get_Start()===0 && AscCommon.IntToNumberFormat(0, format)==='') // check min start value
+                    levelProps.put_Start(1);
                 this.makeFormatStr(levelProps);
             } else {
                 if (format !== Asc.c_oAscNumberingFormat.None || this.cmbFormat.store.length<1) {
@@ -988,7 +972,7 @@ define([
                     var store = (this.type===2) ? [this._itemNoneBullet].concat(this._arrNumbers) : [];
                     if (this.type===2) {
                         this.recentNumTypes.forEach(function(item) {
-                            if (item) {
+                            if (item!==null && item!==undefined) {
                                 item = parseInt(item);
                                 store.push({ displayValue: AscCommon.IntToNumberFormat(1, item, me.lang) + ', ' + AscCommon.IntToNumberFormat(2, item, me.lang) + ', ' + AscCommon.IntToNumberFormat(3, item, me.lang) + ',...', value: item });
                             }
@@ -1011,6 +995,9 @@ define([
             }
 
             if (this.type===2) {
+                this.spnStart.setMinValue(AscCommon.IntToNumberFormat(0, format)!=='' ? 0 : 1);
+                if (levelProps.get_Start()===0 && AscCommon.IntToNumberFormat(0, format)==='') // check min start value
+                    levelProps.put_Start(1);
                 this.spnStart.setValue(levelProps.get_Start(), true);
                 this.spnAlign.setValue(Common.Utils.Metric.fnRecalcFromMM(levelProps.get_NumberPosition()), true);
                 this.spnIndents.setValue(Common.Utils.Metric.fnRecalcFromMM(levelProps.get_IndentSize()), true);

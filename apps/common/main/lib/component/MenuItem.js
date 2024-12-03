@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,8 +35,7 @@
  *  A base class for all menu items that require menu-related functionality such as click handling,
  *  sub-menus, icons, etc.
  *
- *  Created by Alexander Yuzhin on 1/27/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 1/27/14
  *
  */
 
@@ -113,11 +112,13 @@ define([
         tagName : 'li',
 
         template: _.template([
-            '<a id="<%= id %>" class="menu-item" style="<%= style %>" <% if(options.canFocused) { %> tabindex="-1" type="menuitem" <% }; if(!_.isUndefined(options.stopPropagation)) { %> data-stopPropagation="true" <% }; if(!_.isUndefined(options.dataHint)) { %> data-hint="<%= options.dataHint %>" <% }; if(!_.isUndefined(options.dataHintDirection)) { %> data-hint-direction="<%= options.dataHintDirection %>" <% }; if(!_.isUndefined(options.dataHintOffset)) { %> data-hint-offset="<%= options.dataHintOffset %>" <% }; if(options.dataHintTitle) { %> data-hint-title="<%= options.dataHintTitle %>" <% }; %> >',
+            '<a id="<%= id %>" class="menu-item" <% if (_.isEmpty(iconCls)) { %> data-no-icon <% } %> style="<%= style %>" <% if(options.canFocused) { %> tabindex="-1" type="menuitem" <% }; if(!_.isUndefined(options.stopPropagation)) { %> data-stopPropagation="true" <% }; if(!_.isUndefined(options.dataHint)) { %> data-hint="<%= options.dataHint %>" <% }; if(!_.isUndefined(options.dataHintDirection)) { %> data-hint-direction="<%= options.dataHintDirection %>" <% }; if(!_.isUndefined(options.dataHintOffset)) { %> data-hint-offset="<%= options.dataHintOffset %>" <% }; if(options.dataHintTitle) { %> data-hint-title="<%= options.dataHintTitle %>" <% }; %> >',
                 '<% if (!_.isEmpty(iconCls)) { %>',
                     '<span class="menu-item-icon <%= iconCls %>"></span>',
+                '<% } else if (!_.isEmpty(iconImg)) { %>',
+                    '<img src="<%= iconImg %>" class="menu-item-icon">',
                 '<% } %>',
-                '<%= caption %>',
+                '<%- caption %>',
             '</a>'
         ].join('')),
 
@@ -169,6 +170,7 @@ define([
                         id      : me.id,
                         caption : me.caption,
                         iconCls : me.iconCls,
+                        iconImg : me.options.iconImg,
                         style   : me.style,
                         options : me.options
                     }));
@@ -202,7 +204,7 @@ define([
                         el.tooltip({
                             title       : me.options.hint,
                             placement   : me.options.hintAnchor||function(tip, element) {
-                                var pos = this.getPosition(),
+                                var pos = Common.Utils.getBoundingClientRect(element),
                                     actualWidth = tip.offsetWidth,
                                     actualHeight = tip.offsetHeight,
                                     innerWidth = Common.Utils.innerWidth(),
@@ -215,7 +217,7 @@ define([
                                 if (left + actualWidth > innerWidth) {
                                     left = pos.left - actualWidth - 2;
                                 }
-                                $(tip).offset({top: top,left: left}).addClass('in');
+                                Common.Utils.setOffset($(tip),{top: top,left: left}).addClass('in');
                             }
                         });
                     }
@@ -253,11 +255,11 @@ define([
             return this;
         },
 
-        setCaption: function(caption, noencoding) {
+        setCaption: function(caption) {
             this.caption = caption;
 
             if (this.rendered)
-                this.cmpEl.find('> a').contents().last()[0].textContent = (noencoding) ? caption : Common.Utils.String.htmlEncode(caption);
+                this.cmpEl.find('> a').contents().last()[0].textContent = caption;
         },
 
         setIconCls: function(iconCls) {
@@ -318,7 +320,7 @@ define([
         },
 
         onItemMouseDown: function(e) {
-            Common.UI.HintManager && Common.UI.HintManager.clearHints();
+            Common.UI.HintManager && Common.UI.HintManager.isHintVisible() && Common.UI.HintManager.clearHints(false, true);
             if (e.which != 1) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -337,6 +339,7 @@ define([
 
             if (this.menu) {
                 if (e.target.id == this.id) {
+                    this._doHover(e);
                     return false;
                 }
 
@@ -444,7 +447,8 @@ define([
                         var iconCls = me.iconCls,
                             re_icon_name = /btn-[^\s]+/.exec(iconCls),
                             icon_name = re_icon_name ? re_icon_name[0] : "null",
-                            svg_icon = '<svg class="menu-item-icon"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name);
+                            rtlCls = (iconCls ? iconCls.indexOf('icon-rtl') : -1) > -1 ? 'icon-rtl' : '',
+                            svg_icon = '<svg class="menu-item-icon %rtlCls"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name).replace('%rtlCls', rtlCls);
 
                         firstChild.find('span.menu-item-icon').after(svg_icon);
                     }

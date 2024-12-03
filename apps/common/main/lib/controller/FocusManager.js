@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  FocusManager.js
  *
- *  Created by Julia Radzhabova on 24.09.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 24.09.2020
  *
  */
 
@@ -71,7 +70,7 @@ Common.UI.FocusManager = new(function() {
                     else if (field instanceof Common.UI.TreeView)
                         item.selector = '.treeview';
                     else if (field instanceof Common.UI.Button)
-                        item.selector = 'button';
+                        item.selector = field.split ? '.btn-group' : 'button';
                     else
                         item.selector = '.form-control';
                 }
@@ -118,21 +117,26 @@ Common.UI.FocusManager = new(function() {
         current.traps = [trapFirst, trapLast];
     };
 
-    var updateTabIndexes = function(increment) {
+    var updateTabIndexes = function(increment, winindex) {
         var step = increment ? 1 : -1;
         for (var cid in _windows) {
             if (_windows.hasOwnProperty(cid)) {
                 var item = _windows[cid];
-                if (item && item.index < _count-1 && item.traps)
+                if (item && item.index < winindex && item.traps)
                     item.traps[1].attr('tabindex', (parseInt(item.traps[1].attr('tabindex')) + step).toString());
+                if (!increment && item && item.index > winindex) //change windows indexes when close one
+                    item.index--;
             }
         }
     };
 
-    var _add = function(e, fields) {
+    var _insert = function(e, fields, index) { // index<0 - index from the end of array
         if (e && e.cid) {
             if (_windows[e.cid]) {
-                _windows[e.cid].fields = (_windows[e.cid].fields || []).concat(register(fields));
+                var currfields = _windows[e.cid].fields || [];
+                (index<0) && (index += currfields.length);
+                _windows[e.cid].fields = (index===undefined) ? currfields.concat(register(fields))
+                                                             : currfields.slice(0, index).concat(register(fields)).concat(currfields.slice(index));
             } else {
                 _windows[e.cid] = {
                     parent: e,
@@ -142,6 +146,20 @@ Common.UI.FocusManager = new(function() {
                 };
             }
             addTraps(_windows[e.cid]);
+            return index || 0;
+        }
+    };
+
+    var _add = function(e, fields) {
+        _insert(e, fields);
+    };
+
+    var _remove = function(e, start, len) {
+        if (e && e.cid && _windows[e.cid] && _windows[e.cid].fields && start!==undefined) {
+            var removed = _windows[e.cid].fields.splice(start, len);
+            removed && removed.forEach(function(item) {
+                item.el && item.el.attr && (item.cmp.setTabIndex ? item.cmp.setTabIndex(-1) : item.el.attr('tabindex', "-1"));
+            });
         }
     };
 
@@ -157,7 +175,7 @@ Common.UI.FocusManager = new(function() {
                             hidden: false,
                             index: _count++
                         };
-                        updateTabIndexes(true);
+                        updateTabIndexes(true, _windows[e.cid].index);
                     }
                 }
             },
@@ -172,7 +190,7 @@ Common.UI.FocusManager = new(function() {
             },
             'modal:close': function(e, last) {
                 if (e && e.cid && _windows[e.cid]) {
-                    updateTabIndexes(false);
+                    updateTabIndexes(false, _windows[e.cid].index);
                     delete _windows[e.cid];
                     _count--;
                 }
@@ -187,6 +205,8 @@ Common.UI.FocusManager = new(function() {
 
     return {
         init: _init,
-        add: _add
+        add: _add,
+        insert: _insert,
+        remove: _remove
     }
 })();

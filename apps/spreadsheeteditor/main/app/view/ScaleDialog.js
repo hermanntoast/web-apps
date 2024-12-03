@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,20 +32,15 @@
 /**
  *  ScaleDialog.js
  *
- *  Created by Julia Svinareva on 21/08/19
- *  Copyright (c) 2019 Ascensio System SIA. All rights reserved.
+ *  Created on 21/08/19
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/MetricSpinner'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.ScaleDialog = Common.UI.Window.extend(_.extend({
         options: {
             width: 215,
-            height: 235,
             header: true,
             style: 'min-width: 215px;',
             cls: 'modal-dlg',
@@ -168,7 +163,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.radioFitTo, this.cmbScaleWidth, this.cmbScaleHeight, this.radioScaleTo, this.spnScale];
+            return [this.radioFitTo, this.cmbScaleWidth, this.cmbScaleHeight, this.radioScaleTo, this.spnScale].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

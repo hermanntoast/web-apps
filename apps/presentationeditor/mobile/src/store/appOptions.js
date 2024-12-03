@@ -15,7 +15,9 @@ export class storeAppOptions {
             canBranding: observable,
 
             isDocReady: observable,
-            changeDocReady: action
+            changeDocReady: action,
+
+            customization: observable,
         });
     }
 
@@ -24,6 +26,7 @@ export class storeAppOptions {
     canBrandingExt = true;
     canBranding = true;
     config = {};
+    customization;
 
     lostEditingRights = false;
     changeEditingRights (value) {
@@ -44,6 +47,7 @@ export class storeAppOptions {
             Common.Utils.String.htmlEncode(this.customization.anonymous.label) : _t.textGuest;
 
         const value = this.canRenameAnonymous ? LocalStorage.getItem("guest-username") : null;
+        this.canRename = this.config.canRename;
         this.user = Common.Utils.fillUserInfo(config.user, config.lang, value ? (value + ' (' + this.guestName + ')' ) : _t.textAnonymous, LocalStorage.getItem("guest-id") || ('uid-' + Date.now()));
         this.user.anonymous && LocalStorage.setItem("guest-id", this.user.id);
 
@@ -56,14 +60,36 @@ export class storeAppOptions {
         this.createUrl = config.createUrl;
         this.lang = config.lang;
         this.location = (typeof (config.location) == 'string') ? config.location.toLowerCase() : '';
+        this.region = (typeof (config.region) == 'string') ? config.region.toLowerCase() : config.region;
         this.sharingSettingsUrl = config.sharingSettingsUrl;
         this.fileChoiceUrl = config.fileChoiceUrl;
         this.mergeFolderUrl = config.mergeFolderUrl;
         this.canAnalytics = false;
         this.canRequestClose = config.canRequestClose;
-        this.canBackToFolder = (config.canBackToFolder!==false) && (typeof (config.customization) == 'object') && (typeof (config.customization.goback) == 'object')
-            && (!!(config.customization.goback.url) || config.customization.goback.requestClose && this.canRequestClose);
-        this.canBack = this.canBackToFolder === true;
+        this.canCloseEditor = false;
+        
+        let canBack = false;
+
+        if (typeof config.customization === 'object' && config.customization !== null) {
+            const { goback, close } = config.customization;
+
+            if (typeof goback === 'object' && config.canBackToFolder !== false) {
+                const hasUrl = !!goback.url;
+                const requestClose = goback.requestClose && this.canRequestClose;
+
+                canBack = close === undefined ? hasUrl || requestClose : hasUrl && !goback.requestClose;
+
+                if (goback.requestClose) {
+                    console.log("Obsolete: The 'requestClose' parameter of the 'customization.goback' section is deprecated. Please use 'close' parameter in the 'customization' section instead.");
+                }
+            }
+
+            if (typeof close === 'object' && close !== null) {
+                this.canCloseEditor = (close.visible!==false) && this.canRequestClose && !this.isDesktopApp;
+            }
+        }
+        
+        this.canBack = this.canBackToFolder = canBack;
         this.canPlugins = false;
 
         AscCommon.UserInfoParser.setParser(true);
@@ -88,7 +114,7 @@ export class storeAppOptions {
             isSupportEditFeature;
         this.isEdit = this.canLicense && this.canEdit && this.config.mode !== 'view';
         this.canReview = this.canLicense && this.isEdit && (permissions.review===true);
-        this.canUseHistory = this.canLicense && !this.isLightVersion && this.config.canUseHistory && this.canCoAuthoring && !this.isDesktopApp;
+        this.canUseHistory = this.canLicense && this.config.canUseHistory && this.canCoAuthoring && !this.isDesktopApp && !this.isOffline;
         this.canHistoryClose = this.config.canHistoryClose;
         this.canHistoryRestore= this.config.canHistoryRestore;
         this.canUseMailMerge = this.canLicense && this.canEdit && !this.isDesktopApp;
@@ -103,6 +129,7 @@ export class storeAppOptions {
             if (permissions.editCommentAuthorOnly===undefined && permissions.deleteCommentAuthorOnly===undefined)
                 this.canEditComments = this.canDeleteComments = this.isOffline;
         }
+        // this.isForm = !!window.isPDFForm;
         this.canChat = this.canLicense && !this.isOffline && (permissions.chat !== false);
         this.canEditStyles = this.canLicense && this.canEdit;
         this.canPrint = (permissions.print !== false);
@@ -114,7 +141,7 @@ export class storeAppOptions {
         this.canDownload = permissions.download !== false && (!type || typeof type[1] !== 'string');
 
         this.canBranding = params.asc_getCustomization();
-        this.canBrandingExt = params.asc_getCanBranding() && (typeof this.customization == 'object');
+        this.canBrandingExt = params.asc_getCanBranding() && (typeof this.customization == 'object' || this.config.plugins);
 
         this.canUseReviewPermissions = this.canLicense && (!!permissions.reviewGroups || this.customization 
             && this.customization.reviewPermissions && (typeof (this.customization.reviewPermissions) == 'object'));

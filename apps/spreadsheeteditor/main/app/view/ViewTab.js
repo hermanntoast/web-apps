@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  ViewTab.js
  *
- *  Created by Julia Radzhabova on 08.07.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 08.07.2020
  *
  */
 
@@ -45,7 +44,7 @@ define([
     'use strict';
 
     SSE.Views.ViewTab = Common.UI.BaseView.extend(_.extend((function(){
-        var template = '<section class="panel" data-tab="view">' +
+        var template = '<section class="panel" data-tab="view" role="tabpanel" aria-labelledby="view">' +
             '<div class="group sheet-views">' +
                 '<span class="btn-slot text x-huge" id="slot-btn-sheet-view"></span>' +
             '</div>' +
@@ -191,7 +190,7 @@ define([
                 if ( me.appConfig.canFeatureViews && me.appConfig.isEdit ) {
                     this.btnSheetView = new Common.UI.Button({
                         cls: 'btn-toolbar x-huge icon-top',
-                        iconCls: 'toolbar__icon btn-sheet-view',
+                        iconCls: 'toolbar__icon btn-big-sheet-view',
                         caption: me.capBtnSheetView,
                         lock        : [_set.lostConnect, _set.coAuth, _set.editCell],
                         menu: true,
@@ -360,7 +359,7 @@ define([
 
                 this.chRightMenu = new Common.UI.CheckBox({
                     lock: [_set.lostConnect],
-                    labelText: this.textRightMenu,
+                    labelText: !Common.UI.isRTL() ? this.textRightMenu : this.textLeftMenu,
                     dataHint    : '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'small'
@@ -369,7 +368,7 @@ define([
 
                 this.chLeftMenu = new Common.UI.CheckBox({
                     lock: [_set.lostConnect],
-                    labelText: this.textLeftMenu,
+                    labelText: !Common.UI.isRTL() ? this.textLeftMenu : this.textRightMenu,
                     dataHint    : '1',
                     dataHintDirection: 'left',
                     dataHintOffset: 'small'
@@ -494,8 +493,34 @@ define([
                     }
 
                     if (Common.UI.Themes.available()) {
+                        function _add_tab_styles() {
+                            let btn = me.btnInterfaceTheme;
+                            if ( typeof(btn.menu) === 'object' )
+                                btn.menu.addItem({caption: '--'});
+                            else
+                                btn.setMenu(new Common.UI.Menu());
+                            let mni = new Common.UI.MenuItem({
+                                value: -1,
+                                caption: me.textTabStyle,
+                                menu: new Common.UI.Menu({
+                                    menuAlign: 'tl-tr',
+                                    items: [
+                                        {value: 'fill', caption: me.textFill, checkable: true, toggleGroup: 'tabstyle'},
+                                        {value: 'line', caption: me.textLine, checkable: true, toggleGroup: 'tabstyle'}
+                                    ]
+                                })
+                            });
+                            _.each(mni.menu.items, function(item){
+                                item.setChecked(Common.Utils.InternalSettings.get("settings-tab-style")===item.value, true);
+                            });
+                            mni.menu.on('item:click', _.bind(function (menu, item) {
+                                Common.UI.TabStyler.setStyle(item.value);
+                            }, me));
+                            btn.menu.addItem(mni);
+                            me.menuTabStyle = mni.menu;
+                        }
                         function _fill_themes() {
-                            var btn = this.btnInterfaceTheme;
+                            let btn = this.btnInterfaceTheme;
                             if ( typeof(btn.menu) == 'object' ) btn.menu.removeAll();
                             else btn.setMenu(new Common.UI.Menu());
 
@@ -509,11 +534,15 @@ define([
                                     toggleGroup: 'interface-theme'
                                 });
                             }
+                            // Common.UI.FeaturesManager.canChange('tabStyle', true) && _add_tab_styles();
                         }
 
                         Common.NotificationCenter.on('uitheme:countchanged', _fill_themes.bind(me));
                         _fill_themes.call(me);
 
+                        me.btnInterfaceTheme.menu && me.btnInterfaceTheme.menu.on('show:after', function() {
+                            Common.UI.TooltipManager.closeTip('grayTheme');
+                        });
                         if (me.btnInterfaceTheme.menu.items.length) {
                             me.btnInterfaceTheme.menu.on('item:click', _.bind(function (menu, item) {
                                 var value = item.value;
@@ -638,7 +667,10 @@ define([
             txtViewNormal: 'Normal',
             txtViewPageBreak: 'Page Break Preview',
             tipViewNormal: 'See your document in Normal view',
-            tipViewPageBreak: 'See where the page breaks will appear when your document is printed'
+            tipViewPageBreak: 'See where the page breaks will appear when your document is printed',
+            textTabStyle: 'Tab style',
+            textFill: 'Fill',
+            textLine: 'Line'
         }
     }()), SSE.Views.ViewTab || {}));
 });

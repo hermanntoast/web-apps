@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,10 @@
 /**
  *  PrintTitlesDialog.js
  *
- *  Created by Julia Radzhabova on 17.03.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 17.03.2020
  *
  */
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/MetricSpinner'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.PrintTitlesDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -58,7 +54,7 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="height: 100px;">',
+                '<div class="box">',
                 '<table cols="2" style="width: 100%;margin-bottom: 10px;">',
                     '<tr>',
                         '<td colspan="2" class="padding-right-10">',
@@ -87,8 +83,7 @@ define([
                         '</td>',
                     '</tr>',
                 '</table>',
-                '</div>',
-                '<div class="separator horizontal"></div>'
+                '</div>'
             ].join('');
 
             this.options.tpl = _.template(this.template)(this.options);
@@ -136,7 +131,8 @@ define([
                         {caption: '--'},
                         {caption: this.textNoRepeat, value: 'empty', range: ''}
                     ]
-                })
+                }),
+                takeFocusOnClose: true
             });
             this.btnPresetsTop.menu.on('item:click', _.bind(this.onPresetSelect, this, 'top'));
             this.txtRangeTop.on('button:click', _.bind(this.onPresetSelect, this, 'top', this.btnPresetsTop.menu, {value: 'select'}));
@@ -173,7 +169,8 @@ define([
                         {caption: '--'},
                         {caption: this.textNoRepeat, value: 'empty', range: ''}
                     ]
-                })
+                }),
+                takeFocusOnClose: true
             });
             this.btnPresetsLeft.menu.on('item:click', _.bind(this.onPresetSelect, this, 'left'));
             this.txtRangeLeft.on('button:click', _.bind(this.onPresetSelect, this, 'left', this.btnPresetsLeft.menu, {value: 'select'}));
@@ -186,7 +183,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.txtRangeTop, this.txtRangeLeft];
+            return [this.txtRangeTop, this.btnPresetsTop, this.txtRangeLeft, this.btnPresetsLeft].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -205,6 +202,11 @@ define([
                 return false;
             }
             return true;
+        },
+
+        onPrimary: function() {
+            this._handleInput('ok');
+            return false;
         },
 
         _handleInput: function(state) {
@@ -274,9 +276,9 @@ define([
                         },1);
                     });
 
-                    var xy = me.$window.offset();
+                    var xy = Common.Utils.getOffset(me.$window);
                     me.hide();
-                    win.show(xy.left + 160, xy.top + 125);
+                    win.show(me.$window, xy);
                     win.setSettings({
                         api     : me.api,
                         range   : (!_.isEmpty(txtRange.getValue()) && (txtRange.checkValidate()==true)) ? txtRange.getValue() : ((type=='top') ? me.dataRangeTop : me.dataRangeLeft),
@@ -291,9 +293,6 @@ define([
                     this.dataRangeTop = value;
                 else
                     this.dataRangeLeft = value;
-                _.delay(function(){
-                    txtRange.focus();
-                },1);
             }
         },
 

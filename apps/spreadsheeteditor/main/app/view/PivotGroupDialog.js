@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,14 +32,11 @@
 /**
  *  PivotGroupDialog.js
  *
- *  Created by Julia Radzhabova 04.03.2021
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 04.03.2021
  *
  */
 
-define([
-    'common/main/lib/component/Window'
-], function () {
+define([], function () {
     'use strict';
 
     SSE.Views.PivotGroupDialog = Common.UI.Window.extend(_.extend({
@@ -52,14 +49,14 @@ define([
 
         initialize : function (options) {
             var t = this,
-                height = options.date ? 335 : 195;
+                height = options.date ? 250 : 110;
 
             _.extend(this.options, {
                 title: this.txtTitle
             }, options || {});
 
             this.template   =   options.template || [
-                    '<div class="box" style="height:' + (height - 85) + 'px;">',
+                    '<div class="box" style="height:' + height + 'px;">',
                         '<table cols="2" style="width: 100%;">',
                             '<tr>',
                                 '<td colspan="2" style="padding-bottom: 4px;">',
@@ -209,13 +206,13 @@ define([
             this.listDate.on('item:deselect', _.bind(this.onSelectDate, this));
             this.listDate.on('entervalue', _.bind(this.onPrimary, this));
 
-            this.btnOk = new Common.UI.Button({
-                el: $('.dlg-btn.primary', this.$window)
-            });
+            this.btnOk = _.find(this.getFooterButtons(), function (item) {
+                return (item.$el && item.$el.find('.primary').addBack().filter('.primary').length>0);
+            }) || new Common.UI.Button({ el: this.$window.find('.primary') });
         },
 
         getFocusedComponents: function() {
-            return [this.chStart, this.inputStart, this.chEnd, this.inputEnd, this.inputBy, this.listDate, this.spnDays];
+            return [this.chStart, this.inputStart, this.chEnd, this.inputEnd, this.inputBy, this.listDate, this.spnDays].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

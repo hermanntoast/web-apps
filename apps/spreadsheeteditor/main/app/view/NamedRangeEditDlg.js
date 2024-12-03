@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,15 +33,12 @@
  *
  *  NamedRangeEditDlg.js
  *
- *  Created by Julia.Radzhabova on 27.05.15
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 27.05.15
  *  
  */
 
 define([
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/InputField'
 ], function () {
     'use strict';
 
@@ -50,8 +47,7 @@ define([
     SSE.Views.NamedRangeEditDlg =  Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             alias: 'NamedRangeEditDlg',
-            contentWidth: 380,
-            height: 250
+            contentWidth: 380
         },
 
         initialize: function (options) {
@@ -59,10 +55,10 @@ define([
             
             _.extend(this.options, {
                 title: this.txtTitleNew,
-                template: [
-                    '<div class="box" style="height:' + (me.options.height - 85) + 'px;">',
-                        '<div class="content-panel" style="padding: 0;"><div class="inner-content">',
-                            '<div class="settings-panel active">',
+                contentStyle: 'padding: 0;',
+                contentTemplate: _.template([
+                    '<div class="settings-panel active">',
+                        '<div class="inner-content">',
                                 '<table cols="1" style="width: 100%;">',
                                     '<tr>',
                                         '<td class="padding-small">',
@@ -81,16 +77,17 @@ define([
                                         '</td>',
                                     '</tr>',
                                     '<tr>',
-                                        '<td class="padding-small">',
+                                        '<td class="padding-large">',
                                             '<div id="named-range-txt-range" class="input-row"></div>',
                                         '</td>',
                                     '</tr>',
+                                    '<tr>',
+                                        '<td class="padding-small">',
+                                        '</td>',
+                                    '</tr>',
                                 '</table>',
-                            '</div></div>',
-                        '</div>',
-                    '</div>',
-                    '<div class="separator horizontal"></div>'
-                ].join('')
+                            '</div></div>'
+                ].join(''))({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -175,7 +172,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.inputName, this.cmbScope, this.txtDataRange];
+            return [this.inputName, this.cmbScope, this.txtDataRange].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -237,9 +234,9 @@ define([
                     },1);
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 65, xy.top + 77);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(me.txtDataRange.getValue()) && (me.txtDataRange.checkValidate()==true)) ? me.txtDataRange.getValue() : me.dataRangeValid,

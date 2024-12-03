@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,18 +32,12 @@
 /**
  *  HeaderFooterDialog.js
  *
- *  Created by Julia Radzhabova on 10/11/18
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 10/11/18
  *
  */
 
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window',
-    'common/main/lib/component/ComboBoxFonts'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.HeaderFooterDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -81,7 +75,7 @@ define([
             };
 
             this.template = [
-                '<div class="box" style="height: 400px;">',
+                '<div class="box">',
                     '<table cols="2" style="width: 450px;margin-bottom: 30px;">',
                         '<tr>',
                             '<td style="padding-bottom: 8px;">',
@@ -274,7 +268,7 @@ define([
                 parentEl: $('#id-dlg-h-presets'),
                 cls: 'btn-text-menu-default',
                 caption: this.textPresets,
-                style: 'width: 115px;',
+                style: 'width: 122px;',
                 menu: true
             });
 
@@ -282,7 +276,7 @@ define([
                 parentEl: $('#id-dlg-f-presets'),
                 cls: 'btn-text-menu-default',
                 caption: this.textPresets,
-                style: 'width: 115px;',
+                style: 'width: 122px;',
                 menu: true
             });
 
@@ -300,9 +294,9 @@ define([
                 parentEl: $('#id-dlg-h-insert'),
                 cls: 'btn-text-menu-default',
                 caption: this.textInsert,
-                style: 'width: 115px;',
+                style: 'width: 120px;',
                 menu: new Common.UI.Menu({
-                    style: 'min-width: 115px;',
+                    style: 'min-width: 120px;',
                     maxHeight: 200,
                     additionalAlign: this.menuAddAlign,
                     items: data
@@ -315,9 +309,9 @@ define([
                 parentEl: $('#id-dlg-f-insert'),
                 cls: 'btn-text-menu-default',
                 caption: this.textInsert,
-                style: 'width: 115px;',
+                style: 'width: 120px;',
                 menu: new Common.UI.Menu({
-                    style: 'min-width: 115px;',
+                    style: 'min-width: 120px;',
                     maxHeight: 200,
                     additionalAlign: this.menuAddAlign,
                     items: data
@@ -330,7 +324,7 @@ define([
             this.cmbFonts.push(new Common.UI.ComboBoxFonts({
                 el          : $('#id-dlg-h-fonts'),
                 cls         : 'input-group-nr',
-                style       : 'width: 142px;',
+                style       : 'width: 130px;',
                 menuCls     : 'scrollable-menu',
                 menuStyle   : 'min-width: 100%;max-height: 270px;',
                 store       : new Common.Collections.Fonts(),
@@ -344,7 +338,7 @@ define([
             this.cmbFonts.push(new Common.UI.ComboBoxFonts({
                 el          : $('#id-dlg-f-fonts'),
                 cls         : 'input-group-nr',
-                style       : 'width: 142px;',
+                style       : 'width: 130px;',
                 menuCls     : 'scrollable-menu',
                 menuStyle   : 'min-width: 100%;max-height: 270px;',
                 store       : new Common.Collections.Fonts(),
@@ -574,9 +568,9 @@ define([
             this.mnuTextColorPicker.push(initNewColor(this.btnTextColor[1]));
             this.footerControls.push(this.btnTextColor[1]);
 
-            this.btnOk = new Common.UI.Button({
-                el: $window.find('.primary')
-            });
+            this.btnOk = _.find(this.getFooterButtons(), function (item) {
+                return (item.$el && item.$el.find('.primary').addBack().filter('.primary').length>0);
+            }) || new Common.UI.Button({ el: $window.find('.primary') });
 
             $window.find('.dlg-btn').on('click', _.bind(this.onBtnClick, this));
 
@@ -983,19 +977,7 @@ define([
                     clr = Common.Utils.ThemeColor.getHexColor(color.get_r(), color.get_g(), color.get_b());
                 }
             }
-            if (_.isObject(clr)) {
-                var isselected = false;
-                for (var i = 0; i < 10; i++) {
-                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                        fontColorPicker.select(clr, true);
-                        isselected = true;
-                        break;
-                    }
-                }
-                if (!isselected) fontColorPicker.clearSelection();
-            } else {
-                fontColorPicker.select(clr, true);
-            }
+            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
         },
 
         tipFontName: 'Font',

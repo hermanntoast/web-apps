@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,24 +33,19 @@
 /**
  *  FieldSettingsDialog.js
  *
- *  Created by Julia Radzhabova on 17.07.2017
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 17.07.2017
  *
  */
 
-define([    'text!spreadsheeteditor/main/app/template/FieldSettingsDialog.template',
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/CheckBox',
+define([
+    'text!spreadsheeteditor/main/app/template/FieldSettingsDialog.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'spreadsheeteditor/main/app/view/FormatSettingsDialog'
 ], function (contentTemplate) { 'use strict';
 
     SSE.Views.FieldSettingsDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 284,
-            height: 450,
+            contentHeight: 365,
             toggleGroup: 'pivot-field-settings-group',
             storageName: 'sse-pivot-field-settings-category'
         },
@@ -220,10 +215,10 @@ define([    'text!spreadsheeteditor/main/app/template/FieldSettingsDialog.templa
         },
 
         getFocusedComponents: function() {
-            return [
+            return this.btnsCategory.concat([
                 this.inputCustomName, this.radioTabular, this.radioOutline, this.chCompact, this.btnFormat, this.chRepeat, this.chBlank, this.chSubtotals, this.radioTop, this.radioBottom, this.chEmpty, // 0 tab
                 this.chSum, this.chCount, this.chAve, this.chMax, this.chMin, this.chProduct, this.chNum, this.chDev, this.chDevp, this.chVar, this.chVarp  // 1 tab
-            ];
+            ]).concat(this.getFooterButtons());
         },
 
         onCategoryClick: function(btn, index) {
@@ -262,7 +257,7 @@ define([    'text!spreadsheeteditor/main/app/template/FieldSettingsDialog.templa
                 this.format.formatStr = field.asc_getNumFormat();
                 this.format.formatInfo = field.asc_getNumFormatInfo();
                 this.lblSourceName.html(Common.Utils.String.htmlEncode(props.getCacheFieldName(this.fieldIndex)));
-                this.inputCustomName.setValue(Common.Utils.String.htmlEncode(props.getPivotFieldName(this.fieldIndex)));
+                this.inputCustomName.setValue(props.getPivotFieldName(this.fieldIndex));
 
                 (field.asc_getOutline()) ? this.radioOutline.setValue(true) : this.radioTabular.setValue(true);
                 this.chCompact.setValue(field.asc_getOutline() && field.asc_getCompact());

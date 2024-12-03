@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,22 +32,18 @@
 /**
  *  TextToTableDialog.js
  *
- *  Created by Julia Radzhabova on 15/04/21
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 15/04/21
  *
  */
 
 define([
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/MetricSpinner'
 ], function () { 'use strict';
 
     DE.Views.TextToTableDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 300,
-            height: 405,
-            buttons: ['ok', 'cancel']
+            separator: false
         },
 
         initialize : function(options) {
@@ -55,10 +51,10 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                template: [
-                    '<div class="box" style="height:' + (me.options.height - 85) + 'px;">',
-                        '<div class="content-panel" style="padding: 0 5px;"><div class="inner-content">',
-                        '<div class="settings-panel active">',
+                contentStyle: 'padding: 0 5px;',
+                contentTemplate: _.template([
+                    '<div class="settings-panel active">',
+                        '<div class="inner-content">',
                             '<table cols="2" style="width: auto;">',
                                 '<tr>',
                                     '<td colspan="2" class="padding-small">',
@@ -131,10 +127,8 @@ define([
                                     '</td>',
                                 '</tr>',
                             '</table>',
-                        '</div></div>',
-                        '</div>',
-                    '</div>'
-                ].join('')
+                        '</div></div>'
+                ].join(''))({scope: this})
             }, options);
 
             this.handler    = options.handler;
@@ -262,7 +256,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.spnColumns, this.spnStartAt, this.spnWidth, this.rbFixed, this.rbContents, this.rbWindow, this.rbPara, this.rbTabs, this.rbSemi, this.rbOther, this.inputOther];
+            return [this.spnColumns, this.spnStartAt, this.spnWidth, this.rbFixed, this.rbContents, this.rbWindow, this.rbPara, this.rbTabs, this.rbSemi, this.rbOther, this.inputOther].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

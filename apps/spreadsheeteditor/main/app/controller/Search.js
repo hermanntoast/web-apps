@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,8 +33,7 @@
 /**
  *  ViewTab.js
  *
- *  Created by Julia Svinareva on 22.02.2022
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 22.02.2022
  *
  */
 
@@ -147,6 +146,13 @@ define([
             this.view.inputSelectRange.on('button:click', _.bind(this.onRangeSelect, this));
         },
 
+        changeWithinSheet: function (value) {
+            this._state.withinSheet = value;
+            this.view.inputSelectRange.setDisabled(value !== Asc.c_oAscSearchBy.Range);
+            this.view.inputSelectRange.$el[value === Asc.c_oAscSearchBy.Range ? 'show' : 'hide']();
+            this.view.updateResultsContainerHeight();
+        },
+
         onChangeSearchOption: function (option, value, noSearch) {
             var runSearch = true;
             switch (option) {
@@ -160,13 +166,10 @@ define([
                     this._state.useRegExp = value;
                     break;
                 case 'within':
-                    this._state.withinSheet = value === 0 ? Asc.c_oAscSearchBy.Sheet : (value === 1 ? Asc.c_oAscSearchBy.Workbook : Asc.c_oAscSearchBy.Range);
-                    this.view.inputSelectRange.setDisabled(value !== Asc.c_oAscSearchBy.Range);
+                    this.changeWithinSheet(value);
                     if (value === Asc.c_oAscSearchBy.Range) {
                         runSearch = this._state.isValidSelectedRange && !!this._state.selectedRange;
                     }
-                    this.view.inputSelectRange.$el[value === Asc.c_oAscSearchBy.Range ? 'show' : 'hide']();
-                    this.view.updateResultsContainerHeight();
                     break;
                 case 'range':
                     this._state.selectedRange = value;
@@ -278,7 +281,7 @@ define([
             options.asc_setLookIn(this._state.lookInFormulas ? Asc.c_oAscFindLookIn.Formulas : Asc.c_oAscFindLookIn.Value);
             options.asc_setNeedRecalc(isNeedRecalc);
             if (this._state.isContentChanged) {
-                options.asc_setLastSearchElem(this._state.lastSelectedItem);
+                options.asc_setLastSearchElem(this._state.lastSelectedItem ? this._state.lastSelectedItem : options.asc_getLastSearchElem(true));
                 this.view.disableReplaceButtons(false);
                 this._state.isContentChanged = false;
                 if (!this.view.$el.is(':visible')) {
@@ -416,7 +419,7 @@ define([
             if (index !== -1) {
                 var item = this.resultItems[index].$el,
                     itemHeight = item.outerHeight(),
-                    itemTop = item.position().top,
+                    itemTop = Common.Utils.getPosition(item).top,
                     container = this.view.$resultsContainer.find('.search-items'),
                     containerHeight = container.outerHeight(),
                     containerTop = container.scrollTop();
@@ -450,12 +453,12 @@ define([
                 me.resultItems = [];
                 data.forEach(function (item, ind) {
                     var isSelected = ind === me._state.currentResult;
-                    var tr = '<div class="item" style="width: 100%;">' +
-                        '<div class="sheet">' + (item[1] ? item[1] : '') + '</div>' +
-                        '<div class="name">' + (item[2] ? item[2] : '') + '</div>' +
-                        '<div class="cell">' + (item[3] ? item[3] : '') + '</div>' +
-                        '<div class="value">' + (item[4] ? Common.Utils.String.htmlEncode(item[4]) : '') + '</div>' +
-                        '<div class="formula">' + (item[5] ? item[5] : '') + '</div>' +
+                    var tr = '<div role="row" class="item" style="width: 100%;">' +
+                        '<div role="cell" class="sheet">' + (item[1] ? Common.Utils.String.htmlEncode(item[1]) : '') + '</div>' +
+                        '<div role="cell" class="name">' + (item[2] ? Common.Utils.String.htmlEncode(item[2]) : '') + '</div>' +
+                        '<div role="cell" class="cell">' + (item[3] ? Common.Utils.String.htmlEncode(item[3]) : '') + '</div>' +
+                        '<div role="cell" class="value">' + (item[4] ? Common.Utils.String.htmlEncode(item[4]) : '') + '</div>' +
+                        '<div role="cell" class="formula">' + (item[5] ? Common.Utils.String.htmlEncode(item[5]) : '') + '</div>' +
                         '</div>';
                     var $item = $(tr).appendTo($innerResults);
                     if (isSelected) {
@@ -520,6 +523,18 @@ define([
                 viewport.searchBar.hide();
             }
 
+            var activeRange = this.api.asc_getActiveRangeStr(Asc.referenceType.A, null, null, true),
+                isRangeChanged = false;
+            if (activeRange !== null) {
+                this.changeWithinSheet(Asc.c_oAscSearchBy.Range);
+                this._state.selectedRange = activeRange;
+
+                this.view.cmbWithin.setValue(Asc.c_oAscSearchBy.Range);
+                this.view.inputSelectRange.setValue(activeRange);
+
+                isRangeChanged = true;
+            }
+
             var selectedText = this.api.asc_GetSelectedText(),
                 text = typeof findText === 'string' ? findText : (selectedText && selectedText.trim() || this._state.searchText);
             if (this.resultItems && this.resultItems.length > 0 || (!text && this._state.isResults)) {
@@ -528,8 +543,8 @@ define([
                     this.onQuerySearch();
                     return;
                 }
-                if (!this._state.matchCase && text && text.toLowerCase() === this.view.inputText.getValue().toLowerCase() ||
-                    this._state.matchCase && text === this.view.inputText.getValue()) { // show old results
+                if (!isRangeChanged && (!this._state.matchCase && text && text.toLowerCase() === this.view.inputText.getValue().toLowerCase() ||
+                    this._state.matchCase && text === this.view.inputText.getValue())) { // show old results
                     return;
                 }
             }
@@ -543,7 +558,7 @@ define([
             }
 
             this.hideResults();
-            if (this._state.searchText !== undefined && text && text === this._state.searchText && this._state.isResults) { // search was made
+            if (!isRangeChanged && this._state.searchText !== undefined && text && text === this._state.searchText && this._state.isResults) { // search was made
                 this.api.asc_StartTextAroundSearch();
             } else if (this._state.searchText) { // search wasn't made
                 this._state.searchText = text;

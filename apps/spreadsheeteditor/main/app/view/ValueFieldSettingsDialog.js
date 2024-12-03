@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,23 +33,18 @@
 /**
  *  ValueFieldSettingsDialog.js
  *
- *  Created by Julia Radzhabova on 14.07.2017
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 14.07.2017
  *
  */
 
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/ComboBox',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'spreadsheeteditor/main/app/view/FormatSettingsDialog'
 ], function () { 'use strict';
 
     SSE.Views.ValueFieldSettingsDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 284,
-            height: 320
+            separator: false
         },
 
         initialize : function(options) {
@@ -57,10 +52,10 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                template: [
-                    '<div class="box" style="height:' + (me.options.height - 85) + 'px;">',
-                        '<div class="content-panel" style="padding: 0 10px;"><div class="inner-content">',
-                        '<div class="settings-panel active">',
+                contentStyle: 'padding: 0 10px;',
+                contentTemplate: _.template([
+                    '<div class="settings-panel active">',
+                    '<div class="inner-content">',
                         '<table cols="2" style="width: 100%;">',
                         '<tr>',
                             '<td colspan="2" class="padding-small" style="white-space: nowrap;">',
@@ -88,20 +83,18 @@ define([
                             '</td>',
                         '</tr>',
                         '<tr class="format-code">',
-                            '<td>',
+                            '<td class="padding-small">',
                                 '<label class="header">', me.txtBaseField,'</label>',
                                 '<div id="value-field-settings-field" class="input-group-nr" style="width:128px;"></div>',
                             '</td>',
-                            '<td class="float-right">',
+                            '<td class="padding-small float-right">',
                                 '<label class="header">', me.txtBaseItem,'</label>',
                                 '<div id="value-field-settings-item" class="input-group-nr" style="width:128px;"></div>',
                             '</td>',
                         '</tr>',
                     '</table>',
-                    '</div></div>',
-                    '</div>',
-                    '</div>'
-                ].join('')
+                    '</div></div>'
+                ].join(''))({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -212,7 +205,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.inputCustomName, this.cmbSummarize, this.cmbShowAs, this.btnFormat, this.cmbBaseField, this.cmbBaseItem];
+            return [this.inputCustomName, this.cmbSummarize, this.cmbShowAs, this.btnFormat, this.cmbBaseField, this.cmbBaseItem].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -249,7 +242,7 @@ define([
                 this.format.formatInfo = field.asc_getNumFormatInfo();
 
                 this.lblSourceName.html(Common.Utils.String.htmlEncode(this.cache_names[field.asc_getIndex()].asc_getName()));
-                this.inputCustomName.setValue(Common.Utils.String.htmlEncode(field.asc_getName()));
+                this.inputCustomName.setValue(field.asc_getName());
                 this.cmbSummarize.setValue(field.asc_getSubtotal());
 
                 var show_as = field.asc_getShowDataAs();

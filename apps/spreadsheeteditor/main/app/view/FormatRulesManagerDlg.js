@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,17 +33,13 @@
  *
  *  FormatRulesManagerDlg.js
  *
- *  Created by Julia.Radzhabova on 14.04.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 14.04.2020
  *
  */
 
-define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.template',
+define([
+    'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/InputField',
-    'spreadsheeteditor/main/app/view/FormatRulesEditDlg'
 ], function (contentTemplate) {
     'use strict';
 
@@ -90,20 +86,16 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
     SSE.Views.FormatRulesManagerDlg =  Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             alias: 'FormatRulesManagerDlg',
-            contentWidth: 560,
-            height: 340,
-            buttons: ['ok', 'cancel']
+            separator: false,
+            contentWidth: 560
         },
 
         initialize: function (options) {
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                template: [
-                    '<div class="box" style="height:' + (this.options.height-85) + 'px;">',
-                    '<div class="content-panel" style="padding: 0;">' + _.template(contentTemplate)({scope: this}) + '</div>',
-                    '</div>',
-                ].join('')
+                contentStyle: 'padding: 0;',
+                contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
             this.api        = options.api;
@@ -159,11 +151,11 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
                 template: _.template(['<div class="listview inner" style=""></div>'].join('')),
                 itemTemplate: _.template([
                     '<div class="list-item" style="width: 100%;display:inline-block;" id="format-manager-item-<%= ruleIndex %>">',
-                        '<div style="width:197px;padding-<% if (Common.UI.isRTL()) { %>left<% } else {%>right<% } %>: 10px;display: inline-block;vertical-align: middle;overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= name %></div>',
+                        '<div style="width:197px;padding-<% if (Common.UI.isRTL()) { %>left<% } else {%>right<% } %>: 10px;display: inline-block;vertical-align: middle;overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= Common.Utils.String.htmlEncode(name) %></div>',
                         '<div style="width:197px;padding-<% if (Common.UI.isRTL()) { %>left<% } else {%>right<% } %>: 10px;display: inline-block;vertical-align: middle;"><div id="format-manager-txt-rule-<%= ruleIndex %>" style=""></div></div>',
                         '<div style="width:128px;display: inline-block;vertical-align: middle;"><div id="format-manager-item-preview-<%= ruleIndex %>" style="height:22px;background-color: #ffffff;"></div></div>',
                         '<% if (lock) { %>',
-                            '<div class="lock-user"><%=lockuser%></div>',
+                            '<div class="lock-user"><%=Common.Utils.String.htmlEncode(lockuser)%></div>',
                         '<% } %>',
                     '</div>'
                 ].join('')),
@@ -179,7 +171,9 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
             };
             this.rulesList.on('item:select', _.bind(this.onSelectRule, this))
                             .on('item:keydown', _.bind(this.onKeyDown, this))
-                            .on('item:keyup', _.bind(this.onKeyUp, this));
+                            .on('item:keyup', _.bind(this.onKeyUp, this))
+                            .on('item:dblclick', _.bind(this.onEditRule, this,true))
+                            .on('entervalue', _.bind(function (e) {!!e.store.length && this.onEditRule(true);},this));
 
             this.btnNew = new Common.UI.Button({
                 el: $('#format-manager-btn-new')
@@ -242,7 +236,6 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
             Common.UI.FocusManager.add(this, this.btnDelete);
             Common.UI.FocusManager.add(this, this.rulesList);
 
-
             this.rulesList.on('item:add', _.bind(this.addControls, this));
             this.rulesList.on('item:change', _.bind(this.addControls, this));
             this.currentSheet = this.api.asc_getActiveWorksheetIndex();
@@ -253,6 +246,8 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
             this.api.asc_registerCallback('asc_onUnLockCFManager', this.wrapEvents.onUnLockCFManager);
             this.api.asc_registerCallback('asc_onLockCFRule', this.wrapEvents.onLockCFRule);
             this.api.asc_registerCallback('asc_onUnLockCFRule', this.wrapEvents.onUnLockCFRule);
+
+            Common.UI.FocusManager.add(this, this.getFooterButtons());
         },
 
         refreshScopeList: function() {
@@ -580,6 +575,7 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
             var me = this,
                 i = item.get('ruleIndex'),
                 cmpEl = this.rulesList.cmpEl.find('#format-manager-item-' + i);
+
             if (!this.rules[i])
                 this.rules[i] = {};
             var rule = this.rules[i];
@@ -605,6 +601,7 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
                 }
 
             }).on('button:click', _.bind(this.onSelectData, this, rule, item));
+            input.cmpEl.on('dblclick', 'input', function (e){e.stopPropagation();});
             Common.UI.FocusManager.add(this, input);
 
             var val = item.get('range');
@@ -662,9 +659,9 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
                     me.show();
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : !_.isEmpty(rule.txtDataRange.getValue()) ? rule.txtDataRange.getValue() : rule.dataRangeValid,
@@ -676,7 +673,7 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
 
         onEditRule: function (isEdit) {
             var me = this,
-                xy = me.$window.offset(),
+                xy = Common.Utils.getOffset(me.$window),
                 rec = this.rulesList.getSelectedRec(),
                 previewRec;
 
@@ -728,7 +725,7 @@ define([  'text!spreadsheeteditor/main/app/template/FormatRulesManagerDlg.templa
             });
 
             me.hide();
-            win.show();
+            win.show(xy.left, xy.top);
         },
 
         onDeleteRule: function () {

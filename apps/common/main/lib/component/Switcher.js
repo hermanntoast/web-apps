@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,7 +30,6 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 26.02.15
  */
 
@@ -46,8 +45,9 @@ define([
     Common.UI.Switcher = Common.UI.BaseView.extend({
 
         options : {
-            width: 25,
-            thumbWidth: 13,
+            hint: false,
+            width: 30,
+            thumbWidth: 12,
             value: false
         },
 
@@ -55,8 +55,6 @@ define([
 
         template    : _.template([
             '<div class="switcher">',
-                '<div class="sw-left"></div>',
-                '<div class="sw-right"></div>',
                 '<div class="thumb"></div>',
             '</div>'
         ].join('')),
@@ -66,9 +64,11 @@ define([
 
             var me = this;
 
+            me.hint = me.options.hint;
             me.width = me.options.width;
             me.thumbWidth = me.options.thumbWidth;
             me.delta = (me.width - me.thumbWidth - 2)/2;
+            me.disabled = me.options.disabled;
             
             if (me.options.el)
                 me.render();
@@ -89,6 +89,14 @@ define([
                 } else {
                     this.$el.html(this.cmpEl);
                 }
+
+                if (this.options.hint) {
+                    this.cmpEl.attr('data-toggle', 'tooltip');
+                    this.cmpEl.tooltip({
+                        title: (typeof this.options.hint == 'string') ? this.options.hint : this.options.hint[0],
+                        placement: this.options.hintAnchor||'cursor'
+                    });
+                }
             } else {
                 this.cmpEl = this.$el;
             }
@@ -97,8 +105,6 @@ define([
 
             this.cmpEl.width(me.width);
             this.thumb.width(me.thumbWidth);
-            this.cmpEl.find('.sw-left').width(me.width/2);
-            this.cmpEl.find('.sw-right').width(me.width/2);
 
             var onMouseUp = function (e) {
                 if ( me.disabled ) return;
@@ -113,7 +119,9 @@ define([
                 me.value = (me.value) ? (pos > -me.delta) : (pos > me.delta);
                 me.cmpEl.toggleClass('on', me.value);
                 me.thumb.css({left: '', right: ''});
-                me.trigger('change', me, me.value);
+                if (me.lastValue !== me.value) {
+                    me.trigger('change', me, me.value);
+                }
 
                 me._dragstart = undefined;
             };
@@ -127,9 +135,9 @@ define([
 
                 var pos = Math.round((e.pageX*Common.Utils.zoom() - me._dragstart));
                 if (me.value) {
-                    me.thumb.css({right: (pos<1) ? Math.min(me.width-me.thumbWidth - 2, -pos) : 0, left: 'auto'});
+                    me.thumb.css({right: (pos<1) ? Math.min(me.width-me.thumbWidth - 4, -pos) : 0, left: 'auto'});
                 } else {
-                    me.thumb.css({left: (pos>-1) ? Math.min(me.width-me.thumbWidth - 2, pos) : 0, right: 'auto'});
+                    me.thumb.css({left: (pos>-1) ? Math.min(me.width-me.thumbWidth - 4, pos) : 0, right: 'auto'});
                 }
                 if (!me._isMouseMove) me._isMouseMove = Math.abs(pos)>0;
             };
@@ -138,6 +146,7 @@ define([
                 if ( me.disabled ) return;
                 me._dragstart = e.pageX*Common.Utils.zoom();
                 me._isMouseMove = false;
+                me.lastValue = me.value;
                 
                 $(document).on('mouseup.switcher',   onMouseUp);
                 $(document).on('mousemove.switcher', onMouseMove);
@@ -145,6 +154,16 @@ define([
 
             var onSwitcherClick = function (e) {
                 if ( me.disabled || me._isMouseMove) { me._isMouseMove = false; return;}
+
+                if (me.options.hint) {
+                    var tip = me.cmpEl.data('bs.tooltip');
+                    if (tip) {
+                        if (tip.dontShow===undefined)
+                            tip.dontShow = true;
+
+                        tip.hide();
+                    }
+                }
 
                 me.value = !me.value;
                 me.cmpEl.toggleClass('on', me.value);
@@ -155,6 +174,10 @@ define([
                 var el = me.cmpEl;
                 el.on('mousedown', '.thumb', onMouseDown);
                 el.on('click', onSwitcherClick);
+            }
+
+            if (me.disabled) {
+                me.setDisabled(!(me.disabled=false));
             }
 
             me.rendered = true;
@@ -177,13 +200,44 @@ define([
         },
 
         setDisabled: function(disabled) {
-            if (disabled !== this.disabled)
+            if (disabled !== this.disabled) {
+                if ((disabled || !Common.Utils.isGecko) && this.options.hint) {
+                    var tip = this.cmpEl.data('bs.tooltip');
+                    if (tip) {
+                        disabled && tip.hide();
+                        !Common.Utils.isGecko && (tip.enabled = !disabled);
+                    }
+                }
                 this.cmpEl.toggleClass('disabled', disabled);
+            }
             this.disabled = disabled;
         },
 
         isDisabled: function() {
             return this.disabled;
+        },
+
+        updateHint: function(hint, isHtml) {
+            this.options.hint = hint;
+
+            if (!this.rendered) return;
+
+            if (this.cmpEl.data('bs.tooltip'))
+                this.cmpEl.removeData('bs.tooltip');
+
+            this.cmpEl.tooltip({
+                html: !!isHtml,
+                title: (typeof hint == 'string') ? hint : hint[0],
+                placement: this.options.hintAnchor||'cursor'
+            });
+
+            if (this.disabled || !Common.Utils.isGecko) {
+                var tip = this.cmpEl.data('bs.tooltip');
+                if (tip) {
+                    this.disabled && tip.hide();
+                    !Common.Utils.isGecko && (tip.enabled = !this.disabled);
+                }
+            }
         }
     });
 });

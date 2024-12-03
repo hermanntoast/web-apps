@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -89,8 +89,22 @@ DE.ApplicationController = new(function(){
             ttOffset[1] = 40;
         }
 
-        config.canBackToFolder = (config.canBackToFolder!==false) && config.customization && config.customization.goback &&
-                                 (config.customization.goback.url || config.customization.goback.requestClose && config.canRequestClose);
+        config.mode = 'view'; // always view for embedded
+        config.canCloseEditor = false;
+        var _canback = false;
+        if (typeof config.customization === 'object') {
+            if (typeof config.customization.goback == 'object' && config.canBackToFolder!==false) {
+                _canback = config.customization.close===undefined ?
+                    config.customization.goback.url || config.customization.goback.requestClose && config.canRequestClose :
+                    config.customization.goback.url && !config.customization.goback.requestClose;
+
+                if (config.customization.goback.requestClose)
+                    console.log("Obsolete: The 'requestClose' parameter of the 'customization.goback' section is deprecated. Please use 'close' parameter in the 'customization' section instead.");
+            }
+            if (config.customization.close && typeof config.customization.close === 'object')
+                config.canCloseEditor  = (config.customization.close.visible!==false) && config.canRequestClose && !config.isDesktopApp;
+        }
+        config.canBackToFolder = !!_canback;
     }
 
     function loadDocument(data) {
@@ -128,6 +142,8 @@ DE.ApplicationController = new(function(){
             docInfo.put_EncryptedInfo(config.encryptionKeys);
             docInfo.put_Lang(config.lang);
             docInfo.put_Mode(config.mode);
+            docInfo.put_Wopi(config.wopi);
+            config.shardkey && docInfo.put_Shardkey(config.shardkey);
 
             var enable = !config.customization || (config.customization.macros!==false);
             docInfo.asc_putIsEnabledMacroses(!!enable);
@@ -411,8 +427,12 @@ DE.ApplicationController = new(function(){
 
         if ( !appOptions.canFillForms || permissions.download === false) {
             $('#idt-download-docx').hide();
+            itemsCount --;
+        }
+
+        if ( !appOptions.canFillForms && !appOptions.isOForm || permissions.download === false) {
             $('#idt-download-pdf').hide();
-            itemsCount -= 2;
+            itemsCount --;
         }
 
         if ( !embedConfig.shareUrl || appOptions.canFillForms) {
@@ -426,6 +446,10 @@ DE.ApplicationController = new(function(){
         } else {
             var text = config.customization.goback.text;
             text && (typeof text == 'string') && $('#idt-close .caption').text(text);
+        }
+
+        if (config.canCloseEditor) {
+            $('#id-btn-close-editor').removeClass('hidden');
         }
 
         if (itemsCount < 7) {
@@ -508,6 +532,10 @@ DE.ApplicationController = new(function(){
             }
         });
 
+        $('#id-btn-close-editor').on('click', function(){
+            config.canRequestClose && Common.Gateway.requestClose();
+        });
+
         var downloadAs =  function(format){
             api.asc_DownloadAs(new Asc.asc_CDownloadOptions(format));
             Common.Analytics.trackEvent('Save');
@@ -557,12 +585,12 @@ DE.ApplicationController = new(function(){
 
         // TODO: add asc_hasRequiredFields to sdk
 
-        if (appOptions.canSubmitForms && !api.asc_IsAllRequiredFormsFilled()) {
+        if (appOptions.canSubmitForms && appOptions.canFillForms && !api.asc_IsAllRequiredFormsFilled()) {
             var sgroup = $('#id-submit-group');
             btnSubmit.attr({disabled: true});
             btnSubmit.css("pointer-events", "none");
             if (!common.localStorage.getItem("de-embed-hide-submittip")) {
-                var offset = btnSubmit.offset();
+                var offset = common.utils.getOffset(btnSubmit);
                 $requiredTooltip = $('<div class="required-tooltip bottom-left" style="display:none;"><div class="tip-arrow bottom-left"></div><div>' + me.textRequired + '</div><div class="close-div">' + me.textGotIt + '</div></div>');
                 $(document.body).append($requiredTooltip);
                 $requiredTooltip.css({top : offset.top + btnSubmit.height() + 'px', left: offset.left + btnSubmit.outerWidth()/2 - $requiredTooltip.outerWidth() + 'px'});
@@ -606,6 +634,17 @@ DE.ApplicationController = new(function(){
                 }, 2000);
             }
         });
+
+        if (appOptions.isOForm && permissions.download!==false) {
+            $('#id-critical-error-title').text(me.notcriticalErrorTitle);
+            $('#id-critical-error-message').html(me.textConvertFormDownload);
+            $('#id-critical-error-close').text(me.textDownloadPdf).off().on('click', function(){
+                downloadAs(Asc.c_oAscFileType.PDF);
+                $('#id-critical-error-dialog').modal('hide');
+            });
+            $('#id-critical-error-dialog').modal('show');
+        }
+
         Common.Gateway.documentReady();
         Common.Analytics.trackEvent('Load', 'Complete');
     }
@@ -617,6 +656,7 @@ DE.ApplicationController = new(function(){
             $('#id-critical-error-title').text(Asc.c_oLicenseResult.NotBefore === licType ? me.titleLicenseNotActive : me.titleLicenseExp);
             $('#id-critical-error-message').html(Asc.c_oLicenseResult.NotBefore === licType ? me.warnLicenseBefore : me.warnLicenseExp);
             $('#id-critical-error-close').parent().remove();
+            $('#id-critical-error-dialog button.close').remove();
             $('#id-critical-error-dialog').css('z-index', 20002).modal({backdrop: 'static', keyboard: false, show: true});
             return;
         }
@@ -627,7 +667,11 @@ DE.ApplicationController = new(function(){
         appOptions.canBranding  = params.asc_getCustomization();
         appOptions.canBranding && setBranding(config.customization);
 
+        var type = /^(?:(docxf|oform))$/.exec(docConfig.fileType);
+        appOptions.isOForm = !!(type && typeof type[1] === 'string'); // oform and docxf
+
         api.asc_setViewMode(!appOptions.canFillForms);
+        api.asc_setPdfViewer(!appOptions.canFillForms);
 
         btnSubmit = $('#id-btn-submit');
 
@@ -664,13 +708,13 @@ DE.ApplicationController = new(function(){
         }
 
         var $parent = labelDocName.parent();
-        var _left_width = $parent.position().left,
+        var _left_width = common.utils.getPosition($parent).left,
             _right_width = $parent.next().outerWidth();
 
         if ( _left_width < _right_width )
-            $parent.css('padding-left', _right_width - _left_width);
+            $parent.css('padding-left', parseFloat($parent.css('padding-left')) + _right_width - _left_width);
         else
-            $parent.css('padding-right', _left_width - _right_width);
+            $parent.css('padding-right', parseFloat($parent.css('padding-right')) + _left_width - _right_width);
 
         onLongActionBegin(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
 
@@ -702,6 +746,9 @@ DE.ApplicationController = new(function(){
                 $('#loading-mask').addClass("none-animation");
             }
             onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
+        } else if (type == Asc.c_oAscAdvancedOptionsID.TXT) {
+            api && api.asc_setAdvancedOptions(Asc.c_oAscAdvancedOptionsID.TXT, advOptions.asc_getRecommendedSettings() || new Asc.asc_CTextOptions());
+            onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
         }
     }
 
@@ -712,6 +759,7 @@ DE.ApplicationController = new(function(){
             $('#id-critical-error-close').text(me.txtClose).off().on('click', function(){
                 window.location.reload();
             });
+            $('#id-critical-error-dialog button.close').remove();
             $('#id-critical-error-dialog').css('z-index', 20002).modal('show');
             return;
         }
@@ -786,6 +834,10 @@ DE.ApplicationController = new(function(){
                 message = me.errorTokenExpire;
                 break;
 
+            case Asc.c_oAscError.ID.VKeyEncrypt:
+                message= me.errorToken;
+                break;
+
             case Asc.c_oAscError.ID.ConvertationOpenFormat:
                 if (errData === 'pdf')
                     message = me.errorInconsistentExtPdf.replace('%1', docConfig.fileType || '');
@@ -803,8 +855,9 @@ DE.ApplicationController = new(function(){
                 return;
 
             default:
-                message = me.errorDefaultMessage.replace('%1', id);
-                break;
+                // message = me.errorDefaultMessage.replace('%1', id);
+                // break;
+                return;
         }
 
         if (level == Asc.c_oAscError.Level.Critical) {
@@ -817,6 +870,7 @@ DE.ApplicationController = new(function(){
             $('#id-critical-error-close').text(me.txtClose).off().on('click', function(){
                 window.location.reload();
             });
+            $('#id-critical-error-dialog button.close').remove();
         }
         else {
             Common.Gateway.reportWarning(id, message);
@@ -848,7 +902,7 @@ DE.ApplicationController = new(function(){
         if (data.type == 'mouseup') {
             var e = document.getElementById('editor_sdk');
             if (e) {
-                var r = e.getBoundingClientRect();
+                var r = common.utils.getBoundingClientRect(e);
                 api.OnMouseUp(
                     data.x - r.left,
                     data.y - r.top
@@ -866,7 +920,11 @@ DE.ApplicationController = new(function(){
             Common.Gateway.reportError(Asc.c_oAscError.ID.AccessDeny, me.errorAccessDeny);
             return;
         }
-        if (api) api.asc_DownloadAs(new Asc.asc_CDownloadOptions(Asc.c_oAscFileType.DOCX, true));
+        if (api) {
+            var options = new Asc.asc_CDownloadOptions(Asc.c_oAscFileType.DOCX, true);
+            options.asc_setIsSaveAs(true);
+            api.asc_DownloadAs(options);
+        }
     }
 
     function onRunAutostartMacroses() {
@@ -881,6 +939,11 @@ DE.ApplicationController = new(function(){
     function setBranding(value) {
         if ( value && value.logo) {
             var logo = $('#header-logo');
+            if (value.logo.visible===false) {
+                logo.addClass('hidden');
+                return;
+            }
+
             if (value.logo.image || value.logo.imageEmbedded) {
                 logo.html('<img src="'+(value.logo.image || value.logo.imageEmbedded)+'" style="max-width:100px; max-height:20px;"/>');
                 logo.css({'background-image': 'none', width: 'auto', height: 'auto'});
@@ -948,8 +1011,8 @@ DE.ApplicationController = new(function(){
         });
 
         window["flat_desine"] = true;
-        var result = /[\?\&]fileType=\b(pdf|djvu|xps|oxps)\b&?/i.exec(window.location.search),
-            isPDF = (!!result && result.length && typeof result[1] === 'string');
+        var result = /[\?\&]fileType=\b(pdf)|(djvu|xps|oxps)\b&?/i.exec(window.location.search),
+            isPDF = (!!result && result.length && typeof result[2] === 'string') || (!!result && result.length && typeof result[1] === 'string') && !window.isPDFForm;
 
         api = isPDF ? new Asc.PDFEditorApi({
             'id-view'  : 'editor_sdk',
@@ -1027,6 +1090,9 @@ DE.ApplicationController = new(function(){
         titleLicenseExp: 'License expired',
         titleLicenseNotActive: 'License not active',
         warnLicenseBefore: 'License not active. Please contact your administrator.',
-        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.'
+        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.',
+        textConvertFormDownload: 'Download file as a fillable PDF form to be able to fill it out.',
+        textDownloadPdf: 'Download pdf',
+        errorToken: 'The document security token is not correctly formed.<br>Please contact your Document Server administrator.'
     }
 })();

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,14 +32,13 @@
 /**
  *  TableSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 4/15/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/15/14
  *
  */
 
-define([    'text!presentationeditor/main/app/template/TableSettingsAdvanced.template',
+define([
+    'text!presentationeditor/main/app/template/TableSettingsAdvanced.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/MetricSpinner'
 ], function (contentTemplate) {
     'use strict';
 
@@ -47,7 +46,7 @@ define([    'text!presentationeditor/main/app/template/TableSettingsAdvanced.tem
         options: {
             alias: 'TableSettingsAdvanced',
             contentWidth: 280,
-            height: 385,
+            contentHeight: 300,
             storageName: 'pe-table-settings-adv-category',
             sizeMax: {width: 55.88, height: 55.88},
         },
@@ -439,13 +438,13 @@ define([    'text!presentationeditor/main/app/template/TableSettingsAdvanced.tem
         },
 
         getFocusedComponents: function() {
-            return [
+            return this.btnsCategory.concat([
                 this.inputTableName, // 0 tab
                 this.spnWidth, this.btnRatio, this.spnHeight, this.spnX, this.cmbFromX, this.spnY, this.cmbFromY, // 1 tab
                 this.chCellMargins, this.spnMarginTop, this.spnMarginLeft, this.spnMarginBottom, this.spnMarginRight,
                 this.spnTableMarginTop, this.spnTableMarginLeft, this.spnTableMarginBottom, this.spnTableMarginRight, // 2 tab
                 this.inputAltTitle, this.textareaAltDescription  // 3 tab
-            ];
+            ]).concat(this.getFooterButtons());
         },
 
         onCategoryClick: function(btn, index) {

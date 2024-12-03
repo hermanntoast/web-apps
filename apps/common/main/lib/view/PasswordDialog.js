@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,14 +34,11 @@
  *
  *  Select Codepage for open CSV/TXT format file.
  *
- *  Created by Alexey.Musinov on 29/04/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 29/04/14
  *
  */
 
-define([
-    'common/main/lib/component/Window'
-], function () {
+define([], function () {
     'use strict';
 
     Common.Views.PasswordDialog = Common.UI.Window.extend(_.extend({
@@ -54,7 +51,6 @@ define([
 
             _.extend(_options,  {
                 width           : 395,
-                height          : 270,
                 header          : true,
                 cls             : 'modal-dlg',
                 contentTemplate : '',
@@ -111,13 +107,14 @@ define([
                         style       : 'width: 100%;',
                         maxLength: 255,
                         validateOnBlur: false,
-                        repeatInput: this.repeatPwd
+                        repeatInput: this.repeatPwd,
+                        showPwdOnClick: false
                     });
             }
         },
 
         getFocusedComponents: function() {
-            return [this.inputPwd, this.repeatPwd];
+            return [this.inputPwd, this.repeatPwd].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

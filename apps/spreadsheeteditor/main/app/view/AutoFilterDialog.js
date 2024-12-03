@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,16 +34,11 @@
  *
  *  Create filter for cell dialog.
  *
- *  Created by Alexey.Musinov on 22/04/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 22/04/14
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/ColorPaletteExt',
-    'common/main/lib/component/Calendar'
-], function () {
+define([], function () {
     'use strict';
 
     SSE.Views = SSE.Views || {};
@@ -55,17 +50,17 @@ define([
 
             _.extend(_options,  {
                 width           : options.type === 'date' ? 528 : 501,
-                height          : 230,
                 contentWidth    : 180,
                 header          : true,
-                cls             : 'filter-dlg' + (options.type === 'date' ? ' date-filter' : ''),
+                cls             : 'filter-dlg modal-dlg' + (options.type === 'date' ? ' date-filter' : ''),
                 contentTemplate : '',
                 title           : t.txtTitle,
-                items           : []
+                items           : [],
+                buttons: ['ok', 'cancel']
             }, options);
 
             this.template   =   options.template || [
-                '<div class="box" style="height:' + (_options.height - 85) + 'px;">',
+                '<div class="box">',
                     '<div class="content-panel" >',
                         '<label class="header">', t.textShowRows, '</label>',
                         '<div class="combo-container-1">',
@@ -87,11 +82,6 @@ define([
                             '<% } %>',
                         '</div>',
                     '</div>',
-                '</div>',
-                '<div class="separator horizontal"></div>',
-                '<div class="footer center">',
-                    '<button class="btn normal dlg-btn primary" result="ok">', t.okButtonText, '</button>',
-                    '<button class="btn normal dlg-btn" result="cancel">', t.cancelButtonText, '</button>',
                 '</div>'
             ].join('');
 
@@ -186,7 +176,7 @@ define([
                 this.btnDatePicker1 = new Common.UI.Button({
                     parentEl: $('#id-btn-date-picker-1', this.$window),
                     cls: 'btn-toolbar bg-white',
-                    iconCls: 'toolbar__icon',
+                    iconCls: 'toolbar__icon btn-date',
                     hint: this.txtSelectDate
                 });
                 this.btnDatePicker1.on('click', _.bind(this.showDatePicker, this));
@@ -194,7 +184,7 @@ define([
                 this.btnDatePicker2 = new Common.UI.Button({
                     parentEl: $('#id-btn-date-picker-2', this.$window),
                     cls: 'btn-toolbar bg-white',
-                    iconCls: 'toolbar__icon',
+                    iconCls: 'toolbar__icon btn-date',
                     hint: this.txtSelectDate
                 });
                 this.btnDatePicker2.on('click', _.bind(this.showDatePicker, this));
@@ -218,7 +208,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.cmbCondition1, this.cmbValue1, this.rbAnd, this.rbOr, this.cmbCondition2, this.cmbValue2];
+            return [this.cmbCondition1, this.cmbValue1, this.rbAnd, this.rbOr, this.cmbCondition2, this.cmbValue2].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -375,10 +365,9 @@ define([
 
             _.extend(_options,  {
                 width           : (this.type=='value') ? 450 : 318,
-                height          : 160,
                 contentWidth    : 180,
                 header          : true,
-                cls             : 'filter-dlg',
+                cls             : 'filter-dlg modal-dlg',
                 contentTemplate : '',
                 title           : t.txtTitle,
                 items           : [],
@@ -386,7 +375,7 @@ define([
             }, options);
 
             this.template   =   options.template || [
-                '<div class="box" style="height:' + (_options.height - 85) + 'px;">',
+                '<div class="box">',
                     '<div class="content-panel" >',
                         '<label>', t.textType, '</label>',
                         '<div>',
@@ -397,8 +386,7 @@ define([
                             '<div id="id-top10-fields-combo" class="input-group-nr" style="width:100px;display: inline-block; vertical-align: middle;"></div>',
                         '</div>',
                     '</div>',
-                '</div>',
-                '<div class="separator horizontal" style="width:100%"></div>'
+                '</div>'
             ].join('');
 
             this.api        =   options.api;
@@ -474,7 +462,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.cmbType, this.spnCount, this.cmbItem, this.cmbFields];
+            return [this.cmbType, this.spnCount, this.cmbItem, this.cmbFields].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -581,13 +569,13 @@ define([
 
             _.extend(_options,  {
                 width           : 501,
-                height          : 210,
                 contentWidth    : 180,
                 header          : true,
-                cls             : 'filter-dlg',
+                cls             : 'filter-dlg modal-dlg',
                 contentTemplate : '',
                 title           : (options.type=='label') ?  t.txtTitleLabel : t.txtTitleValue,
-                items           : []
+                items           : [],
+                buttons: ['ok', 'cancel']
             }, options);
 
             this.api        =   options.api;
@@ -595,7 +583,7 @@ define([
             this.type       =   options.type || 'value';
 
             this.template   =   options.template || [
-                    '<div class="box" style="height:' + (_options.height - 85) + 'px;">',
+                    '<div class="box">',
                     '<div class="content-panel" >',
                         '<label class="header">', ((t.type=='label') ? t.textShowLabel : t.textShowValue), '</label>',
                         '<div style="margin-top:15px;">',
@@ -610,11 +598,6 @@ define([
                             '<label style="display:block;">' + t.textUse2 + '</label>',
                         '</div>',
                     '</div>',
-                    '</div>',
-                    '<div class="separator horizontal" style="width:100%"></div>',
-                    '<div class="footer center">',
-                    '<button class="btn normal dlg-btn primary" result="ok">', t.okButtonText, '</button>',
-                    '<button class="btn normal dlg-btn" result="cancel">', t.cancelButtonText, '</button>',
                     '</div>'
                 ].join('');
 
@@ -710,7 +693,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.cmbFields, this.cmbCondition1, this.inputValue, this.inputValue2];
+            return [this.cmbFields, this.cmbCondition1, this.inputValue, this.inputValue2].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -860,10 +843,9 @@ define([
 
             _.extend(_options,  {
                 width           : 250,
-                height          : 215,
                 contentWidth    : 180,
                 header          : true,
-                cls             : 'filter-dlg',
+                cls             : 'filter-dlg modal-dlg',
                 contentTemplate : '',
                 title           : t.txtTitle,
                 items           : [],
@@ -871,15 +853,15 @@ define([
             }, options);
 
             this.template   =   options.template || [
-                    '<div class="box" style="height:' + (_options.height - 85) + 'px;">',
+                    '<div class="box">',
                     '<div class="content-panel" >',
+                        '<div id="id-sort-filter-radio-nosort" style="margin-bottom: 4px;"></div>',
                         '<div id="id-sort-filter-radio-asc" style="margin-bottom: 4px;"></div>',
                         '<div id="id-sort-filter-fields-asc" class="input-group-nr margin-left-22" style="margin-bottom: 10px;"></div>',
                         '<div id="id-sort-filter-radio-desc" style="margin-bottom: 4px;"></div>',
                         '<div id="id-sort-filter-fields-desc" class="input-group-nr margin-left-22"></div>',
                     '</div>',
-                    '</div>',
-                    '<div class="separator horizontal" style="width:100%"></div>'
+                    '</div>'
                 ].join('');
 
             this.api        =   options.api;
@@ -891,6 +873,16 @@ define([
         },
         render: function () {
             Common.UI.Window.prototype.render.call(this);
+
+            this.radioNoSort = new Common.UI.RadioBox({
+                el: $('#id-sort-filter-radio-nosort'),
+                labelText: this.textNoSort,
+                name: 'asc-radio-sort'
+            });
+            this.radioNoSort.on('change', _.bind(function(field, newValue) {
+                newValue && this.cmbFieldsAsc.setDisabled(true);
+                newValue && this.cmbFieldsDesc.setDisabled(true);
+            }, this));
 
             this.radioAsc = new Common.UI.RadioBox({
                 el: $('#id-sort-filter-radio-asc'),
@@ -942,7 +934,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.radioAsc, this.cmbFieldsAsc, this.radioDesc, this.cmbFieldsDesc];
+            return [this.radioNoSort, this.radioAsc, this.cmbFieldsAsc, this.radioDesc, this.cmbFieldsDesc].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -990,7 +982,10 @@ define([
                         item && arr.push({value: index, displayValue: item, filter: filter, indexSorting: index});
                     });
                     this.setTitle(this.txtTitle + ' (' + fields[0] + ')');
+                    this.radioNoSort.setValue(sort == null, true);
+                    this.cmbFieldsAsc.setDisabled( (sort === Asc.c_oAscSortOptions.Descending) || (sort === null) );
                 } else if (this.properties.rowFilter && this.properties.colFilter) {
+                    this.radioNoSort.setVisible(false);
                     this.setTitle(this.txtTitleValue);
                     var pivotObj = this.properties.rowFilter.asc_getPivotObj(),
                         fields = pivotObj.asc_getDataFields(),
@@ -1009,6 +1004,10 @@ define([
                         idx = 1;
                         sort = this.properties.colFilter.asc_getSortState();
                     }
+                    if (sort == null) {
+                        this.radioAsc.setValue(true, true);
+                    }
+                    this.cmbFieldsAsc.setDisabled(sort === Asc.c_oAscSortOptions.Descending);
                 }
 
                 this.cmbFieldsAsc.setData(arr);
@@ -1018,19 +1017,27 @@ define([
 
                 this.radioDesc.setValue(sort == Asc.c_oAscSortOptions.Descending, true);
                 this.cmbFieldsDesc.setDisabled(sort !== Asc.c_oAscSortOptions.Descending);
-                this.cmbFieldsAsc.setDisabled(sort === Asc.c_oAscSortOptions.Descending);
             }
         },
         save: function () {
             if (this.api && this.properties) {
-                var combo = this.radioAsc.getValue() ? this.cmbFieldsAsc : this.cmbFieldsDesc;
-                var rec = combo.getSelectedRecord();
-                if (rec) {
-                    var filter = rec.filter,
-                        pivotObj = filter.asc_getPivotObj();
-                    pivotObj.asc_setDataFieldIndexSorting(rec.indexSorting);
-                    filter.asc_setSortState(this.radioAsc.getValue() ? Asc.c_oAscSortOptions.Ascending : Asc.c_oAscSortOptions.Descending);
-                    this.api.asc_applyAutoFilter(filter);
+                var isNoSort = this.radioNoSort.getValue();
+                if (isNoSort) {
+                    var filter = this.properties.filter;
+                    if (filter) {
+                        filter.asc_setSortState(null);
+                        this.api.asc_applyAutoFilter(filter);
+                    }
+                } else {
+                    var combo = this.radioAsc.getValue() ? this.cmbFieldsAsc : this.cmbFieldsDesc;
+                    var rec = combo.getSelectedRecord();
+                    if (rec) {
+                        var filter = rec.filter,
+                            pivotObj = filter.asc_getPivotObj();
+                        pivotObj.asc_setDataFieldIndexSorting(rec.indexSorting);
+                        filter.asc_setSortState(this.radioAsc.getValue() ? Asc.c_oAscSortOptions.Ascending : Asc.c_oAscSortOptions.Descending);
+                        this.api.asc_applyAutoFilter(filter);
+                    }
                 }
             }
         },
@@ -1043,6 +1050,7 @@ define([
 
         txtTitle: "Sort",
         txtTitleValue: "Sort by value",
+        textNoSort: 'No sort',
         textAsc: 'Ascenging (A to Z) by',
         textDesc: 'Descending (Z to A) by'
 
@@ -1062,7 +1070,7 @@ define([
                 height          : height || 277,
                 contentWidth    : (width - 50) || 400,
                 header          : false,
-                cls             : 'filter-dlg autofilter invisible-borders',
+                cls             : 'filter-dlg  modal-dlg autofilter invisible-borders',
                 contentTemplate : '',
                 title           : t.txtTitle,
                 modal           : false,
@@ -1117,7 +1125,6 @@ define([
             $border.removeClass('left');
             $border.removeClass('top');
 
-
             this.$window.find('.dlg-btn').on('click', _.bind(this.onBtnClick, this));
 
             this.btnOk = new Common.UI.Button({
@@ -1131,19 +1138,24 @@ define([
                 this.btnOk.render($('#id-apply-filter', this.$window));
                 this.btnOk.on('click', _.bind(this.onApplyFilter, this));
             }
+            this.footerButtons = this.getFooterButtons().concat([this.btnOk]);
 
             this.miSortLow2High = new Common.UI.MenuItem({
                 caption     : this.txtSortLow2High,
+                iconCls     : 'menu__icon btn-sort-down',
                 toggleGroup : 'menufiltersort',
                 checkable   : true,
+                checkmark   : false,
                 checked     : false
             });
             this.miSortLow2High.on('click', _.bind(this.onSortType, this, Asc.c_oAscSortOptions.Ascending));
 
             this.miSortHigh2Low = new Common.UI.MenuItem({
                 caption     : this.txtSortHigh2Low,
+                iconCls     : 'menu__icon btn-sort-up',
                 toggleGroup : 'menufiltersort',
                 checkable   : true,
+                checkmark   : false,
                 checked     : false
             });
             this.miSortHigh2Low.on('click', _.bind(this.onSortType, this, Asc.c_oAscSortOptions.Descending));
@@ -1341,6 +1353,7 @@ define([
 
             this.miClear = new Common.UI.MenuItem({
                 caption     : this.txtClear,
+                iconCls     : 'menu__icon btn-clear-filter',
                 checkable   : false
             });
             this.miClear.on('click', _.bind(this.onClear, this));
@@ -1409,6 +1422,7 @@ define([
             this.miLabelFilter.menu.on('item:click', _.bind(this.onLabelFilterMenuClick, this));
 
             this.filtersMenu = new Common.UI.Menu({
+                cls: 'shifted-right',
                 items: [
                     this.miSortLow2High,
                     this.miSortHigh2Low,
@@ -1864,7 +1878,7 @@ define([
                 target = $(event.currentTarget).find('.tree-label');
 
                 if (target.length) {
-                    bound = target.get(0).getBoundingClientRect();
+                    bound = Common.Utils.getBoundingClientRect(target.get(0));
                     var _clientX = event.clientX*Common.Utils.zoom(),
                         _clientY = event.clientY*Common.Utils.zoom();
                     if (bound.left < _clientX && _clientX < bound.right &&

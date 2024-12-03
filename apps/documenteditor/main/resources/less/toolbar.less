@@ -190,7 +190,7 @@
 }
 
 #slot-field-fontname {
-    width: 84px;
+    width: 106px;
 }
 
 #slot-field-fontsize {
@@ -210,6 +210,10 @@
     border-radius: 3px;
     overflow: hidden;
     box-shadow: 0 5px 15px -5px rgba(0, 0, 0, 0.2);
+    .ie &,
+    .winxp & {
+        overflow: visible;
+    }
 }
 
 #equation-container {
@@ -217,7 +221,7 @@
         height: 30px;
     }
     &.has-open-menu {
-        z-index: @zindex-navbar + 1;
+        z-index: @zindex-navbar + 3;
     }
     .btn-toolbar {
         display: flex;

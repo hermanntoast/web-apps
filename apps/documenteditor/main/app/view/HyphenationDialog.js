@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,21 +32,15 @@
 /**
  *  HyphenationDialog.js
  *
- *  Created by Julia Radzhabova on 24/08/23
- *  Copyright (c) 2023 Ascensio System SIA. All rights reserved.
+ *  Created on 24/08/23
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/MetricSpinner'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     DE.Views.HyphenationDialog = Common.UI.Window.extend(_.extend({
         options: {
             width: 290,
-            height: 'auto',
             header: true,
             style: 'min-width: 290px;',
             cls: 'modal-dlg',
@@ -60,7 +54,7 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="">',
+                '<div class="box">',
                     '<table cols="2" style="width: 100%;">',
                         '<tr>',
                             '<td colspan="2" style="padding-bottom: 15px;">',
@@ -163,7 +157,7 @@ define([
         },
 
         getFocusedComponents: function() {
-            return [this.chAuto, this.chCaps, this.spnZone, this.spnLimit];
+            return [this.chAuto, this.chCaps, this.spnZone, this.spnLimit].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,28 +32,21 @@
 /**
  *  TableSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 2/27/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 2/27/14
  *
  */
 
-define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.template',
+define([
+    'text!documenteditor/main/app/template/TableSettingsAdvanced.template',
+    'common/main/lib/component/TableStyler',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/RadioBox',
-    'common/main/lib/component/ThemeColorPalette',
-    'common/main/lib/component/ColorButton',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/TableStyler'
 ], function (contentTemplate) {
     'use strict';
 
     DE.Views.TableSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 340,
-            height: 436,
+            contentHeight: 351,
             toggleGroup: 'table-adv-settings-group',
             storageName: 'de-table-settings-adv-category'
         },
@@ -891,7 +884,6 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 additionalAlign: this.menuAddAlign,
                 color: 'auto',
                 auto: true,
-                cls: 'move-focus',
                 takeFocusOnClose: true
             });
             this.btnBorderColor.on('color:select', _.bind(me.onColorsBorderSelect, me));
@@ -902,7 +894,6 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 parentEl: $('#tableadv-button-back-color'),
                 additionalAlign: this.menuAddAlign,
                 transparent: true,
-                cls: 'move-focus',
                 takeFocusOnClose: true
             });
             this.btnBackColor.on('color:select', _.bind(this.onColorsBackSelect, this));
@@ -912,7 +903,6 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 parentEl: $('#tableadv-button-table-back-color'),
                 additionalAlign: this.menuAddAlign,
                 transparent: true,
-                cls: 'move-focus',
                 takeFocusOnClose: true
             });
             this.btnTableBackColor.on('color:select', _.bind(this.onColorsTableBackSelect, this));
@@ -1014,15 +1004,15 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
         },
 
         getFocusedComponents: function() {
-            return [
+            return this.btnsCategory.concat([
                 this.chWidth, this.nfWidth, this.cmbUnit, this.chAutofit, this.spnTableMarginTop, this.spnTableMarginLeft, this.spnTableMarginBottom, this.spnTableMarginRight, this.chAllowSpacing, this.nfSpacing, // 0 tab
                 this.chPrefWidth, this.nfPrefWidth, this.cmbPrefWidthUnit, this.chCellMargins, this.spnMarginTop, this.spnMarginLeft, this.spnMarginBottom, this.spnMarginRight, this.chWrapText, // 1 tab
-                this.cmbBorderSize, this.btnBorderColor].concat(this._btnsBorderPosition).concat(this._btnsTableBorderPosition).concat([this.btnBackColor, this.btnTableBackColor,
+                this.cmbBorderSize, this.btnBorderColor]).concat(this._btnsBorderPosition).concat(this._btnsTableBorderPosition).concat([this.btnBackColor, this.btnTableBackColor,
                 this.radioHAlign, this.cmbHAlign , this.radioHPosition, this.cmbHRelative, this.spnX, this.cmbHPosition,
                 this.radioVAlign, this.cmbVAlign , this.radioVPosition, this.cmbVRelative, this.spnY, this.cmbVPosition, this.chMove, this.chOverlap, // 3 tab
-                this.spnIndentLeft, this.spnDistanceTop, this.spnDistanceLeft, this.spnDistanceBottom, this.spnDistanceRight, // 4 tab
+                this.btnWrapNone, this.btnWrapParallel, this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.spnIndentLeft, this.spnDistanceTop, this.spnDistanceLeft, this.spnDistanceBottom, this.spnDistanceRight, // 4 tab
                 this.inputAltTitle, this.textareaAltDescription  // 5 tab
-            ]);
+            ]).concat(this.getFooterButtons());
         },
 
         onCategoryClick: function(btn, index) {
@@ -1054,9 +1044,12 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                             me.spnX.focus();
                         break;
                     case 4:
-                        if (me.spnIndentLeft.isVisible())
-                            me.spnIndentLeft.focus();
-                        else
+                        if (me.spnIndentLeft.isVisible()) {
+                            if (!me.spnIndentLeft.isDisabled())
+                                me.spnIndentLeft.focus();
+                            else
+                                me.btnWrapNone.focus();
+                        } else
                             me.spnDistanceTop.focus();
                         break;
                     case 5:
@@ -1412,32 +1405,10 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                     this.CellColor = {Value: 0, Color: 'transparent'};
 
                 this.btnBackColor.setColor(this.CellColor.Color);
-                if ( typeof(this.CellColor.Color) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == this.CellColor.Color.effectValue ) {
-                            this.colorsBack.select(this.CellColor.Color,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colorsBack.clearSelection();
-                } else
-                    this.colorsBack.select(this.CellColor.Color,true);
+                Common.Utils.ThemeColor.selectPickerColorByEffect(this.CellColor.Color, this.colorsBack);
 
                 this.btnTableBackColor.setColor(this.TableColor.Color);
-                if ( typeof(this.TableColor.Color) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == this.TableColor.Color.effectValue ) {
-                            this.colorsTableBack.select(this.TableColor.Color,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colorsTableBack.clearSelection();
-                } else
-                    this.colorsTableBack.select(this.TableColor.Color,true);
+                Common.Utils.ThemeColor.selectPickerColorByEffect(this.TableColor.Color, this.colorsTableBack);
 
                 this.ShowHideSpacing(this.chAllowSpacing.getValue()==='checked');
 

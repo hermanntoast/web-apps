@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,8 +33,7 @@
 /**
  *  PivotSettings.js
  *
- *  Created by Julia Radzhabova on 7/10/17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 7/10/17
  *
  */
 
@@ -42,13 +41,8 @@ define([
     'text!spreadsheeteditor/main/app/template/PivotSettings.template',
     'jquery',
     'underscore',
-    'backbone',
-    'common/main/lib/component/Button',
-    'common/main/lib/component/ListView',
-    'spreadsheeteditor/main/app/view/FieldSettingsDialog',
-    'spreadsheeteditor/main/app/view/ValueFieldSettingsDialog',
-    'spreadsheeteditor/main/app/view/PivotSettingsAdvanced'
-], function (menuTemplate, $, _, Backbone, Sortable) {
+    'backbone'
+], function (menuTemplate, $, _, Backbone) {
     'use strict';
 
     SSE.Views.PivotSettings = Backbone.View.extend(_.extend({
@@ -200,7 +194,7 @@ define([
         },
 
         getDragElement: function(value) {
-            this._dragEl = $('<div style="font-weight: bold;position: absolute;left:-10000px;z-index: 10000;">' + value + '</div>');
+            this._dragEl = $('<div style="font-weight: bold;position: absolute;left:-10000px;z-index: 10000;">' + Common.Utils.String.htmlEncode(value) + '</div>');
             $(document.body).append(this._dragEl);
             return this._dragEl[0];
         },
@@ -208,6 +202,7 @@ define([
         onDragEnd: function() {
             this._dragEl && this._dragEl.remove();
             this._dragEl = null;
+            Common.NotificationCenter.trigger('pivot:dragend', this);
         },
 
         onFieldsDragStart: function (item, index, event) {
@@ -249,7 +244,7 @@ define([
 
                 // scroll
                 var heightListView = item.$el.parent().height(),
-                    positionTopItem = item.$el.position().top,
+                    positionTopItem = Common.Utils.getPosition(item.$el).top,
                     heightItem = item.$el.outerHeight(),
                     scrollTop = item.$el.parent().scrollTop();
                 if (positionTopItem < heightItem && scrollTop > 0) {
@@ -350,13 +345,12 @@ define([
                                 this.onMove(2, this.itemIndex, _.isNumber(this.indexMoveTo) ? (this.indexMoveTo !== 0 && this.itemIndex < this.indexMoveTo ? this.indexMoveTo - 1 : this.indexMoveTo) : this.valuesList.store.length - 1);
                                 break;
                         }
-                    } else {
-                        $(this.el).find('.item').removeClass('insert last');
                     }
                     this.itemIndex = undefined;
                     this.indexMoveTo = undefined;
                 }
             }
+            $(this.el).find('.item').removeClass('insert last');
         },
 
         openAdvancedSettings: function(e) {
@@ -562,13 +556,9 @@ define([
                     var recIndex = (record != undefined) ? record.get('index') : -1;
 
                     var menu = this.pivotFieldsMenu,
-                        showPoint, me = this,
+                        me = this,
                         currentTarget = $(event.currentTarget),
-                        parent = $(this.el),
-                        offset = currentTarget.offset(),
-                        offsetParent = parent.offset();
-
-                    showPoint = [offset.left - offsetParent.left + currentTarget.width(), offset.top - offsetParent.top + currentTarget.height()/2];
+                        parent = $(this.el);
 
                     var menuContainer = parent.find('#menu-pivot-fields-container');
                     if (!menu.rendered) {
@@ -602,7 +592,7 @@ define([
                 target = $(event.currentTarget).find('.list-item');
 
                 if (target.length) {
-                    bound = target.get(0).getBoundingClientRect();
+                    bound = Common.Utils.getBoundingClientRect(target.get(0));
                     var _clientX = event.clientX*Common.Utils.zoom(),
                         _clientY = event.clientY*Common.Utils.zoom();
                     if (bound.left < _clientX && _clientX < bound.right &&
@@ -735,13 +725,9 @@ define([
             this.miFieldSettings.setDisabled(pivotIndex==-2);
 
             var menu = this.fieldsMenu,
-                showPoint, me = this,
+                me = this,
                 currentTarget = $(e.currentTarget),
-                parent = $(this.el),
-                offset = currentTarget.offset(),
-                offsetParent = parent.offset();
-
-            showPoint = [offset.left - offsetParent.left + currentTarget.width(), offset.top - offsetParent.top + currentTarget.height()/2];
+                parent = $(this.el);
 
             var menuContainer = parent.find('#menu-pivot-container');
             if (!menu.rendered) {
@@ -905,19 +891,20 @@ define([
         onMoveTo: function(type, pivotindex, to) {
             if (this.api && !this._locked && this._state.field){
                 var pivotIndex = _.isNumber(pivotindex) ? pivotindex : this._state.field.record.get('pivotIndex'),
-                    index = _.isNumber(to) ? to : ((this._state.field.type==2) ? this._state.field.record.get('index') : undefined);
+                    index = _.isNumber(to) ? to : undefined,
+                    dataIndex = (this._state.field.type==2) ? this._state.field.record.get('index') : undefined;
                 switch (type) {
                     case 0:
-                        this._originalProps.asc_moveToColField(this.api, pivotIndex, index);
+                        this._originalProps.asc_moveToColField(this.api, pivotIndex, dataIndex, index);
                         break;
                     case 1:
-                        this._originalProps.asc_moveToRowField(this.api, pivotIndex, index);
+                        this._originalProps.asc_moveToRowField(this.api, pivotIndex, dataIndex, index);
                         break;
                     case 2:
-                        this._originalProps.asc_moveToDataField(this.api, pivotIndex, index);
+                        this._originalProps.asc_moveToDataField(this.api, pivotIndex, dataIndex, index);
                         break;
                     case 3:
-                        this._originalProps.asc_moveToPageField(this.api, pivotIndex, index);
+                        this._originalProps.asc_moveToPageField(this.api, pivotIndex, dataIndex, index);
                         break;
                 }
                 Common.NotificationCenter.trigger('edit:complete', this);

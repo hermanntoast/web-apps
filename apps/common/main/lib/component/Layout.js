@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *    Layout.js
  *
- *    Created by Maxim Kadushkin on 10 February 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 10 February 2014
  *
  *
  *      Configuration
@@ -370,7 +369,7 @@ define([
             }
 
             if (this.resize.type == 'vertical')
-                value -= panel.position().top;
+                value -= Common.Utils.getPosition(panel).top;
             // if (this.resize.type == 'horizontal')
             //     value -= panel.position().left;
 
@@ -428,7 +427,7 @@ define([
             }
 
            // if (resize.type == 'vertical')
-                value -= panel.position().top;
+                value -= Common.Utils.getPosition(panel).top;
            // if (resize.type == 'horizontal')
            //     value -= panel.position().left;
 

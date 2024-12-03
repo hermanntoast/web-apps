@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  CopyWarningDialog.js
  *
- *  Created by Alexander Yuzhin on 4/15/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/15/14
  *
  */
 
@@ -41,14 +40,11 @@
 if (Common === undefined)
     var Common = {};
 
-define([
-    'common/main/lib/component/Window'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     Common.Views.CopyWarningDialog = Common.UI.Window.extend(_.extend({
         options: {
             width   : 500,
-            height  : 325,
             cls     : 'modal-dlg copy-warning',
             buttons: ['ok']
         },
@@ -76,7 +72,7 @@ define([
                             '<p class="message">' + this.textToPaste + '</p>',
                         '</div>',
                     '</div>',
-                    '<div id="copy-warning-checkbox" class="text-align-left" style="margin-top: 20px;"></div>',
+                    '<div id="copy-warning-checkbox" class="text-align-left" style="padding: 15px 0;"></div>',
                 '</div>',
                 '<div class="separator horizontal"></div>'
             ].join('');
@@ -95,17 +91,14 @@ define([
             });
 
             this.getChild().find('.dlg-btn').on('click', _.bind(this.onBtnClick, this));
-            this.autoSize();
         },
 
-        autoSize: function() {
-            var text_cnt    = this.getChild('.box'),
-                footer      = this.getChild('.footer'),
-                header      = this.getChild('.header'),
-                body        = this.getChild('.body');
+        getFocusedComponents: function() {
+            return [this.chDontShow].concat(this.getFooterButtons());
+        },
 
-            body.height(parseInt(text_cnt.height()) + parseInt(footer.css('height')));
-            this.setHeight(parseInt(body.css('height')) + parseInt(header.css('height')));
+        getDefaultFocusableComponent: function () {
+            return this.chDontShow;
         },
 
         onBtnClick: function(event) {
